@@ -65,6 +65,7 @@ window_size = fs * window_duration  # Tamaño de la ventana en muestras
 
 ppg_signal_segmented=[]
 abp_signal_segmented=[]
+ecg_signal_segmented=[]
 
 # Función dividir la señal en ventanas 
 def split_into_windows(signal, window_size, overlap):
@@ -81,7 +82,7 @@ for i in range(datos_extraidos.shape[0]):
     
     ppg_signal_segmented.append(split_into_windows(ppg_signal[i], window_size, overlap=0.5))
     abp_signal_segmented.append(split_into_windows(abp_signal[i], window_size, overlap=0.5))
-
+    ecg_signal_segmented.append(split_into_windows(ecg_signal[i], window_size, overlap=0.5))
 # windows=[]
 # for i in range(datos_extraidos.shape[0]):
 #     # Encontrar picos en la señal PPG
@@ -109,11 +110,29 @@ plt.title("Recorte de 10 seg de señal de ABP")
 plt.xlabel("Muestras")
 plt.ylabel("Amplitud")
 plt.show()
+
+plt.figure(figsize=(10, 4))
+plt.plot(ecg_signal_segmented[1000][0])  # Mostrar los primeros 1000 puntos
+plt.title("Recorte de 10 seg de señal de ECG")
+plt.xlabel("Muestras")
+plt.ylabel("Amplitud")
+plt.show()
 #%% Detección de PS y PD en señal ABP
+
+FRECUENCIA_CARDIACA_MIN = 40  # LPM (latidos por minuto)
+FRECUENCIA_CARDIACA_MAX = 180  # LPM
+AMPLITUD_SISTOLICA_MIN = 80    # Valor mínimo para un pico sistólico válido
+# AMPLITUD_SISTOLICA_MAX = 180   # Valor máximo para un pico sistólico válido
+AMPLITUD_DIASTOLICA_MIN = 30   # Valor mínimo para un pico diastólico válido
+# AMPLITUD_DIASTOLICA_MAX = 110   # Valor máximo para un pico diastólico válido
+DISTANCIA_MINIMA = 50          # Distancia mínima entre picos (en muestras)
+
+
 matriz_picos_sistolicos=[]
 matriz_picos_diastolicos=[]
 matriz_presiones_sistolicas=[]
 matriz_presiones_diastolicas=[]
+
 for i in range(len(abp_signal_segmented)):
     picos_sistolicos=[]
     picos_diastolicos=[]
@@ -121,10 +140,16 @@ for i in range(len(abp_signal_segmented)):
     presiones_diastolicas = []
     for j in range(len(abp_signal_segmented[i])):
         # Encontrar picos en la señal ABP
-        peakss,_ = find_peaks(abp_signal_segmented[i][j], height=80, distance=60) 
-        peaksd,_ = find_peaks(-(abp_signal_segmented)[i][j], distance=60)
+        peakss,_ = find_peaks(abp_signal_segmented[i][j], height=AMPLITUD_SISTOLICA_MIN, distance=DISTANCIA_MINIMA) 
+        peaksd,_ = find_peaks(-(abp_signal_segmented)[i][j], distance=DISTANCIA_MINIMA)
         picos_sistolicos.append(peakss)
         picos_diastolicos.append(peaksd)
+        # Filtrar picos sistólicos (eliminar los no deseados)
+        # señal_abp = abp_signal_segmented[i][j]
+        # peakss = [p for p in peakss if AMPLITUD_SISTOLICA_MIN <= señal_abp[p] <= AMPLITUD_SISTOLICA_MAX]
+
+        # Filtrar picos diastólicos (eliminar los no deseados)
+        # peaksd = [p for p in peaksd if -(AMPLITUD_DIASTOLICA_MIN) <= -señal_abp[p] <= -(AMPLITUD_DIASTOLICA_MAX)]
         # Estimación de las presiones sistolicas y diastolicas promedios de la señal de 10 seg 
         if (len(peakss)>0):
             ps = np.mean(abp_signal_segmented[i][j][peakss])
@@ -146,7 +171,7 @@ for i in range(len(abp_signal_segmented)):
         
 
 #%% Ploteo Detección de picos sistolicos y diastolicos
-m3000=2089
+m3000=2012
 for i in range(len(abp_signal_segmented[m3000])):
     n10s=i
     plt.figure(figsize=(10, 4))

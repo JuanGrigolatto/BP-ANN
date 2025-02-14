@@ -38,21 +38,21 @@ with h5py.File(archivo_datos1, 'r') as f:
         ecg_signal.append(datos_extraidos[i][:, 2])
 #%% Ploteo de señales    
 plt.figure(figsize=(10, 4))
-plt.plot(ppg_signal[2000][:250])  # Mostrar los primeros 1000 puntos
+plt.plot(ppg_signal[2000][:1000])  # Mostrar los primeros 1000 puntos
 plt.title("Señal PPG - Primer Registro")
 plt.xlabel("Muestras")
 plt.ylabel("Amplitud")
 plt.show()
 
 plt.figure(figsize=(10, 4))
-plt.plot(abp_signal[2000][:250])  # Mostrar los primeros 1000 puntos
+plt.plot(abp_signal[2000][:1000])  # Mostrar los primeros 1000 puntos
 plt.title("Señal ABP - Primer Registro")
 plt.xlabel("Muestras")
 plt.ylabel("Amplitud")
 plt.show()
     
 plt.figure(figsize=(10, 4))
-plt.plot(ecg_signal[2000][:250])  # Mostrar los primeros 1000 puntos
+plt.plot(ecg_signal[2000][:1000])  # Mostrar los primeros 1000 puntos
 plt.title("Señal ECG - Primer Registro")
 plt.xlabel("Muestras")
 plt.ylabel("Amplitud")
@@ -75,7 +75,8 @@ def split_into_windows(signal, window_size, overlap):
         windows.append(signal[i:i + window_size])
     return np.array(windows)
 
-
+def min_max_normalization(signal):
+    return (signal - np.min(signal)) / (np.max(signal) - np.min(signal))
 
 #Dividir en ventanas
 for i in range(datos_extraidos.shape[0]):
@@ -95,28 +96,56 @@ for i in range(datos_extraidos.shape[0]):
 #         end = peaks[j] + int(0.8 * fs)    # Terminar 0.7 segundos después del pico
 #         if end < len(ppg_signal[i]):  # Evitar índices fuera de rango
 #             windows.append(ppg_signal[i][start:end])
-             
+
+
+
+#%% Normalización de señales
+
+ppg_normalized=[]
+abp_normalized=[]
+ecg_normalized=[]
+for i in range(len(abp_signal_segmented)):
+    
+    ppg_normalized.append(min_max_normalization(ppg_signal_segmented[i]))
+    abp_normalized.append(min_max_normalization(abp_signal_segmented[i]))
+    ecg_normalized.append(min_max_normalization(ecg_signal_segmented[i]))
+        
+        
 #%% Ploteo de segmentación
 plt.figure(figsize=(10, 4))
-plt.plot(ppg_signal_segmented[1000][0])  # Mostrar los primeros 1000 puntos
+plt.plot(ppg_signal_segmented[1578][0])  # Mostrar los primeros 1000 puntos
 plt.title("Recorte de 10 seg de señal de PPG")
 plt.xlabel("Muestras")
 plt.ylabel("Amplitud")
 plt.show()
 
 plt.figure(figsize=(10, 4))
-plt.plot(abp_signal_segmented[1000][0])  # Mostrar los primeros 1000 puntos
+plt.plot(abp_signal_segmented[1578][0])  # Mostrar los primeros 1000 puntos
 plt.title("Recorte de 10 seg de señal de ABP")
 plt.xlabel("Muestras")
 plt.ylabel("Amplitud")
 plt.show()
 
 plt.figure(figsize=(10, 4))
-plt.plot(ecg_signal_segmented[1000][0])  # Mostrar los primeros 1000 puntos
+plt.plot(ecg_signal_segmented[1578][0])  # Mostrar los primeros 1000 puntos
 plt.title("Recorte de 10 seg de señal de ECG")
 plt.xlabel("Muestras")
 plt.ylabel("Amplitud")
 plt.show()
+
+
+# Relación de señales en el recorte
+plt.figure(figsize=(10, 4))
+plt.plot(ppg_normalized[287][0], color= "blue", label="PPG")
+plt.plot(abp_normalized[287][0], color= "green", label="ABP")
+plt.plot(ecg_normalized[287][0], color= "red", label="ECG") 
+plt.title("Relación entre señales en el tiempo")
+plt.xlabel("Muestras")
+plt.ylabel("Amplitud")
+plt.show()
+
+
+
 #%% Detección de PS y PD en señal ABP
 
 FRECUENCIA_CARDIACA_MIN = 40  # LPM (latidos por minuto)

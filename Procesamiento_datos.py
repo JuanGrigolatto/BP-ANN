@@ -200,6 +200,7 @@ for i in range(len(abp_signal_segmented)):
         
 
 #%% Ploteo Detección de picos sistolicos y diastolicos
+"""
 m3000=2012
 for i in range(len(abp_signal_segmented[m3000])):
     n10s=i
@@ -215,37 +216,8 @@ for i in range(len(abp_signal_segmented[m3000])):
     plt.xlabel("Muestras")
     plt.ylabel("Amplitud")
     plt.show()
+"""
 
-# #Detección picos diastolicos
-
-# #se invierte la señal
-
-# abp_signal_segmented_invertida=-(abp_signal_segmented[69][0])
-
-# plt.figure(figsize=(10, 4))
-# plt.plot(abp_signal_segmented_invertida)  # Mostrar los primeros 1000 puntos
-# plt.title("ABP invertida")
-# plt.xlabel("Muestras")
-# plt.ylabel("Amplitud")
-# plt.show()
-
-# peaksd, amp_peaksd= find_peaks(abp_signal_segmented_invertida, distance=60)  
-
-# plt.figure(figsize=(10, 4))
-# plt.plot(abp_signal_segmented_invertida)  # Mostrar los primeros 1000 puntos
-# plt.plot(peaksd, abp_signal_segmented_invertida[peaksd], "x")
-# plt.title("Detección de picos diastolicos en ABP invertida")
-# plt.xlabel("Muestras")
-# plt.ylabel("Amplitud")
-# plt.show()
-
-# plt.figure(figsize=(10, 4))
-# plt.plot(abp_signal_segmented[69][0])  # Mostrar los primeros 1000 puntos
-# plt.plot(peaksd, abp_signal_segmented[69][0][peaksd], "x")
-# plt.title("Detección de picos diastolicos en ABP")
-# plt.xlabel("Muestras")
-# plt.ylabel("Amplitud")
-# plt.show()
 
 
 

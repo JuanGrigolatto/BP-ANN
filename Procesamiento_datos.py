@@ -10,6 +10,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 
+
+
 #%% Carga de señales
 
 archivo_datos1 = "datos/Part_1.mat"
@@ -84,20 +86,6 @@ for i in range(datos_extraidos.shape[0]):
     ppg_signal_segmented.append(split_into_windows(ppg_signal[i], window_size, overlap=0.5))
     abp_signal_segmented.append(split_into_windows(abp_signal[i], window_size, overlap=0.5))
     ecg_signal_segmented.append(split_into_windows(ecg_signal[i], window_size, overlap=0.5))
-# windows=[]
-# for i in range(datos_extraidos.shape[0]):
-#     # Encontrar picos en la señal PPG
-#     peaks, _ = find_peaks(ppg_signal[i], height=0.01, distance=fs)  # Ajusta los parámetros según tu señal
-
-#     # Segmentar la señal alineando las ventanas con los picos
-    
-#     for j in range(len(peaks) - 1):
-#         start = peaks[j] - int(0.2 * fs)  # Comenzar 0.3 segundos antes del pico
-#         end = peaks[j] + int(0.8 * fs)    # Terminar 0.7 segundos después del pico
-#         if end < len(ppg_signal[i]):  # Evitar índices fuera de rango
-#             windows.append(ppg_signal[i][start:end])
-
-
 
 #%% Normalización de señales
 
@@ -109,26 +97,34 @@ for i in range(len(abp_signal_segmented)):
     ppg_normalized.append(min_max_normalization(ppg_signal_segmented[i]))
     abp_normalized.append(min_max_normalization(abp_signal_segmented[i]))
     ecg_normalized.append(min_max_normalization(ecg_signal_segmented[i]))
-        
+
+#%% longitud de las señales segmentadas
+print(len(ppg_signal_segmented))
+print(len(abp_signal_segmented))
+print(len(ecg_signal_segmented))   
+for i in range(len(ppg_signal_segmented)):
+    print(f"PPG: {len(ppg_signal_segmented[i])}")
+    #for j in range(len(ppg_signal_segmented[i])):
+        #print(f"PPG: {len(ppg_signal_segmented[i][j])}")  
         
 #%% Ploteo de segmentación
 plt.figure(figsize=(10, 4))
 plt.plot(ppg_signal_segmented[1578][0])  # Mostrar los primeros 1000 puntos
-plt.title("Recorte de 10 seg de señal de PPG")
+plt.title("Recorte de 5 seg de señal de PPG")
 plt.xlabel("Muestras")
 plt.ylabel("Amplitud")
 plt.show()
 
 plt.figure(figsize=(10, 4))
 plt.plot(abp_signal_segmented[1578][0])  # Mostrar los primeros 1000 puntos
-plt.title("Recorte de 10 seg de señal de ABP")
+plt.title("Recorte de 5 seg de señal de ABP")
 plt.xlabel("Muestras")
 plt.ylabel("Amplitud")
 plt.show()
 
 plt.figure(figsize=(10, 4))
 plt.plot(ecg_signal_segmented[1578][0])  # Mostrar los primeros 1000 puntos
-plt.title("Recorte de 10 seg de señal de ECG")
+plt.title("Recorte de 5 seg de señal de ECG")
 plt.xlabel("Muestras")
 plt.ylabel("Amplitud")
 plt.show()
@@ -217,8 +213,123 @@ for i in range(len(abp_signal_segmented[m3000])):
     plt.ylabel("Amplitud")
     plt.show()
 """
+#%% Formación de dataset y etiquetas
 
+"""
+# Guardar datos en formato .pt para PyTorch !!!
+import os
+import torch
 
+output_dir = 'datos_UCI'
+os.makedirs(output_dir, exist_ok=True)
 
+index = 0
 
+for paciente_id, (ppg_list, ecg_list, sbp_list, dbp_list) in enumerate(zip(ppg_normalized, ecg_normalized, matriz_presiones_sistolicas, matriz_presiones_diastolicas)):
+    for seg_id, (ppg, ecg, sbp, dbp) in enumerate(zip(ppg_list, ecg_list, sbp_list, dbp_list)):
+        ppg = np.asarray(ppg)
+        ecg = np.asarray(ecg)
+
+        # Concatenar señales en un tensor (2, long_segmento)
+        signal = np.stack([ppg, ecg], axis=0)
+        signal_tensor = torch.tensor(signal, dtype=torch.float32)
+
+        # Guardar etiquetas como tensor (SBP, DBP)
+        label_tensor = torch.tensor([sbp, dbp], dtype=torch.float32)
+
+        # Identificador de paciente
+        patient_tensor = torch.tensor(paciente_id, dtype=torch.long)
+
+        # Crear contenedor
+        data = {
+            'signal': signal_tensor,
+            'label': label_tensor,
+            'patient_id': patient_tensor
+        }
+
+        # Guardar archivo .pt
+        torch.save(data, os.path.join(output_dir, f'{index:05d}.pt'))
+        index += 1
+
+print(f"Guardados {index} archivos .pt en {output_dir}")
+"""    
+# %% mostrar datos guardados
+
+import os
+import torch
+import matplotlib.pyplot as plt
+
+# Configuración
+output_dir = 'datos_UCI'
+num_files_to_inspect = 20  # Cantidad de archivos a visualizar
+start_num_batch = 70000  # Número de lote inicial para inspeccionar
+# Obtener lista ordenada de archivos
+files = sorted([f for f in os.listdir(output_dir) if f.endswith('.pt')])
+
+for i, filename in enumerate(files[start_num_batch:(start_num_batch+num_files_to_inspect)]):
+    filepath = os.path.join(output_dir, filename)
+    data = torch.load(filepath)
     
+    print(f"\n=== Archivo {i+1}/{num_files_to_inspect}: {filename} ===")
+    print(f"Paciente ID: {data['patient_id'].item()}")
+    print(f"Etiquetas (SBP, DBP): {data['label'].numpy()}")
+    print(f"Dimensión señal (canales, longitud): {data['signal'].shape}")
+    
+
+    # Visualización de señales
+    #plt.figure(figsize=(12, 4))
+    #plt.plot(data['signal'][0], label='PPG', color='red', alpha=0.7)
+    #plt.plot(data['signal'][1], label='ECG', color='blue', alpha=0.7)
+    #plt.title(f"Señal {filename}\nPaciente {data['patient_id'].item()} | SBP: {data['label'][0].item()} | DBP: {data['label'][1].item()}")
+    #plt.xlabel("Muestras")
+    #plt.ylabel("Amplitud")
+    #plt.legend()
+    #plt.tight_layout()
+    #plt.show()
+# %% Ploteo distribución de presiones sistólicas y diastólicas
+""" Este código no plotea, se queda ejecutando indefinidamente
+output_dir = 'datos_UCI'
+
+# Cargar todos los datos
+sbp_values = []
+dbp_values = []
+
+for filename in os.listdir(output_dir):
+    if filename.endswith('.pt'):
+        data = torch.load(os.path.join(output_dir, filename))
+        sbp_values.append(data['label'][0].item())
+        dbp_values.append(data['label'][1].item())
+
+# Convertir a arrays de numpy
+sbp = np.array(sbp_values)
+dbp = np.array(dbp_values)
+
+# Configurar los bins (personaliza según tus datos)
+bin_ranges = np.arange(50, 221, 10)  # De 50 a 220 mmHg en pasos de 10
+
+# Crear figura
+plt.figure(figsize=(14, 6))
+
+# Gráfico de SBP
+plt.subplot(1, 2, 1)
+plt.hist(sbp, bins=bin_ranges, color='#E74C3C', edgecolor='black', alpha=0.8)
+plt.title('Distribución de Presión Sistólica (SBP)', fontsize=14, pad=20)
+plt.xlabel('mmHg', fontsize=12)
+plt.ylabel('Frecuencia', fontsize=12)
+plt.axvline(x=np.mean(sbp), color='black', linestyle='--', label=f'Media: {np.mean(sbp):.1f}')
+plt.legend()
+
+# Gráfico de DBP
+plt.subplot(1, 2, 2)
+plt.hist(dbp, bins=bin_ranges, color='#3498DB', edgecolor='black', alpha=0.8)
+plt.title('Distribución de Presión Diastólica (DBP)', fontsize=14, pad=20)
+plt.xlabel('mmHg', fontsize=12)
+plt.axvline(x=np.mean(dbp), color='black', linestyle='--', label=f'Media: {np.mean(dbp):.1f}')
+plt.legend()
+
+# Ajustes finales
+plt.suptitle('Distribución de Valores de Presión Arterial', fontsize=16, y=1.02)
+plt.tight_layout()
+
+plt.show()"""
+# %%

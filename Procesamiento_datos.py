@@ -62,7 +62,7 @@ plt.show()
     
 #%% Segmentación de señales
 fs = 125  # Frecuencia de muestreo (Hz)
-window_duration = 5  # Duración de la ventana (segundos)
+window_duration = 2  # Duración de la ventana (segundos)
 window_size = fs * window_duration  # Tamaño de la ventana en muestras
 
 ppg_signal_segmented=[]
@@ -110,7 +110,7 @@ for i in range(len(ppg_signal_segmented)):
 #%% Ploteo de segmentación
 plt.figure(figsize=(10, 4))
 plt.plot(ppg_signal_segmented[1578][0])  # Mostrar los primeros 1000 puntos
-plt.title("Recorte de 5 seg de señal de PPG")
+plt.title("Recorte de 2 seg de señal de PPG")
 plt.xlabel("Muestras")
 plt.ylabel("Amplitud")
 plt.show()
@@ -215,7 +215,7 @@ for i in range(len(abp_signal_segmented[m3000])):
 """
 #%% Formación de dataset y etiquetas
 
-"""
+
 # Guardar datos en formato .pt para PyTorch !!!
 import os
 import torch
@@ -252,9 +252,9 @@ for paciente_id, (ppg_list, ecg_list, sbp_list, dbp_list) in enumerate(zip(ppg_n
         index += 1
 
 print(f"Guardados {index} archivos .pt en {output_dir}")
-"""    
+    
 # %% mostrar datos guardados
-
+"""
 import os
 import torch
 import matplotlib.pyplot as plt
@@ -274,7 +274,7 @@ for i, filename in enumerate(files[start_num_batch:(start_num_batch+num_files_to
     print(f"Paciente ID: {data['patient_id'].item()}")
     print(f"Etiquetas (SBP, DBP): {data['label'].numpy()}")
     print(f"Dimensión señal (canales, longitud): {data['signal'].shape}")
-    
+   """ 
 
     # Visualización de señales
     #plt.figure(figsize=(12, 4))

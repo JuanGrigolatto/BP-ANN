@@ -4,7 +4,8 @@ from Clase_UCIDataset import UCIDataset
 import os
 from torch.utils import data
 import numpy as np
-from Modelos.InceptionTime import InceptionTime
+#from Modelos.InceptionTime import InceptionTime
+from Modelos.Modelo_conv import Modelo_Convolucional
 from tqdm.auto import tqdm 
 import matplotlib.pyplot as plt
 #%%
@@ -12,11 +13,11 @@ use_cuda = torch.cuda.is_available()
 device = torch.device("cuda:0" if use_cuda else "cpu")
 print(device)
 #%%
-
+"""
 # Versión optimizada que precarga en RAM
 class RAMDataset(data.Dataset):
     def __init__(self, uci_dataset):
-        """Precarga en RAM los datos de un UCIDataset"""
+        #Precarga en RAM los datos de un UCIDataset
         self.data = []
         self.labels = []
         
@@ -35,11 +36,11 @@ class RAMDataset(data.Dataset):
     
     def __getitem__(self, index):
         return self.data[index], self.labels[index]
-    
+"""    
 parameters = {
     'batch_size': 256,
     'shuffle': True,
-    'num_workers': 2,
+    'num_workers': 4,
     'pin_memory': True
 }    
 if __name__ == '__main__':
@@ -56,7 +57,7 @@ if __name__ == '__main__':
         'train': all_IDs[:train_size],
         'validation': all_IDs[train_size:]
     }
-
+    """
         # Crear datasets y precargar en RAM
     print("\nPrecargando conjunto de entrenamiento...")
     train_dataset = RAMDataset(UCIDataset(partition['train'], data_dir))
@@ -71,22 +72,21 @@ if __name__ == '__main__':
     # Verificación de uso de memoria
     print(f"\nMemoria usada por datos de entrenamiento: {train_dataset.data.element_size() * train_dataset.data.nelement() / (1024**2):.2f} MB")
     print(f"Memoria usada por datos de validación: {val_dataset.data.element_size() * val_dataset.data.nelement() / (1024**2):.2f} MB")
-
-
-
     """
+
     training_set = UCIDataset(partition['train'], data_dir=data_dir)	
     training_generator = torch.utils.data.DataLoader(training_set, **parameters)
 
     validation_set = UCIDataset(partition['validation'], data_dir=data_dir)
     validation_generator = torch.utils.data.DataLoader(validation_set, **parameters)
-    """
+    
 
     # Crear el modelo
-    model=InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32, nb_filters=None)
+    #model=InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=8, nb_filters=3)
+    model=Modelo_Convolucional(in_channels=2,out_channels=2, long_signal=250)
     model = model.to(device)  # Mueve el modelo a la GPU o CPU según corresponda
     # Se Define el optimizador y la función de pérdida
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     criterion = torch.nn.MSELoss()  # MSELoss para regresión
     #Parametros de entrenamiento
     global best_valid_loss
@@ -94,23 +94,48 @@ if __name__ == '__main__':
     max_epochs, best_valid_loss = 100, np.inf
     patience = 5
     epochs_no_improve = 0
-
+    """
+    torch.autograd.set_detect_anomaly(True)
+    with torch.no_grad():
+        for local_batch, local_labels in training_generator:
+            local_batch = local_batch.to(device)
+            out = model(local_batch)
+            print("Output inicial:", out[3])
+            break
+    """
     running_loss = np.zeros(shape=(max_epochs, 2))  # Para almacenar las pérdidas de entrenamiento y validación
     for epoch in tqdm(range(max_epochs), desc="Entrenamiento"):
         # Training
         train_loss, valid_loss = 0.0, 0.0
-        for local_batch, local_labels in train_loader:
+        for local_batch, local_labels in training_generator:
             optimizer.zero_grad() # Reset gradients
             # Transfer to GPU
             local_batch, local_labels = local_batch.to(device), local_labels.to(device)
             preds = model.forward(local_batch) # Realiza la predicción
+            print(preds.dtype, local_labels.dtype)
             loss = criterion(preds, local_labels) # Calcula la pérdida
+            
+            if torch.isnan(loss):
+                print("¡Loss con NaN detectado! Abortando...")
+                print("Preds:", preds[0])
+                print("Labels:", local_labels[0])
+                exit()
+            
             loss.backward() # Calcula los gradientes mediante backpropagation
+            for name, param in model.named_parameters():
+                if torch.isnan(param.grad).any():
+                    print(f"⚠️ Gradiente con NaN en: {name}")
+                if torch.isinf(param.grad).any():
+                    print(f"⚠️ Gradiente infinito en: {name}")
+
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0) #gradient clipping
             optimizer.step() # Actualiza los parámetros del modelo
             train_loss += loss.item()  # Acumula la pérdida de entrenamiento
+            print("Predicción:", preds[0])
+            print("Etiqueta:", local_labels[0])
 
         with torch.set_grad_enabled(False):
-            for local_batch, local_labels in val_loader:
+            for local_batch, local_labels in validation_generator:
                 # Transfer to GPU
                 local_batch, local_labels = local_batch.to(device), local_labels.to(device)
                 preds = model.forward(local_batch)
@@ -125,14 +150,14 @@ if __name__ == '__main__':
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'loss': valid_loss,
-            'model_config': {'c_in': 2, 'c_out': 2, 'n_filters': 32}  # Parámetros de InceptionTime
+            'model_config': {'c_in': 2, 'c_out': 2, 'n_filters': 8}  # Parámetros de InceptionTime
             },'best_model.pt')
         else:
             epochs_no_improve += 1
             if epochs_no_improve == patience:
                 print("Early Stopping!")
                 break
-        running_loss[epoch] = [train_loss / len(train_loader), valid_loss / len(val_loader)]
+        running_loss[epoch] = [train_loss / len(training_generator), valid_loss / len(validation_generator)]
     
     fig, ax = plt.subplots(figsize=(7, 4), tight_layout=True)
     ax.plot(running_loss[:, 0], label='Entrenamiento')

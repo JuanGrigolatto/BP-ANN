@@ -52,7 +52,7 @@ class InceptionBlock(nn.Module):
         self.add = Add()
         self.act = nn.ReLU()
         for d in range(depth):
-            self.inception_modules.append(InceptionModule(in_channels if d == 0 else n_filters * 4, n_filters, **kwargs))
+            self.inception_modules.append(InceptionModule(in_channels if d == 0 else n_filters * 4, n_filters=n_filters, bottleneck=True, **kwargs))
             if self.residual and d % 3 == 2: 
                 n_in, n_out = in_channels if d == 2 else n_filters * 4, n_filters * 4
                 self.shortcut.append(nn.BatchNorm1d(n_in) if n_in == n_out else nn.Conv1d(n_in, n_out, 1))

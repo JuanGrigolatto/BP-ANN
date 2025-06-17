@@ -215,7 +215,7 @@ for i in range(len(abp_signal_segmented[m3000])):
 """
 #%% Formación de dataset y etiquetas
 
-
+"""
 # Guardar datos en formato .pt para PyTorch !!!
 import os
 import torch
@@ -252,9 +252,9 @@ for paciente_id, (ppg_list, ecg_list, sbp_list, dbp_list) in enumerate(zip(ppg_n
         index += 1
 
 print(f"Guardados {index} archivos .pt en {output_dir}")
-    
+"""    
 # %% mostrar datos guardados
-"""
+
 import os
 import torch
 import matplotlib.pyplot as plt
@@ -274,7 +274,7 @@ for i, filename in enumerate(files[start_num_batch:(start_num_batch+num_files_to
     print(f"Paciente ID: {data['patient_id'].item()}")
     print(f"Etiquetas (SBP, DBP): {data['label'].numpy()}")
     print(f"Dimensión señal (canales, longitud): {data['signal'].shape}")
-   """ 
+   
 
     # Visualización de señales
     #plt.figure(figsize=(12, 4))

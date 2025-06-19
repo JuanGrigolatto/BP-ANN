@@ -17,11 +17,13 @@ class Modelo_Convolucional(nn.Module):
 
         self.pool = nn.AdaptiveAvgPool1d(1)  # reduce to (batch, channels, 1)
         self.fc = nn.Linear(64, out_channels)
+        
+        self.relu = nn.ReLU()
 
     def forward (self, x):
-        x=F.relu(self.bn1(self.conv1(x))) # (B, 16, L)
-        x=F.relu(self.bn2(self.conv2(x))) # (B, 32, L)
-        x=F.relu(self.bn3(self.conv3(x))) # (B, 64, L)
+        x=self.relu(self.bn1(self.conv1(x))) # (B, 16, L)
+        x=self.relu(self.bn2(self.conv2(x))) # (B, 32, L)
+        x=self.relu(self.bn3(self.conv3(x))) # (B, 64, L)
         x=self.pool(x)                 # (B, 64, 1)
         x=x.squeeze(-1)                # (B, 64)
         x = self.fc(x)                 # (B, 2) 

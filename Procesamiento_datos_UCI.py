@@ -215,7 +215,7 @@ for i in range(len(abp_signal_segmented[m3000])):
 """
 #%% Formación de dataset y etiquetas
 
-"""
+
 # Guardar datos en formato .pt para PyTorch !!!
 import os
 import torch
@@ -225,7 +225,7 @@ os.makedirs(output_dir, exist_ok=True)
 
 index = 0
 
-for paciente_id, (ppg_list, ecg_list, sbp_list, dbp_list) in enumerate(zip(ppg_normalized, ecg_normalized, matriz_presiones_sistolicas, matriz_presiones_diastolicas)):
+for paciente_id, (ppg_list, ecg_list, sbp_list, dbp_list) in enumerate(zip(ppg_signal_segmented, ecg_signal_segmented, matriz_presiones_sistolicas, matriz_presiones_diastolicas)):
     for seg_id, (ppg, ecg, sbp, dbp) in enumerate(zip(ppg_list, ecg_list, sbp_list, dbp_list)):
         ppg = np.asarray(ppg)
         ecg = np.asarray(ecg)
@@ -252,7 +252,7 @@ for paciente_id, (ppg_list, ecg_list, sbp_list, dbp_list) in enumerate(zip(ppg_n
         index += 1
 
 print(f"Guardados {index} archivos .pt en {output_dir}")
-"""    
+   
 # %% mostrar datos guardados
 
 import os
@@ -262,7 +262,7 @@ import matplotlib.pyplot as plt
 # Configuración
 output_dir = 'datos_UCI'
 num_files_to_inspect = 20  # Cantidad de archivos a visualizar
-start_num_batch = 70000  # Número de lote inicial para inspeccionar
+start_num_batch = 1  # Número de lote inicial para inspeccionar
 # Obtener lista ordenada de archivos
 files = sorted([f for f in os.listdir(output_dir) if f.endswith('.pt')])
 
@@ -332,4 +332,54 @@ plt.suptitle('Distribución de Valores de Presión Arterial', fontsize=16, y=1.0
 plt.tight_layout()
 
 plt.show()"""
+# %%  Mostrar señales de los archivos .pt
+
+import torch
+import os
+import matplotlib.pyplot as plt
+
+# Parámetros configurables
+input_dir = 'datos_UCI'
+batch_size = 5          # Cantidad de archivos a mostrar por batch
+batch_index = 0         # Cambiá este índice para ver otros batch
+
+# Obtener lista ordenada de archivos
+files = sorted(os.listdir(input_dir))
+total_batches = len(files) // batch_size + int(len(files) % batch_size != 0)
+
+# Calcular rango de archivos a mostrar en este batch
+start = batch_index * batch_size
+end = min(start + batch_size, len(files))
+batch_files = files[start:end]
+
+print(f"Mostrando batch {batch_index+1}/{total_batches} con archivos {start} a {end-1}")
+
+# Mostrar señales del batch
+for filename in batch_files:
+    filepath = os.path.join(input_dir, filename)
+    data = torch.load(filepath)
+
+    signal = data['signal']       # (2, long)
+    label = data['label']         # (SBP, DBP)
+    patient_id = data['patient_id']
+
+    ppg = signal[0].numpy()
+    ecg = signal[1].numpy()
+
+    # Graficar señales
+    plt.figure(figsize=(10, 4))
+    plt.subplot(2, 1, 1)
+    plt.plot(ppg)
+    plt.title(f'PPG - File: {filename} - Paciente: {patient_id.item()} - SBP: {label[0].item():.1f} / DBP: {label[1].item():.1f}')
+    plt.ylabel('Amplitud')
+
+    plt.subplot(2, 1, 2)
+    plt.plot(ecg)
+    plt.title('ECG')
+    plt.ylabel('Amplitud')
+    plt.xlabel('Tiempo (muestras)')
+
+    plt.tight_layout()
+    plt.show()
+
 # %%

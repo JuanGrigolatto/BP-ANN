@@ -38,9 +38,9 @@ class RAMDataset(data.Dataset):
         return self.data[index], self.labels[index]
 """    
 parameters = {
-    'batch_size': 256,
+    'batch_size': 64,
     'shuffle': True,
-    'num_workers': 4,
+    'num_workers': 2,
     'pin_memory': True
 }    
 if __name__ == '__main__':
@@ -76,10 +76,35 @@ if __name__ == '__main__':
 
     training_set = UCIDataset(partition['train'], data_dir=data_dir)	
     training_generator = torch.utils.data.DataLoader(training_set, **parameters)
-
+    print(f"Conjunto de entrenamiento: {len(training_set)} muestras")   
+    print(training_set[0][0])
     validation_set = UCIDataset(partition['validation'], data_dir=data_dir)
     validation_generator = torch.utils.data.DataLoader(validation_set, **parameters)
+    print(f"Conjunto de validacion: {len(validation_set)} muestras")  
+    print(validation_set[0][0])
+
     
+
+
+    # Obtener un solo batch del DataLoader
+    for batch in training_generator:
+        inputs, labels = batch
+    
+        # Mostrar tamaño del batch
+        print("Tamaño de inputs:", inputs.shape)
+        print("Tamaño de labels:", labels.shape)
+    
+        # Visualizar las primeras señales del batch (ejemplo para señales de 2 canales y 250 muestras)
+        for i in range(3):  # Mostrar 3 ejemplos
+            plt.figure(figsize=(10, 3))
+            plt.title(f"Ejemplo {i+1} - Señales PPG y ECG")
+            plt.plot(inputs[i][0].cpu().numpy(), label='ppg')
+            plt.plot(inputs[i][1].cpu().numpy(), label='ecg')
+            plt.legend()
+            plt.show()
+    
+        break  # Solo queremos un batch para revisar
+
 
     # Crear el modelo
     #model=InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=8, nb_filters=3)
@@ -159,13 +184,15 @@ if __name__ == '__main__':
                 break
         running_loss[epoch] = [train_loss / len(training_generator), valid_loss / len(validation_generator)]
     
-    fig, ax = plt.subplots(figsize=(7, 4), tight_layout=True)
+    fig, ax = plt.subplots(figsize=(10, 10), tight_layout=True)
     ax.plot(running_loss[:, 0], label='Entrenamiento')
     ax.plot(running_loss[:, 1], label='Validación')
     ax.set_title('Pérdida en Entrenamiento y Validación')
     ax.set_xlabel('Epoch')
     ax.set_ylabel('Loss')
     ax.legend()
+    plt.xlim(-1, max_epochs)
+    plt.ylim(-2, 2)
     plt.savefig('loss_curve.png')
     plt.show()
 

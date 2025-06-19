@@ -26,12 +26,14 @@ class TaskDataset(data.Dataset):
         # Cortar 2*shots muestras aleatorias de la señal
         L = x.shape[1]
 
-        if L < self.len_signal:
-            raise ValueError(f"El archivo {ID} solo tiene {L} muestras (< {self.len_signal})")
+        
         
         window_size = 625  # 5 segundos
         total_samples = 2 * self.num_shots 
 
+        if L < self.len_signal:
+            raise ValueError(f"El archivo {ID} solo tiene {L} muestras (< {self.len_signal})")
+        
         xs, ys = [], []
         for _ in range(total_samples):
             start = np.random.randint(0, L - window_size)

@@ -9,100 +9,127 @@ from Modelos.Modelo_conv import Modelo_Convolucional
 from tqdm.auto import tqdm 
 import matplotlib.pyplot as plt
 
-# Configuración del dispositivo
-parameters = {
-    'batch_size': 64,
-    'shuffle': True,
-    'num_workers': 0,
-    'pin_memory': False
-}
+def main():
+    # Configuración del dispositivo
+    parameters = {
+        'batch_size': 512,
+        'shuffle': True,
+        'num_workers': 2,
+        'pin_memory': True
+    }
 
-# Obtener los IDs de los archivos
-data_dir = 'datos_UCI'
-all_IDs = [f[:-3] for f in os.listdir(data_dir) if f.endswith('.pt')]
+    # Obtener los IDs de los archivos
+    data_dir = 'datos_UCI'
+    all_IDs = [f[:-3] for f in os.listdir(data_dir) if f.endswith('.pt')]
 
-#  Aleatorizar los IDs
-np.random.shuffle(all_IDs)
+    #  Aleatorizar los IDs
+    np.random.shuffle(all_IDs)
 
-# Crear la partición (80% train, 20% validation)
-train_size = int(0.8 * len(all_IDs))
-partition = {
-    'train': all_IDs[:train_size],
-    'validation': all_IDs[train_size:]
-}
+    # Crear la partición (80% train, 20% validation)
+    train_size = int(0.8 * len(all_IDs))
+    partition = {
+        'train': all_IDs[:train_size],
+        'validation': all_IDs[train_size:]
+    }
 
-training_set = UCIDataset(partition['train'], data_dir=data_dir)	
-training_generator = torch.utils.data.DataLoader(training_set, **parameters)
+    training_set = UCIDataset(partition['train'], data_dir=data_dir)	
+    training_generator = torch.utils.data.DataLoader(training_set, **parameters)
 
-validation_set = UCIDataset(partition['validation'], data_dir=data_dir)
-validation_generator = torch.utils.data.DataLoader(validation_set, **parameters)
+    validation_set = UCIDataset(partition['validation'], data_dir=data_dir)
+    validation_generator = torch.utils.data.DataLoader(validation_set, **parameters)
 
-# Crear el modelo
+    # Crear el modelo
 
-#model=InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=8, nb_filters=3)
-model=Modelo_Convolucional(in_channels=2,out_channels=2, long_signal=250)   
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = model.to(device)  # Mueve el modelo a la GPU
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-6)
-criterion = torch.nn.MSELoss()  # MSELoss para regresión
-
-# ENTRENAMIENTO
-def train_one_step(batch):
-    optimizer.zero_grad() # Reinicia los gradientes
-    data, labels = batch # Obtiene los datos y etiquetas
-    data, labels = data.to(device), labels.to(device) # Mueve los datos y etiquetas a la GPU
-    preds = model.forward(data) # Realiza la predicción
-    print("Preds:", preds[0])
-    print("Labels:", labels[0])
-    loss = criterion(preds, labels) # Calcula la pérdida
+    #model=InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=8, nb_filters=3)
+    model=Modelo_Convolucional(in_channels=2,out_channels=2, long_signal=250)
+    # Añade esto después de crear el modelo
     """
-    if torch.isnan(loss):
-        print("¡Loss con NaN detectado! Abortando...")
+    for layer in model.modules():
+        if isinstance(layer, (torch.nn.Conv1d, torch.nn.Linear)):
+            torch.nn.init.xavier_uniform_(layer.weight)
+            torch.nn.init.zeros_(layer.bias)
+    """   
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)  # Mueve el modelo a la GPU
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    criterion = torch.nn.MSELoss()  # MSELoss para regresión
+
+    # ENTRENAMIENTO
+    def train_one_step(batch):
+        optimizer.zero_grad() # Reinicia los gradientes
+        data, labels = batch # Obtiene los datos y etiquetas
+        data, labels = data.to(device), labels.to(device) # Mueve los datos y etiquetas a la GPU
+        
+        print("Rango de datos:", torch.min(data).item(), torch.max(data).item())
+
+        for name, param in model.named_parameters():
+            print(f"{name}: mean={param.mean().item():.4f}, std={param.std().item():.4f}")
+
+        preds = model.forward(data) # Realiza la predicción
         print("Preds:", preds[0])
         print("Labels:", labels[0])
-        exit()
-    """
-    loss.backward() # Calcula los gradientes mediante backpropagation
-    optimizer.step() # Actualiza los parámetros del modelo
-    return loss.item() # Devuelve la pérdida
+        loss = criterion(preds, labels) # Calcula la pérdida
+        """
+        if torch.isnan(loss):
+            print("¡Loss con NaN detectado! Abortando...")
+            print("Preds:", preds[0])
+            print("Labels:", labels[0])
+            exit()
+        """
+        loss.backward() # Calcula los gradientes mediante backpropagation
+        # Añade gradient clipping (busca evitar explosión de gradiente)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+        optimizer.step() # Actualiza los parámetros del modelo
+        return loss.item() # Devuelve la pérdida
 
-def evaluate_one_step(batch):
-    with torch.no_grad():
-        data, labels = batch
-        data, labels = data.to(device), labels.to(device)
-        preds = model.forward(data)
-        loss = criterion(preds, labels)
-        return loss.item()
+    def evaluate_one_step(batch):
+        with torch.no_grad():
+            data, labels = batch
+            data, labels = data.to(device), labels.to(device)
+            preds = model.forward(data)
+            loss = criterion(preds, labels)
+            return loss.item()
     
-def train_one_epoch(epoch):    
-    train_loss, valid_loss = 0.0, 0.0
-       
-    for batch in training_generator:
-        train_loss += train_one_step(batch)    
-    for batch in validation_generator:
-        valid_loss += evaluate_one_step(batch)
-        
-    global best_valid_loss
-    best_valid_loss = float('inf')     
-    if valid_loss < best_valid_loss:
-        best_valid_loss = valid_loss
-        torch.save({'epoca': epoch,
-                    'model_state_dict': model.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict(),
-                    'loss': valid_loss}, 
-                   'best_model.pt')
+    def train_one_epoch(epoch):    
+        train_loss, valid_loss = 0.0, 0.0
 
-    return train_loss/len(training_generator), valid_loss/len(validation_generator)
+        model.train()
+        for batch in training_generator:
+            train_loss += train_one_step(batch)
 
-max_epochs, best_valid_loss = 100, np.inf
-running_loss = np.zeros(shape=(max_epochs, 2))
-for epoch in tqdm(range(max_epochs)):
-    running_loss[epoch] = train_one_epoch(epoch)
+        model.eval()    
+        for batch in validation_generator:
+            valid_loss += evaluate_one_step(batch)
 
-fig, ax = plt.subplots(figsize=(7, 4), tight_layout=True)
-ax.plot(running_loss[:, 0], label='Entrenamiento')
-ax.plot(running_loss[:, 1], label='Validación')
-ax.set_xlabel('Epoch')
-ax.set_ylabel('Loss')
-ax.legend()
-plt.show()
+
+        if valid_loss < best_valid_loss:
+            best_valid_loss = valid_loss
+            torch.save({'epoca': epoch,
+                        'model_state_dict': model.state_dict(),
+                        'optimizer_state_dict': optimizer.state_dict(),
+                        'loss': valid_loss}, 
+                    'best_model.pt')
+
+        return train_loss/len(training_generator), valid_loss/len(validation_generator)
+
+    #global best_valid_loss
+    best_valid_loss = float('inf') 
+    max_epochs, best_valid_loss = 100, np.inf
+    running_loss = np.zeros(shape=(max_epochs, 2))
+
+
+    
+    for epoch in tqdm(range(max_epochs)):
+        running_loss[epoch] = train_one_epoch(epoch)
+
+    fig, ax = plt.subplots(figsize=(7, 4), tight_layout=True)
+    ax.plot(running_loss[:, 0], label='Entrenamiento')
+    ax.plot(running_loss[:, 1], label='Validación')
+    ax.set_xlabel('Epoch')
+    ax.set_ylabel('Loss')
+    ax.legend()
+    plt.savefig('loss_curve.png')
+    plt.show()
+
+if __name__ == '__main__':
+    main()

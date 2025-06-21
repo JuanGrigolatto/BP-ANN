@@ -60,14 +60,14 @@ def main():
         data, labels = batch # Obtiene los datos y etiquetas
         data, labels = data.to(device), labels.to(device) # Mueve los datos y etiquetas a la GPU
         
-        print("Rango de datos:", torch.min(data).item(), torch.max(data).item())
+        #print("Rango de datos:", torch.min(data).item(), torch.max(data).item())
 
-        for name, param in model.named_parameters():
-            print(f"{name}: mean={param.mean().item():.4f}, std={param.std().item():.4f}")
+        #for name, param in model.named_parameters():
+        #    print(f"{name}: mean={param.mean().item():.4f}, std={param.std().item():.4f}")
 
         preds = model.forward(data) # Realiza la predicción
-        print("Preds:", preds[0])
-        print("Labels:", labels[0])
+        #print("Preds:", preds[0])
+        #print("Labels:", labels[0])
         loss = criterion(preds, labels) # Calcula la pérdida
         """
         if torch.isnan(loss):
@@ -90,7 +90,7 @@ def main():
             loss = criterion(preds, labels)
             return loss.item()
     
-    def train_one_epoch(epoch):    
+    def train_one_epoch(epoch, best_valid_loss):    
         train_loss, valid_loss = 0.0, 0.0
 
         model.train()
@@ -110,17 +110,18 @@ def main():
                         'loss': valid_loss}, 
                     'best_model.pt')
 
-        return train_loss/len(training_generator), valid_loss/len(validation_generator)
+        return train_loss/len(training_generator), valid_loss/len(validation_generator), best_valid_loss
 
     #global best_valid_loss
+    max_epochs = 100
     best_valid_loss = float('inf') 
-    max_epochs, best_valid_loss = 100, np.inf
     running_loss = np.zeros(shape=(max_epochs, 2))
 
 
     
     for epoch in tqdm(range(max_epochs)):
-        running_loss[epoch] = train_one_epoch(epoch)
+        train_l, valid_l, best_valid_loss = train_one_epoch(epoch, best_valid_loss)
+        running_loss[epoch] = (train_l,valid_l)
 
     fig, ax = plt.subplots(figsize=(7, 4), tight_layout=True)
     ax.plot(running_loss[:, 0], label='Entrenamiento')

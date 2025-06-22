@@ -3,6 +3,7 @@ import torch
 from Clase_UCIDataset import UCIDataset
 import os
 from torch.utils import data
+from torch.utils.data import random_split
 import numpy as np
 #from Modelos.InceptionTime import InceptionTime
 from Modelos.Modelo_conv import Modelo_Convolucional
@@ -12,30 +13,27 @@ import matplotlib.pyplot as plt
 def main():
     # Configuración del dispositivo
     parameters = {
-        'batch_size': 512,
+        'batch_size': 1024,
         'shuffle': True,
-        'num_workers': 2,
+        'num_workers': 3,
         'pin_memory': True
     }
 
-    # Obtener los IDs de los archivos
-    data_dir = 'datos_UCI'
-    all_IDs = [f[:-3] for f in os.listdir(data_dir) if f.endswith('.pt')]
+    print(os.path.exists('data_UCI/dataset_completo.pt'))
+    dataset = UCIDataset('data_UCI/dataset_completo.pt')
+    data_check = torch.load('data_UCI/dataset_completo.pt')
+    print("Shape de datos:", data_check['data'].shape)  # Debe ser [657413, 2, 250]
+    print("Shape de labels:", data_check['labels'].shape)  # Debe ser [657413, 2]
 
-    #  Aleatorizar los IDs
-    np.random.shuffle(all_IDs)
+    print("Número de muestras en dataset:", len(dataset))  
+    print("Ejemplo de dato[0]:", dataset[0][0].shape) 
+   
+    train_size = int(0.8 * len(dataset))
+    val_size = len(dataset) - train_size
+    
+    training_set, validation_set = random_split(dataset, [train_size, val_size])
 
-    # Crear la partición (80% train, 20% validation)
-    train_size = int(0.8 * len(all_IDs))
-    partition = {
-        'train': all_IDs[:train_size],
-        'validation': all_IDs[train_size:]
-    }
-
-    training_set = UCIDataset(partition['train'], data_dir=data_dir)	
     training_generator = torch.utils.data.DataLoader(training_set, **parameters)
-
-    validation_set = UCIDataset(partition['validation'], data_dir=data_dir)
     validation_generator = torch.utils.data.DataLoader(validation_set, **parameters)
 
     # Crear el modelo
@@ -51,7 +49,7 @@ def main():
     """   
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)  # Mueve el modelo a la GPU
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     criterion = torch.nn.MSELoss()  # MSELoss para regresión
 
     # ENTRENAMIENTO

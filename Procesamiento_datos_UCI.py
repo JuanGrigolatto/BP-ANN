@@ -152,11 +152,12 @@ AMPLITUD_DIASTOLICA_MIN = 30   # Valor mínimo para un pico diastólico válido
 # AMPLITUD_DIASTOLICA_MAX = 110   # Valor máximo para un pico diastólico válido
 DISTANCIA_MINIMA = 50          # Distancia mínima entre picos (en muestras)
 
-
 matriz_picos_sistolicos=[]
 matriz_picos_diastolicos=[]
 matriz_presiones_sistolicas=[]
 matriz_presiones_diastolicas=[]
+matriz_presiones_sistolicas_norm=[]
+matriz_presiones_diastolicas_norm=[]
 
 for i in range(len(abp_signal_segmented)):
     picos_sistolicos=[]
@@ -193,6 +194,41 @@ for i in range(len(abp_signal_segmented)):
         
     matriz_picos_sistolicos.append(picos_sistolicos)
     matriz_picos_diastolicos.append(picos_diastolicos)
+
+    matriz_presiones_sistolicas_norm=matriz_presiones_sistolicas
+    matriz_presiones_diastolicas_norm=matriz_presiones_diastolicas
+# Aplanar y convertir a arrays de numpy
+todas_sbp = np.array([x for sublista in matriz_presiones_sistolicas for x in sublista if not np.isnan(x)])
+todas_dbp = np.array([x for sublista in matriz_presiones_diastolicas for x in sublista if not np.isnan(x)])
+
+SBP_MIN = np.min(todas_sbp)
+SBP_MAX = np.max(todas_sbp)
+DBP_MIN = np.min(todas_dbp)
+DBP_MAX = np.max(todas_dbp)
+
+print(f"SBP_MIN={SBP_MIN:.2f}, SBP_MAX={SBP_MAX:.2f}")
+print(f"DBP_MIN={DBP_MIN:.2f}, DBP_MAX={DBP_MAX:.2f}")
+
+def normalizar_presiones(sbp, dbp, sbp_min, sbp_max, dbp_min, dbp_max):
+    sbp_norm = (sbp - sbp_min) / (sbp_max - sbp_min)
+    dbp_norm = (dbp - dbp_min) / (dbp_max - dbp_min)
+    return sbp_norm, dbp_norm
+
+def desnormalizar_presiones(sbp_norm, dbp_norm, sbp_min, sbp_max, dbp_min, dbp_max):
+    sbp = sbp_norm * (sbp_max - sbp_min) + sbp_min
+    dbp = dbp_norm * (dbp_max - dbp_min) + dbp_min
+    return ps, pd
+
+for i in range(len(matriz_presiones_sistolicas)):  
+    for j in range(len(matriz_presiones_sistolicas[i])):
+
+        ps_norm,pd_norm=normalizar_presiones(matriz_presiones_sistolicas[i][j], matriz_presiones_diastolicas[i][j],
+                                     SBP_MIN, SBP_MAX,DBP_MIN,DBP_MAX)
+        matriz_presiones_sistolicas_norm[i][j]=ps_norm
+        matriz_presiones_diastolicas_norm[i][j]=pd_norm
+
+
+
         
 
 #%% Ploteo Detección de picos sistolicos y diastolicos
@@ -213,10 +249,11 @@ for i in range(len(abp_signal_segmented[m3000])):
     plt.ylabel("Amplitud")
     plt.show()
 """
-#%% Formación de dataset y etiquetas
+#%% Formación de dataset y etiquetas normalizadas para entrenamiento y evaluacion
 
 
 # Guardar datos en formato .pt para PyTorch !!!
+"""
 import os
 import torch
 
@@ -252,9 +289,55 @@ for paciente_id, (ppg_list, ecg_list, sbp_list, dbp_list) in enumerate(zip(ppg_s
         index += 1
 
 print(f"Guardados {index} archivos .pt en {output_dir}")
-   
-# %% mostrar datos guardados
+"""
+import os
+import torch
+import numpy as np
 
+output_dir = 'data_UCI'
+os.makedirs(output_dir, exist_ok=True)
+
+all_signals = []
+all_labels = []
+all_patient_ids = []
+
+for paciente_id, (ppg_list, ecg_list, sbp_list, dbp_list) in enumerate(zip(ppg_normalized, ecg_normalized, matriz_presiones_sistolicas, matriz_presiones_diastolicas)):
+    for seg_id, (ppg, ecg, sbp, dbp) in enumerate(zip(ppg_list, ecg_list, sbp_list, dbp_list)):
+        ppg = np.asarray(ppg)
+        ecg = np.asarray(ecg)
+
+        # Verificar si hay NaN en señales o etiquetas
+        if np.isnan(ppg).any() or np.isnan(ecg).any() or np.isnan(sbp) or np.isnan(dbp):
+            continue
+
+        # Concatenar señales (2, long_segmento)
+        signal = np.stack([ppg, ecg], axis=0)
+        signal_tensor = torch.tensor(signal, dtype=torch.float32)
+        label_tensor = torch.tensor([sbp, dbp], dtype=torch.float32)
+        patient_tensor = torch.tensor(paciente_id, dtype=torch.long)
+
+        all_signals.append(signal_tensor)
+        all_labels.append(label_tensor)
+        all_patient_ids.append(patient_tensor)
+
+# Convertir listas a tensores
+data_tensor = torch.stack(all_signals)          # shape: (N, 2, long_segmento)
+labels_tensor = torch.stack(all_labels)         # shape: (N, 2)
+patient_ids_tensor = torch.stack(all_patient_ids)  # shape: (N,)
+
+# Guardar todo en un único archivo .pt
+torch.save({
+    'data': data_tensor,
+    'labels': labels_tensor,
+    'patient_ids': patient_ids_tensor
+}, os.path.join(output_dir, 'dataset_completo.pt'))
+
+print(f"Guardado dataset unificado: {data_tensor.shape[0]} muestras.")
+
+# %% 
+
+# %% mostrar datos guardados
+"""
 import os
 import torch
 import matplotlib.pyplot as plt
@@ -286,6 +369,7 @@ for i, filename in enumerate(files[start_num_batch:(start_num_batch+num_files_to
     #plt.legend()
     #plt.tight_layout()
     #plt.show()
+    """
 # %% Ploteo distribución de presiones sistólicas y diastólicas
 """ Este código no plotea, se queda ejecutando indefinidamente
 output_dir = 'datos_UCI'
@@ -382,4 +466,4 @@ for filename in batch_files:
     plt.tight_layout()
     plt.show()
 
-# %%
+

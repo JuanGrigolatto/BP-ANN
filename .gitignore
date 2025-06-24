@@ -1,4 +1,4 @@
 datos/
 datos_UCI/
 data_UCI/
-entorno/
+entorno/data_UCI/dataset_completo.pt

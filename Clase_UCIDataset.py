@@ -4,7 +4,7 @@ import os
 
 
 class UCIDataset(data.Dataset):
-    def __init__(self, data_dir='data_UCI/dataset_completo.pt'):
+    def __init__(self, data_dir='data_UCI'):
         """
         Args:
             list_IDs (list): List of IDs for the dataset.

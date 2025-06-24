@@ -21,12 +21,7 @@ def main():
 
     print(os.path.exists('data_UCI/dataset_completo.pt'))
     dataset = UCIDataset('data_UCI/dataset_completo.pt')
-    data_check = torch.load('data_UCI/dataset_completo.pt')
-    print("Shape de datos:", data_check['data'].shape)  # Debe ser [657413, 2, 250]
-    print("Shape de labels:", data_check['labels'].shape)  # Debe ser [657413, 2]
-
-    print("Número de muestras en dataset:", len(dataset))  
-    print("Ejemplo de dato[0]:", dataset[0][0].shape) 
+    
    
     train_size = int(0.8 * len(dataset))
     val_size = len(dataset) - train_size

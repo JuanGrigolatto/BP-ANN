@@ -12,7 +12,7 @@ from scipy.signal import find_peaks
 
 
 
-#%% Carga de señales
+#%% Carga de señales para entrenamiento
 
 archivo_datos1 = "datos/Part_1.mat"
 
@@ -38,6 +38,33 @@ with h5py.File(archivo_datos1, 'r') as f:
         ppg_signal.append(datos_extraidos[i][:, 0])
         abp_signal.append(datos_extraidos[i][:, 1])
         ecg_signal.append(datos_extraidos[i][:, 2])
+
+#%% Carga de señales para prueba
+archivo_datos2 = "datos/Part_2.mat"
+with h5py.File(archivo_datos2, 'r') as f:
+    
+    claves=list(f.keys())
+    print("claves: ",claves)
+    dataset2=f['Part_2']
+    print(dataset2.shape)
+    datos_numpy = np.array(dataset2)
+    
+    datos_extraidos2 = []
+    for i in range(dataset2.shape[0]):  
+        ref = dataset2[i, 0]  # Obtener la referencia HDF5
+        datos_extraidos2.append(np.array(f[ref]))  # Convertir el objeto referenciado en un array NumPy
+
+    datos_extraidos2 = np.array(datos_extraidos2, dtype=object)
+
+    ppg_signal2=[]
+    abp_signal2=[]
+    ecg_signal2=[]
+    for i in range(datos_extraidos2.shape[0]):
+        ppg_signal2.append(datos_extraidos2[i][:, 0])
+        abp_signal2.append(datos_extraidos2[i][:, 1])
+        ecg_signal2.append(datos_extraidos2[i][:, 2])
+
+
 #%% Ploteo de señales    
 plt.figure(figsize=(10, 4))
 plt.plot(ppg_signal[2000][:1000])  # Mostrar los primeros 1000 puntos
@@ -65,10 +92,6 @@ fs = 125  # Frecuencia de muestreo (Hz)
 window_duration = 2  # Duración de la ventana (segundos)
 window_size = fs * window_duration  # Tamaño de la ventana en muestras
 
-ppg_signal_segmented=[]
-abp_signal_segmented=[]
-ecg_signal_segmented=[]
-
 # Función dividir la señal en ventanas 
 def split_into_windows(signal, window_size, overlap):
     step = int(window_size * (1 - overlap))  # Paso entre ventanas
@@ -79,6 +102,10 @@ def split_into_windows(signal, window_size, overlap):
 
 def min_max_normalization(signal):
     return (signal - np.min(signal)) / (np.max(signal) - np.min(signal))
+#%% Segmentación señales entrenamiento
+ppg_signal_segmented=[]
+abp_signal_segmented=[]
+ecg_signal_segmented=[]
 
 #Dividir en ventanas
 for i in range(datos_extraidos.shape[0]):
@@ -87,16 +114,40 @@ for i in range(datos_extraidos.shape[0]):
     abp_signal_segmented.append(split_into_windows(abp_signal[i], window_size, overlap=0.5))
     ecg_signal_segmented.append(split_into_windows(ecg_signal[i], window_size, overlap=0.5))
 
-#%% Normalización de señales
+#%% Segmentación señales prueba
+ppg_signal_segmented2=[]
+abp_signal_segmented2=[]
+ecg_signal_segmented2=[]
+
+for j in range(datos_extraidos2.shape[0]):
+
+    ppg_signal_segmented2.append(split_into_windows(ppg_signal2[j], window_size, overlap=0.5))
+    abp_signal_segmented2.append(split_into_windows(abp_signal2[j], window_size, overlap=0.5))
+    ecg_signal_segmented2.append(split_into_windows(ecg_signal2[j], window_size, overlap=0.5))
+    
+
+#%% Normalización de señales entrenamiento
 
 ppg_normalized=[]
 abp_normalized=[]
 ecg_normalized=[]
+
 for i in range(len(abp_signal_segmented)):
     
     ppg_normalized.append(min_max_normalization(ppg_signal_segmented[i]))
     abp_normalized.append(min_max_normalization(abp_signal_segmented[i]))
     ecg_normalized.append(min_max_normalization(ecg_signal_segmented[i]))
+
+#%% Normalización de señales prueba
+ppg_normalized2=[]
+abp_normalized2=[]
+ecg_normalized2=[]
+
+for j in range(len(abp_signal_segmented2)):
+
+    ppg_normalized2.append(min_max_normalization(ppg_signal_segmented2[j]))
+    abp_normalized2.append(min_max_normalization(abp_signal_segmented2[j]))
+    ecg_normalized2.append(min_max_normalization(ecg_signal_segmented2[j]))
 
 #%% longitud de las señales segmentadas
 print(len(ppg_signal_segmented))
@@ -140,8 +191,6 @@ plt.xlabel("Muestras")
 plt.ylabel("Amplitud")
 plt.show()
 
-
-
 #%% Detección de PS y PD en señal ABP
 
 FRECUENCIA_CARDIACA_MIN = 40  # LPM (latidos por minuto)
@@ -152,6 +201,16 @@ AMPLITUD_DIASTOLICA_MIN = 30   # Valor mínimo para un pico diastólico válido
 # AMPLITUD_DIASTOLICA_MAX = 110   # Valor máximo para un pico diastólico válido
 DISTANCIA_MINIMA = 50          # Distancia mínima entre picos (en muestras)
 
+def normalizar_presiones(sbp, dbp, sbp_min, sbp_max, dbp_min, dbp_max):
+    sbp_norm = (sbp - sbp_min) / (sbp_max - sbp_min)
+    dbp_norm = (dbp - dbp_min) / (dbp_max - dbp_min)
+    return sbp_norm, dbp_norm
+
+def desnormalizar_presiones(sbp_norm, dbp_norm, sbp_min, sbp_max, dbp_min, dbp_max):
+    sbp = sbp_norm * (sbp_max - sbp_min) + sbp_min
+    dbp = dbp_norm * (dbp_max - dbp_min) + dbp_min
+    return ps, pd
+#%% Normalización señales entrenamiento
 matriz_picos_sistolicos=[]
 matriz_picos_diastolicos=[]
 matriz_presiones_sistolicas=[]
@@ -209,16 +268,6 @@ DBP_MAX = np.max(todas_dbp)
 print(f"SBP_MIN={SBP_MIN:.2f}, SBP_MAX={SBP_MAX:.2f}")
 print(f"DBP_MIN={DBP_MIN:.2f}, DBP_MAX={DBP_MAX:.2f}")
 
-def normalizar_presiones(sbp, dbp, sbp_min, sbp_max, dbp_min, dbp_max):
-    sbp_norm = (sbp - sbp_min) / (sbp_max - sbp_min)
-    dbp_norm = (dbp - dbp_min) / (dbp_max - dbp_min)
-    return sbp_norm, dbp_norm
-
-def desnormalizar_presiones(sbp_norm, dbp_norm, sbp_min, sbp_max, dbp_min, dbp_max):
-    sbp = sbp_norm * (sbp_max - sbp_min) + sbp_min
-    dbp = dbp_norm * (dbp_max - dbp_min) + dbp_min
-    return ps, pd
-
 for i in range(len(matriz_presiones_sistolicas)):  
     for j in range(len(matriz_presiones_sistolicas[i])):
 
@@ -226,10 +275,73 @@ for i in range(len(matriz_presiones_sistolicas)):
                                      SBP_MIN, SBP_MAX,DBP_MIN,DBP_MAX)
         matriz_presiones_sistolicas_norm[i][j]=ps_norm
         matriz_presiones_diastolicas_norm[i][j]=pd_norm
+#%% Normalización señales prueba
 
+matriz_picos_sistolicos2=[]
+matriz_picos_diastolicos2=[]
+matriz_presiones_sistolicas2=[]
+matriz_presiones_diastolicas2=[]
+matriz_presiones_sistolicas_norm2=[]
+matriz_presiones_diastolicas_norm2=[]
 
+for i in range(len(abp_signal_segmented2)):
+    picos_sistolicos2=[]
+    picos_diastolicos2=[]
+    presiones_sistolicas2 = []
+    presiones_diastolicas2 = []
+    for j in range(len(abp_signal_segmented2[i])):
+        # Encontrar picos en la señal ABP
+        peakss2,_ = find_peaks(abp_signal_segmented2[i][j], height=AMPLITUD_SISTOLICA_MIN, distance=DISTANCIA_MINIMA) 
+        peaksd2,_ = find_peaks(-(abp_signal_segmented2)[i][j], distance=DISTANCIA_MINIMA)
+        picos_sistolicos2.append(peakss2)
+        picos_diastolicos2.append(peaksd2)
+        # Filtrar picos sistólicos (eliminar los no deseados)
+        # señal_abp = abp_signal_segmented[i][j]
+        # peakss = [p for p in peakss if AMPLITUD_SISTOLICA_MIN <= señal_abp[p] <= AMPLITUD_SISTOLICA_MAX]
 
+        # Filtrar picos diastólicos (eliminar los no deseados)
+        # peaksd = [p for p in peaksd if -(AMPLITUD_DIASTOLICA_MIN) <= -señal_abp[p] <= -(AMPLITUD_DIASTOLICA_MAX)]
+        # Estimación de las presiones sistolicas y diastolicas promedios de la señal de 10 seg 
+        if (len(peakss2)>0):
+            ps = np.mean(abp_signal_segmented2[i][j][peakss2])
+        else:
+            ps = np.nan
         
+        if (len(peaksd2)>0):
+            pd = np.mean(abp_signal_segmented2[i][j][peaksd2])
+        else:
+            pd = np.nan
+        presiones_sistolicas2.append(ps)
+        presiones_diastolicas2.append(pd)
+        
+    matriz_presiones_sistolicas2.append(presiones_sistolicas2)
+    matriz_presiones_diastolicas2.append(presiones_diastolicas2)
+        
+    matriz_picos_sistolicos2.append(picos_sistolicos2)
+    matriz_picos_diastolicos2.append(picos_diastolicos2)
+
+    matriz_presiones_sistolicas_norm2=matriz_presiones_sistolicas2
+    matriz_presiones_diastolicas_norm2=matriz_presiones_diastolicas2
+# Aplanar y convertir a arrays de numpy
+todas_sbp2 = np.array([x for sublista in matriz_presiones_sistolicas2 for x in sublista if not np.isnan(x)])
+todas_dbp2 = np.array([x for sublista in matriz_presiones_diastolicas2 for x in sublista if not np.isnan(x)])
+
+SBP_MIN2 = np.min(todas_sbp2)
+SBP_MAX2 = np.max(todas_sbp2)
+DBP_MIN2 = np.min(todas_dbp2)
+DBP_MAX2 = np.max(todas_dbp2)
+
+print(f"SBP_MIN={SBP_MIN2:.2f}, SBP_MAX={SBP_MAX2:.2f}")
+print(f"DBP_MIN={DBP_MIN2:.2f}, DBP_MAX={DBP_MAX2:.2f}")
+
+for i in range(len(matriz_presiones_sistolicas2)):  
+    for j in range(len(matriz_presiones_sistolicas2[i])):
+
+        ps_norm,pd_norm=normalizar_presiones(matriz_presiones_sistolicas2[i][j], matriz_presiones_diastolicas2[i][j],
+                                     SBP_MIN2, SBP_MAX2,DBP_MIN2,DBP_MAX2)
+        matriz_presiones_sistolicas_norm2[i][j]=ps_norm
+        matriz_presiones_diastolicas_norm2[i][j]=pd_norm
+
 
 #%% Ploteo Detección de picos sistolicos y diastolicos
 """
@@ -252,7 +364,7 @@ for i in range(len(abp_signal_segmented[m3000])):
 #%% Formación de dataset y etiquetas normalizadas para entrenamiento y evaluacion
 
 
-# Guardar datos en formato .pt para PyTorch !!!
+# Guardar datos en formato .pt 
 """
 import os
 import torch
@@ -334,8 +446,51 @@ torch.save({
 
 print(f"Guardado dataset unificado: {data_tensor.shape[0]} muestras.")
 
-# %% 
+# %% Formación de dataset para prueba
 
+import os
+import torch
+import numpy as np
+
+output_dir = 'data_UCI'
+os.makedirs(output_dir, exist_ok=True)
+
+all_signals2 = []
+all_labels2 = []
+all_patient_ids2 = []
+
+for paciente_id2, (ppg_list2, ecg_list2, sbp_list2, dbp_list2) in enumerate(zip(ppg_normalized2, ecg_normalized2, matriz_presiones_sistolicas2, matriz_presiones_diastolicas2)):
+    for seg_id, (ppg2, ecg2, sbp2, dbp2) in enumerate(zip(ppg_list2, ecg_list2, sbp_list2, dbp_list2)):
+        ppg2 = np.asarray(ppg2)
+        ecg2 = np.asarray(ecg2)
+
+        # Verificar si hay NaN en señales o etiquetas
+        if np.isnan(ppg2).any() or np.isnan(ecg2).any() or np.isnan(sbp2) or np.isnan(dbp2):
+            continue
+
+        # Concatenar señales (2, long_segmento)
+        signal2 = np.stack([ppg2, ecg2], axis=0)
+        signal_tensor2 = torch.tensor(signal2, dtype=torch.float32)
+        label_tensor2 = torch.tensor([sbp2, dbp2], dtype=torch.float32)
+        patient_tensor2 = torch.tensor(paciente_id2, dtype=torch.long)
+
+        all_signals2.append(signal_tensor2)
+        all_labels2.append(label_tensor2)
+        all_patient_ids2.append(patient_tensor2)
+
+# Convertir listas a tensores
+data_tensor2 = torch.stack(all_signals2)          # shape: (N, 2, long_segmento)
+labels_tensor2 = torch.stack(all_labels2)         # shape: (N, 2)
+patient_ids_tensor2 = torch.stack(all_patient_ids2)  # shape: (N,)
+
+# Guardar todo en un único archivo .pt
+torch.save({
+    'data': data_tensor2,
+    'labels': labels_tensor2,
+    'patient_ids': patient_ids_tensor2
+}, os.path.join(output_dir, 'dataset_completo_prueba.pt'))
+
+print(f"Guardado dataset unificado: {data_tensor2.shape[0]} muestras.")
 # %% mostrar datos guardados
 """
 import os

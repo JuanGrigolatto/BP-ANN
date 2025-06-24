@@ -413,7 +413,7 @@ all_signals = []
 all_labels = []
 all_patient_ids = []
 
-for paciente_id, (ppg_list, ecg_list, sbp_list, dbp_list) in enumerate(zip(ppg_normalized, ecg_normalized, matriz_presiones_sistolicas, matriz_presiones_diastolicas)):
+for paciente_id, (ppg_list, ecg_list, sbp_list, dbp_list) in enumerate(zip(ppg_normalized, ecg_normalized, matriz_presiones_sistolicas_norm, matriz_presiones_diastolicas_norm)):
     for seg_id, (ppg, ecg, sbp, dbp) in enumerate(zip(ppg_list, ecg_list, sbp_list, dbp_list)):
         ppg = np.asarray(ppg)
         ecg = np.asarray(ecg)
@@ -446,7 +446,7 @@ torch.save({
 
 print(f"Guardado dataset unificado: {data_tensor.shape[0]} muestras.")
 
-# %% Formación de dataset para prueba
+# %% Formación de dataset para prueba desnormalizados
 
 import os
 import torch
@@ -459,7 +459,7 @@ all_signals2 = []
 all_labels2 = []
 all_patient_ids2 = []
 
-for paciente_id2, (ppg_list2, ecg_list2, sbp_list2, dbp_list2) in enumerate(zip(ppg_normalized2, ecg_normalized2, matriz_presiones_sistolicas2, matriz_presiones_diastolicas2)):
+for paciente_id2, (ppg_list2, ecg_list2, sbp_list2, dbp_list2) in enumerate(zip(ppg_signal_segmented2, ecg_signal_segmented2, matriz_presiones_sistolicas2, matriz_presiones_diastolicas2)):
     for seg_id, (ppg2, ecg2, sbp2, dbp2) in enumerate(zip(ppg_list2, ecg_list2, sbp_list2, dbp_list2)):
         ppg2 = np.asarray(ppg2)
         ecg2 = np.asarray(ecg2)

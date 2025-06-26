@@ -62,17 +62,5 @@ def main():
     print(f"  MAE: {np.mean(accmae):.4f}")
     print(f"   R2: {np.mean(accr2):.4f}")
 
-    plt.figure(figsize=(12, 6))
-    plt.plot(accmse, label='MSE')
-    plt.plot(accrmse, label='RMSE')
-    plt.plot(accmae, label='MAE')
-    #plt.plot(accr2, label='R² Score')
-    plt.xlabel("Batch")
-    plt.ylabel("Valor de la métrica")
-    plt.title("Métricas por batch")
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
 if __name__ == '__main__':
     main()

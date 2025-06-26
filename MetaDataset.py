@@ -1,46 +1,53 @@
 import torch.utils.data as data
 import torch
 import numpy as np
+from collections import defaultdict
 
 class TaskDataset(data.Dataset):
-    def __init__(self, list_IDs ,data_dir='datos_UCI', num_shots=5, len_signal=625):
-        self.list_IDs = list_IDs
+    def __init__(self,list_IDs,data_dir='data_UCI/dataset_completo.pt', num_shots=5):
         self.data_dir = data_dir
         self.num_shots = num_shots
-        self.len_signal = len_signal
+        self.total_samples = 2 * num_shots
+        self.list_IDs = list_IDs
+
+        data = torch.load(data_dir)
         
+        all_signals= data['data']  # (2, L)
+        all_labels = data['labels']   # (2,)
+        self.ID_patients = data['patient_ids']  # (N,)
+        print(f"Datos cargados correctamente. Muestras: {len(all_signals)}")  
+
+        self.patient_to_signals = defaultdict(list)
+        self.patient_to_labels = defaultdict(list)
+
+        
+        for i in range(len(self.ID_patients)):
+            pid = int(self.ID_patients[i])
+            self.patient_to_signals[pid].append(all_signals[i])
+            self.patient_to_labels[pid].append(all_labels[i])
+
+        print(f"Señales agrupadas. Total pacientes únicos: {len(self.patient_to_signals)}")
+        # Uso pacientes con cantidad suficiente de señales para 2* self.num_shots
+        self.valid_IDs = [pid for pid in self.list_IDs if len(self.patient_to_signals[pid]) >= self.total_samples]
+        print(f"{len(self.valid_IDs)} pacientes tienen al menos {self.total_samples} señales")
 
 
     def __len__(self):
-        return len(self.list_IDs)
+        return len(self.valid_IDs) #Devuelve el número de pacientes en el dataset (Tareas)
     
+
     def __getitem__(self, index):
-        ID = self.list_IDs[index]
-        # Load data and get label
-        file_path = f'{self.data_dir}/{ID}.pt'
-        data = torch.load(file_path)
+        pid = self.valid_IDs[index]
 
-        x = data['signal']  # (2, L)
-        y = data['label']   # (2,)
-
-        # Cortar 2*shots muestras aleatorias de la señal
-        L = x.shape[1]
-
+        signals = self.patient_to_signals[pid]
+        labels = self.patient_to_labels[pid]
         
-        
-        window_size = 625  # 5 segundos
-        total_samples = 2 * self.num_shots 
+        if len(signals) < self.total_samples:
+            raise ValueError(f"Paciente {pid} tiene solo {len(signals)} señales (< {self.total_samples})")
 
-        if L < self.len_signal:
-            raise ValueError(f"El archivo {ID} solo tiene {L} muestras (< {self.len_signal})")
-        
-        xs, ys = [], []
-        for _ in range(total_samples):
-            start = np.random.randint(0, L - window_size)
-            x_win = x[:, start:start+window_size]
-            xs.append(x_win)
-            ys.append(y)
+        indices = np.random.choice(len(signals), self.total_samples, replace=False)
 
-        xs = torch.stack(xs)  # (2*shots, 2, 625)
-        ys = torch.stack(ys)  # (2*shots, 2)
+        xs = torch.stack([signals[i] for i in indices])  # (2*num_shots, 2, 250)
+        ys = torch.stack([labels[i] for i in indices])   # (2*num_shots, 2)
+
         return xs, ys

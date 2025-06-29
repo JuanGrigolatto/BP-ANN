@@ -7,7 +7,8 @@ from torch import nn, optim
 import matplotlib.pyplot as plt
 #from Modelos.InceptionTime import InceptionTime
 import torch.utils.data as data
-import os
+from tqdm.auto import tqdm 
+import torch
 
 def main(shots=5, num_tasks=3000 ,tasks_per_batch=16, adapt_lr=0.01, meta_lr=0.001, adapt_steps=5,):
     data_dir = 'data_UCI/dataset_completo.pt'
@@ -24,9 +25,11 @@ def main(shots=5, num_tasks=3000 ,tasks_per_batch=16, adapt_lr=0.01, meta_lr=0.0
     opt = optim.Adam(maml.parameters(), meta_lr)
     lossfn = nn.MSELoss(reduction='mean')
 
+    running_meta_loss=np.zeros(shape=round((len(tasksets.valid_IDs)/tasks_per_batch)))
+    best_valid_loss=float('inf') 
     # Entrenamiento del modelo
     # Outer loop: iteraciones sobre lotes de tareas
-    for iter, batch in enumerate(dataloader):
+    for iter, batch in enumerate(tqdm(dataloader)):
         meta_train_loss = 0.0
         x_batch, y_batch = batch # batch: lote de tareas, x_batch: entradas, y_batch: etiquetas
         effective_batch_size = x_batch.size(0)
@@ -58,14 +61,32 @@ def main(shots=5, num_tasks=3000 ,tasks_per_batch=16, adapt_lr=0.01, meta_lr=0.0
             meta_train_loss += query_loss
 
         meta_train_loss = meta_train_loss / effective_batch_size
+        if meta_train_loss < best_valid_loss:
+            best_valid_loss = meta_train_loss
+            torch.save({'iteration': iter,
+                        'model_state_dict': model.state_dict(),
+                        'optimizer_state_dict': opt.state_dict(),
+                        'meta_loss': meta_train_loss}, 
+                    'best_meta_model.pt')
+            
+        running_meta_loss[iter] = meta_train_loss.detach().numpy()
 
-        if iter % 200 == 0:
-            print('Iteration:', iter, 'Meta Train Loss', meta_train_loss.item())
+        #print("Iteration: ",  iter, 'Meta Train Loss: ', meta_train_loss.item())
+
+        #if iter % 200 == 0:
+        #    print('Iteration&: ', iter, 'Meta Train Loss&: ', meta_train_loss.item())
 
         opt.zero_grad()
         meta_train_loss.backward()
         opt.step()
-        
+    
+    fig, ax = plt.subplots(figsize=(7, 4), tight_layout=True)
+    ax.plot(running_meta_loss, label='Meta entrenamiento')
+    ax.set_xlabel('Iteration')
+    ax.set_ylabel('Loss')
+    ax.legend()
+    plt.savefig('meta_loss_curve.png')
+    plt.show()
 
 if __name__ == '__main__':
     main()        

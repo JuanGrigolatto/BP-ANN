@@ -10,8 +10,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 
-
-
 #%% Carga de señales para entrenamiento
 
 archivo_datos1 = "datos/Part_1.mat"
@@ -67,21 +65,21 @@ with h5py.File(archivo_datos2, 'r') as f:
 
 #%% Ploteo de señales    
 plt.figure(figsize=(10, 4))
-plt.plot(ppg_signal[2000][:1000])  # Mostrar los primeros 1000 puntos
+plt.plot(ppg_signal2[100][:1000])  # Mostrar los primeros 1000 puntos
 plt.title("Señal PPG - Primer Registro")
 plt.xlabel("Muestras")
 plt.ylabel("Amplitud")
 plt.show()
 
 plt.figure(figsize=(10, 4))
-plt.plot(abp_signal[2000][:1000])  # Mostrar los primeros 1000 puntos
+plt.plot(abp_signal2[2000][:1000])  # Mostrar los primeros 1000 puntos
 plt.title("Señal ABP - Primer Registro")
 plt.xlabel("Muestras")
 plt.ylabel("Amplitud")
 plt.show()
     
 plt.figure(figsize=(10, 4))
-plt.plot(ecg_signal[2000][:1000])  # Mostrar los primeros 1000 puntos
+plt.plot(ecg_signal2[2000][:1000])  # Mostrar los primeros 1000 puntos
 plt.title("Señal ECG - Primer Registro")
 plt.xlabel("Muestras")
 plt.ylabel("Amplitud")
@@ -445,6 +443,7 @@ torch.save({
 }, os.path.join(output_dir, 'dataset_completo.pt'))
 
 print(f"Guardado dataset unificado: {data_tensor.shape[0]} muestras.")
+#%%
 
 # %% Formación de dataset para prueba desnormalizados
 
@@ -491,40 +490,6 @@ torch.save({
 }, os.path.join(output_dir, 'dataset_completo_prueba.pt'))
 
 print(f"Guardado dataset unificado: {data_tensor2.shape[0]} muestras.")
-# %% mostrar datos guardados
-"""
-import os
-import torch
-import matplotlib.pyplot as plt
-
-# Configuración
-output_dir = 'datos_UCI'
-num_files_to_inspect = 20  # Cantidad de archivos a visualizar
-start_num_batch = 1  # Número de lote inicial para inspeccionar
-# Obtener lista ordenada de archivos
-files = sorted([f for f in os.listdir(output_dir) if f.endswith('.pt')])
-
-for i, filename in enumerate(files[start_num_batch:(start_num_batch+num_files_to_inspect)]):
-    filepath = os.path.join(output_dir, filename)
-    data = torch.load(filepath)
-    
-    print(f"\n=== Archivo {i+1}/{num_files_to_inspect}: {filename} ===")
-    print(f"Paciente ID: {data['patient_id'].item()}")
-    print(f"Etiquetas (SBP, DBP): {data['label'].numpy()}")
-    print(f"Dimensión señal (canales, longitud): {data['signal'].shape}")
-   
-
-    # Visualización de señales
-    #plt.figure(figsize=(12, 4))
-    #plt.plot(data['signal'][0], label='PPG', color='red', alpha=0.7)
-    #plt.plot(data['signal'][1], label='ECG', color='blue', alpha=0.7)
-    #plt.title(f"Señal {filename}\nPaciente {data['patient_id'].item()} | SBP: {data['label'][0].item()} | DBP: {data['label'][1].item()}")
-    #plt.xlabel("Muestras")
-    #plt.ylabel("Amplitud")
-    #plt.legend()
-    #plt.tight_layout()
-    #plt.show()
-    """
 # %% Ploteo distribución de presiones sistólicas y diastólicas
 """ Este código no plotea, se queda ejecutando indefinidamente
 output_dir = 'datos_UCI'
@@ -574,51 +539,60 @@ plt.show()"""
 # %%  Mostrar señales de los archivos .pt
 
 import torch
-import os
 import matplotlib.pyplot as plt
+import numpy as np
 
-# Parámetros configurables
-input_dir = 'datos_UCI'
-batch_size = 5          # Cantidad de archivos a mostrar por batch
-batch_index = 0         # Cambiá este índice para ver otros batch
+# Cargar el dataset
+ruta = 'data_UCI/dataset_completo_prueba.pt'
+data_dict = torch.load(ruta)
 
-# Obtener lista ordenada de archivos
-files = sorted(os.listdir(input_dir))
-total_batches = len(files) // batch_size + int(len(files) % batch_size != 0)
+data = data_dict['data']           # (N, 2, long_segmento)
+labels = data_dict['labels']       # (N, 2)
+patient_ids = data_dict['patient_ids']  # (N,)
 
-# Calcular rango de archivos a mostrar en este batch
-start = batch_index * batch_size
-end = min(start + batch_size, len(files))
-batch_files = files[start:end]
+print(f"Dataset cargado con {data.shape[0]} muestras.")
 
-print(f"Mostrando batch {batch_index+1}/{total_batches} con archivos {start} a {end-1}")
+def visualizar_batch(start_idx=0, batch_size=10):
+    end_idx = min(start_idx + batch_size, data.shape[0])
+    num_muestras = end_idx - start_idx
 
-# Mostrar señales del batch
-for filename in batch_files:
-    filepath = os.path.join(input_dir, filename)
-    data = torch.load(filepath)
+    fig, axs = plt.subplots(num_muestras, 1, figsize=(12, 2*num_muestras), sharex=True)
 
-    signal = data['signal']       # (2, long)
-    label = data['label']         # (SBP, DBP)
-    patient_id = data['patient_id']
+    if num_muestras == 1:
+        axs = [axs]
 
-    ppg = signal[0].numpy()
-    ecg = signal[1].numpy()
+    for i, idx in enumerate(range(start_idx, end_idx)):
+        ppg = data[idx, 0].numpy()
+        ecg = data[idx, 1].numpy()
+        sbp, dbp = labels[idx].tolist()
+        pid = patient_ids[idx].item()
 
-    # Graficar señales
-    plt.figure(figsize=(10, 4))
-    plt.subplot(2, 1, 1)
-    plt.plot(ppg)
-    plt.title(f'PPG - File: {filename} - Paciente: {patient_id.item()} - SBP: {label[0].item():.1f} / DBP: {label[1].item():.1f}')
-    plt.ylabel('Amplitud')
+        axs[i].plot(ppg, label='PPG', color='blue', alpha=0.7)
+        axs[i].plot(ecg, label='ECG', color='orange', alpha=0.7)
+        axs[i].set_title(f"Muestra #{idx} - Paciente {pid} - SBP: {sbp:.1f} / DBP: {dbp:.1f}")
+        axs[i].legend(loc='upper right')
 
-    plt.subplot(2, 1, 2)
-    plt.plot(ecg)
-    plt.title('ECG')
-    plt.ylabel('Amplitud')
-    plt.xlabel('Tiempo (muestras)')
-
+    plt.xlabel("Tiempo (muestras)")
     plt.tight_layout()
     plt.show()
 
+visualizar_batch(start_idx=300000)
 
+# %%
+plt.figure(figsize=(10, 4))
+plt.plot(ppg_signal_segmented2[0][0][:250])  # Mostrar los primeros 1000 puntos
+plt.title("Señal PPG - Primer Registro")
+plt.xlabel("Muestras")
+plt.ylabel("Amplitud")
+plt.show()
+
+plt.figure(figsize=(10, 4))
+plt.plot(ecg_signal_segmented2[0][0][:250])  # Mostrar los primeros 1000 puntos
+plt.title("Señal ABP - Primer Registro")
+plt.xlabel("Muestras")
+plt.ylabel("Amplitud")
+plt.show()
+    
+
+    
+# %%

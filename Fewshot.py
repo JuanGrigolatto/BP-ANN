@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 #from Modelos.InceptionTime import InceptionTime
 import torch.utils.data as data
 import torch
-
+from Singlepatientdataset import SinglePatientDataset
 
 
 def main(shots=5, num_tasks=3000, valid_batch=20):
@@ -17,8 +17,10 @@ def main(shots=5, num_tasks=3000, valid_batch=20):
 
     #Dataset y dataloader
     tasksets = TaskDataset(all_IDs,data_dir=data_dir, num_shots=shots)
-    subset = torch.utils.data.Subset(tasksets, indices=list(range(20)))
+    finetuningset=SinglePatientDataset(tasksets, patient_id=0)  
+    finetuningdataloader= torch.utils.data.Dataloader(finetuningset)
     dataloader = torch.utils.data.DataLoader(subset, batch_size=valid_batch, shuffle=True, drop_last=True)
+    subset = torch.utils.data.Subset(tasksets, indices=list(range(20)))
 
     #Carga de modelo metaentrenado 
     model=Modelo_Convolucional(in_channels=2,out_channels=2, long_signal=250)

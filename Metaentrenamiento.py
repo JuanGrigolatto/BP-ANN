@@ -10,9 +10,9 @@ import torch.utils.data as data
 from tqdm.auto import tqdm 
 import torch
 
-def main(shots=5, num_tasks=3000 ,tasks_per_batch=16, adapt_lr=0.01, meta_lr=0.001, adapt_steps=5,):
+def main(shots=5, num_tasks=3000 ,tasks_per_batch=16, adapt_lr=0.01, meta_lr=0.001, adapt_steps=5):
     data_dir = 'data_UCI/dataset_completo.pt'
-    all_IDs = np.arange(0, 3000)    # IDs de pacientes, suponiendo que hay 3000 pacientes   
+    all_IDs = np.arange(0, num_tasks)    # IDs de pacientes, suponiendo que hay 3000 pacientes   
         
     # Crear el dataset y dataloader
     tasksets = TaskDataset(all_IDs,data_dir=data_dir, num_shots=shots)

@@ -9,6 +9,7 @@ class TaskDataset(data.Dataset):
         self.num_shots = num_shots
         self.total_samples = 2 * num_shots
         self.list_IDs = list_IDs
+        
 
         data = torch.load(data_dir)
         
@@ -45,6 +46,7 @@ class TaskDataset(data.Dataset):
         if len(signals) < self.total_samples:
             raise ValueError(f"Paciente {pid} tiene solo {len(signals)} señales (< {self.total_samples})")
 
+    
         indices = np.random.choice(len(signals), self.total_samples, replace=False)
 
         xs = torch.stack([signals[i] for i in indices])  # (2*num_shots, 2, 250)

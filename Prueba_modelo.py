@@ -38,6 +38,8 @@ def main():
     accrmse = []
     accmae = []
     accr2= []
+    all_preds = []
+    all_labels = []
     with torch.no_grad():
         for batch in bar:
             data, labels = batch
@@ -55,12 +57,43 @@ def main():
             accmae.append(mae)
             r2= r2_score(labels, pred)
             accr2.append(r2)
-    
+
     print(f"\nMétricas promedio:")
     print(f"  MSE: {np.mean(accmse):.4f}")
     print(f" RMSE: {np.mean(accrmse):.4f}")
     print(f"  MAE: {np.mean(accmae):.4f}")
     print(f"   R2: {np.mean(accr2):.4f}")
+
+    # gráfico real vs predicho 
+    plt.scatter(labels, pred, alpha=0.5)
+    plt.plot([labels.min(), labels.max()], [labels.min(), labels.max()], 'r--')
+    plt.xlabel("Valor verdadero")
+    plt.ylabel("Predicción")
+    plt.title(f"R² = {r2_score(labels, pred):.2f}")
+    plt.grid(True)
+    plt.show()
+
+    #Gráfico de predicción (residual plots)
+    residuals = pred - labels
+
+    plt.figure(figsize=(8, 4))
+    plt.scatter(labels, residuals, alpha=0.5)
+    plt.axhline(0, color='red', linestyle='--')
+    plt.xlabel("Valor verdadero")
+    plt.ylabel("Error (Pred - Real)")
+    plt.title("Errores de predicción (residuos)")
+    plt.grid(True)
+    plt.show()
+
+    #Histograma de errores
+
+    plt.hist(residuals, bins=50, edgecolor='black')
+    plt.title("Distribución de errores")
+    plt.xlabel("Error (Pred - Real)")
+    plt.ylabel("Frecuencia")
+    plt.grid(True)
+    plt.show()
+
 
 if __name__ == '__main__':
     main()

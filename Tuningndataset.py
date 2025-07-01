@@ -2,10 +2,16 @@ import torch.utils.data as data
 import numpy as np
 
 class TuningNDataset(data.Dataset):
-    def __init__(self, task_dataset: 'TaskDataset', patient_id: int, n_shots=5):
+    def __init__(self, task_dataset: 'TaskDataset', patient_id: int, n_shots=5, validation=False):
         
-        self.signals = task_dataset.patient_to_signals[patient_id][:n_shots]
-        self.labels = task_dataset.patient_to_labels[patient_id][:n_shots]
+        if validation:
+            # For validation, we use all signals from the patient
+            self.signals = task_dataset.patient_to_signals[patient_id]
+            self.labels = task_dataset.patient_to_labels[patient_id]
+            n_shots = len(self.signals)
+        else:
+            self.signals = task_dataset.patient_to_signals[patient_id][:n_shots]
+            self.labels = task_dataset.patient_to_labels[patient_id][:n_shots]
 
         self.total_samples = len(self.signals)
     

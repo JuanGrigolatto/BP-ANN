@@ -7,6 +7,8 @@ from torch.utils.data import random_split
 import numpy as np
 #from Modelos.InceptionTime import InceptionTime
 from Modelos.Modelo_conv import Modelo_Convolucional
+from Modelos.ConvolucionalV1 import Modelo_ConvolucionalV1
+from Modelos.ConvolucionalV2 import Modelo_ConvolucionalV2
 from tqdm.auto import tqdm 
 import matplotlib.pyplot as plt
 
@@ -34,7 +36,8 @@ def main():
     # Crear el modelo
 
     #model=InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=8, nb_filters=3)
-    model=Modelo_Convolucional(in_channels=2,out_channels=2, long_signal=250)
+    #model=Modelo_Convolucional(in_channels=2,out_channels=2, long_signal=250)
+    model=Modelo_ConvolucionalV2(in_channels=2,out_channels=2, long_signal=250)
     # Añade esto después de crear el modelo
     """
     for layer in model.modules():

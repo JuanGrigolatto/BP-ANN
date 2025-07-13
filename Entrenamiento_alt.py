@@ -6,10 +6,11 @@ from torch.utils.data import TensorDataset, random_split
 import numpy as np
 #from Modelos.InceptionTime import InceptionTime
 #from Modelos.Modelo_conv import Modelo_Convolucional
-from Modelos.ConvolucionalV1 import Modelo_ConvolucionalV1
-#from Modelos.ConvolucionalV2 import Modelo_ConvolucionalV2
+#from Modelos.ConvolucionalV1 import Modelo_ConvolucionalV1
+from Modelos.ConvolucionalV2 import Modelo_ConvolucionalV2
 from tqdm.auto import tqdm 
 import matplotlib.pyplot as plt
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 def main():
     # Configuración del dispositivo
@@ -79,7 +80,7 @@ def main():
     test_labels = torch.stack(test_labels)
 
     # Guardar en un archivo .pt
-    torch.save({'data': test_signals, 'labels': test_labels}, 'test_set.pt')
+    torch.save({'data': test_signals, 'labels': test_labels}, 'data_UCI/test_set.pt')
     
     #Subset para testeo de modelos sin entrenamiento completo
     """
@@ -93,8 +94,8 @@ def main():
 
     #model=InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32)
     #model=Modelo_Convolucional(in_channels=2,out_channels=2, long_signal=250)
-    model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=250)
-    #model=Modelo_ConvolucionalV2(in_channels=2,out_channels=2, long_signal=250)
+    #model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=250)
+    model=Modelo_ConvolucionalV2(in_channels=2,out_channels=2, long_signal=250)
     # Añade esto después de crear el modelo
     """
     for layer in model.modules():
@@ -105,6 +106,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)  # Mueve el modelo a la GPU
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=3, min_lr=1e-6, verbose=True)    
     criterion = torch.nn.MSELoss()  # MSELoss para regresión
 
     # ENTRENAMIENTO
@@ -131,7 +133,7 @@ def main():
         """
         loss.backward() # Calcula los gradientes mediante backpropagation
         # Añade gradient clipping (busca evitar explosión de gradiente)
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+        #torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optimizer.step() # Actualiza los parámetros del modelo
         return loss.item() # Devuelve la pérdida
 
@@ -158,38 +160,54 @@ def main():
             valid_loss += evaluate_one_step(batch)
 
         return train_loss/len(training_generator), valid_loss/len(validation_generator)
-        #return train_loss/len(subset_loader), valid_loss/len(subset_loader), best_valid_loss
-    #global best_valid_loss
+    
     max_epochs = 100
     best_valid_loss = float('inf') 
     running_loss = np.zeros(shape=(max_epochs, 2))
-
+    min_delta = 0.0005  # mejora mínima requerida
     patience = 5
-    best_epoch = 0
-
+    patience_significativa = 5
+  
     for epoch in tqdm(range(max_epochs)):
         train_l, valid_l = train_one_epoch()
         running_loss[epoch] = (train_l,valid_l)
         print(f"[Época {epoch}] Train Loss: {train_l:.6f} - Valid Loss: {valid_l:.6f}")
+        
+        improvement = best_valid_loss - valid_l
+
         if valid_l < best_valid_loss:
             best_valid_loss = valid_l
-            best_epoch = epoch
-            # Guardar el mejor modelo
+            no_improvement_count = 0  
             torch.save({
                 'epoca': epoch,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': valid_l
-            }, 'best_model_conv_v1.pt')
+            }, 'best_model_conv_v2.pt')
             print(f"Nuevo mejor modelo guardado (valid_loss = {valid_l:.6f})")
+
+            
+            if improvement > min_delta:
+                no_significant_improvement_count = 0
+            else:
+                no_significant_improvement_count += 1
         else:
-            if epoch - best_epoch >= patience:
-                print(f"Early stopping activado en la época {epoch} (sin mejoras desde la época {best_epoch})")
-                break
+            no_improvement_count += 1
+            no_significant_improvement_count += 1
+
+        
+        if no_improvement_count >= patience:
+            print(f"Early stopping por falta de mejoras (últimas {patience} épocas).")
+            break
+        if no_significant_improvement_count >= patience_significativa:
+            print(f"Early stopping por falta de mejoras > {min_delta:.4f} (últimas {patience_significativa} épocas).")
+            break
+
+        scheduler.step(valid_l)
 
     fig, ax = plt.subplots(figsize=(7, 4), tight_layout=True)
-    ax.plot(running_loss[:, 0], label='Entrenamiento')
-    ax.plot(running_loss[:, 1], label='Validación')
+    ax.plot(running_loss[:epoch, 0], label='Entrenamiento')
+    ax.plot(running_loss[:epoch, 1], label='Validación')
     ax.set_xlabel('Epoch')
     ax.set_ylabel('Loss')
     ax.legend()

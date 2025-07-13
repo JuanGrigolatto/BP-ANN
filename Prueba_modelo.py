@@ -11,11 +11,39 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Valores reales de Min y Max que usaste al normalizar SBP y DBP
+"""
 SBP_MIN, SBP_MAX = 80, 199.78
 DBP_MIN, DBP_MAX = 50, 192.09
+"""
+ABP_MAX, ABP_MIN = 50, 199.99
 
 def desnormalizar_minmax(norm_array, min_val, max_val):
     return norm_array * (max_val - min_val) + min_val
+
+def bland_altman_graf(preds, labels, title):
+    differences = preds - labels
+    averages = (preds + labels) / 2
+
+    mean_diff = np.mean(differences)
+    std_diff = np.std(differences)
+
+    upper_limit = mean_diff + 1.96 * std_diff
+    lower_limit = mean_diff - 1.96 * std_diff
+
+    plt.figure(figsize=(8,5))
+    plt.scatter(averages, differences, alpha=0.5)
+    plt.axhline(mean_diff, color='red', linestyle='--', label=f'Media: {mean_diff:.2f}')
+    plt.axhline(upper_limit, color='gray', linestyle='--', label=f'+1.96 SD: {upper_limit:.2f}')
+    plt.axhline(lower_limit, color='gray', linestyle='--', label=f'-1.96 SD: {lower_limit:.2f}')
+    plt.axhline(0, color='black', linewidth=1)
+    plt.xlabel('Promedio (mmHg)')
+    plt.ylabel('Diferencia (Pred - Real) (mmHg)')
+    plt.title(f'Gráfico de Bland-Altman - {title}')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
 
 def main():
     parameters = {
@@ -25,11 +53,14 @@ def main():
         'pin_memory': True
     }
 
-    print(os.path.exists('data_UCI/dataset_completo_prueba.pt'))
-    dataset = UCIDataset('data_UCI/dataset_completo_prueba.pt')
-    subset = torch.utils.data.Subset(dataset, indices=list(range(50)))
+    print(os.path.exists('data_UCI/test_set.pt'))
+    dataset = UCIDataset('data_UCI/test_set.pt')
+    
+    subset = torch.utils.data.Subset(dataset, indices=list(range(100)))
     dataloader = torch.utils.data.DataLoader(subset, **parameters)
     
+    #dataloader = torch.utils.data.DataLoader(dataset, **parameters)
+
     path_model = 'best_model_conv_v2.pt'
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -53,16 +84,20 @@ def main():
 
             pred = model(data)
             
-            # Convertimos a NumPy
+            # Conversión a NumPy
             pred = pred.cpu().numpy()
             labels = labels.cpu().numpy()
-
-            # Desnormalizamos
+            """
+            # Desnormalización
             pred_SBP = desnormalizar_minmax(pred[:, 0], SBP_MIN, SBP_MAX)
             pred_DBP = desnormalizar_minmax(pred[:, 1], DBP_MIN, DBP_MAX)
             true_SBP = desnormalizar_minmax(labels[:, 0], SBP_MIN, SBP_MAX)
             true_DBP = desnormalizar_minmax(labels[:, 1], DBP_MIN, DBP_MAX)
-
+            """
+            pred_SBP = desnormalizar_minmax(pred[:, 0], ABP_MIN, ABP_MAX)
+            pred_DBP = desnormalizar_minmax(pred[:, 1], ABP_MIN, ABP_MAX)
+            true_SBP = desnormalizar_minmax(labels[:, 0], ABP_MIN, ABP_MAX)
+            true_DBP = desnormalizar_minmax(labels[:, 1], ABP_MIN, ABP_MAX)
             # Juntamos nuevamente para cálculo de métricas y gráficos
             pred_desnorm = np.stack([pred_SBP, pred_DBP], axis=1)
             labels_desnorm = np.stack([true_SBP, true_DBP], axis=1)
@@ -119,5 +154,7 @@ def main():
     plt.grid(True)
     plt.show()
 
+    #Gráfico Bland Altman
+    bland_altman_graf(all_preds, all_labels, title="Modelo convolucional V1")
 if __name__ == '__main__':
     main()

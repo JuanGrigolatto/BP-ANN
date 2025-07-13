@@ -12,7 +12,14 @@ import os
 from scipy.signal import find_peaks
 import torch
 import gc
+import random
 #%% Definición de funciones
+PPG_MAX=4.00
+PPG_MIN=0.00
+ECG_MAX=7.88
+ECG_MIN=-7.50
+ABP_MAX=199.99 
+ABP_MIN=50.00
 
 def split_into_windows(signal, fs, t_window, overlap):
     window_size = fs * t_window  # Tamaño de la ventana en muestras
@@ -23,6 +30,7 @@ def split_into_windows(signal, fs, t_window, overlap):
     return np.array(windows)
 
 def min_max_normalization(signal, global_max, global_min):
+    signal = np.array(signal)
     return (signal - global_min) / (global_max - global_min)
 
 def signal_segmentation(fs, t_window, ppg_signal, abp_signal, ecg_signal):
@@ -59,10 +67,20 @@ def pressure_desnormalization(sbp_norm, dbp_norm, sbp_min, sbp_max, dbp_min, dbp
     dbp = dbp_norm * (dbp_max - dbp_min) + dbp_min
     return sbp, dbp
 
+def max_min_pressures(sbp,dbp):
+    
+    SBP_MIN = np.min(sbp)
+    SBP_MAX = np.max(sbp)
+    DBP_MIN = np.min(dbp)
+    DBP_MAX = np.max(dbp)
+
+    print(f"SBP_MIN={SBP_MIN:.2f}, SBP_MAX={SBP_MAX:.2f}")
+    print(f"DBP_MIN={DBP_MIN:.2f}, DBP_MAX={DBP_MAX:.2f}")
+    
+    return SBP_MIN, SBP_MAX, DBP_MIN, DBP_MAX 
+
 def get_abp_labels(abp_signals):
   
-    DISTANCIA_MINIMA_SBP = 40          # Distancia mínima entre picos SBP (en muestras)
-    DISTANCIA_MINIMA_DBP = 40
     matriz_picos_sistolicos=[]
     matriz_picos_diastolicos=[]
     matriz_presiones_sistolicas=[]
@@ -74,9 +92,20 @@ def get_abp_labels(abp_signals):
         presiones_sistolicas = []
         presiones_diastolicas = []
         for j in range(len(abp_signals[i])):
+            #
+            max_val = np.max(abp_signals[i][j])
+            min_val = np.min(abp_signals[i][j])
+            rango = max_val - min_val
+
+            prominence = 0.2 * rango
+            height_sbp = min_val + 0.6 * rango
+            height_dbp = min_val + 0.2 * rango
+            
+            distancia_min = int(0.3 * fs)
+
             # Encontrar picos en la señal ABP
-            peakss,_ = find_peaks(abp_signals[i][j], height=80, prominence= 15 ,distance=DISTANCIA_MINIMA_SBP) 
-            peaksd,_ = find_peaks(-(abp_signals)[i][j], height=-132, prominence= 15, distance=DISTANCIA_MINIMA_DBP)
+            peakss,_ = find_peaks(abp_signals[i][j], height=height_sbp, prominence= prominence ,distance=distancia_min) 
+            peaksd,_ = find_peaks(-(abp_signals)[i][j], height=-height_dbp, prominence= prominence, distance=distancia_min)
             picos_sistolicos.append(peakss)
             picos_diastolicos.append(peaksd)
             if (len(peakss)>0):
@@ -126,6 +155,61 @@ def labels_normalization(matriz_presiones_sistolicas, matriz_presiones_diastolic
         matriz_presiones_sistolicas_norm.append(list_sbp)
         matriz_presiones_diastolicas_norm.append(list_dbp)
     return matriz_presiones_sistolicas_norm, matriz_presiones_diastolicas_norm
+
+def delete_signals_no_peaks(ppg, abp, ecg, presiones_sbp, presiones_dbp, indices_sistolicos, indices_diastolicos):
+    ppg_filtradas = []
+    abp_filtradas = []
+    ecg_filtradas = []
+    sbp_filtradas = []
+    dbp_filtradas = []
+    sistolicos_filtrados = []
+    diastolicos_filtrados = []
+
+    total_eliminadas = 0
+
+    for i in range(len(ppg)):
+        ppg_paciente = []
+        abp_paciente = []
+        ecg_paciente = []
+        sbp_paciente = []
+        dbp_paciente = []
+        sist_paciente = []
+        diast_paciente = []
+
+        for j in range(len(ppg[i])):
+            sbp = presiones_sbp[i][j]
+            dbp = presiones_dbp[i][j]
+
+            if not (np.isnan(sbp) or np.isnan(dbp)):
+                ppg_paciente.append(ppg[i][j])
+                abp_paciente.append(abp[i][j])
+                ecg_paciente.append(ecg[i][j])
+                sbp_paciente.append(sbp)
+                dbp_paciente.append(dbp)
+                sist_paciente.append(indices_sistolicos[i][j])
+                diast_paciente.append(indices_diastolicos[i][j])
+            else:
+                total_eliminadas += 1
+
+        if len(ppg_paciente) > 0:
+            ppg_filtradas.append(ppg_paciente)
+            abp_filtradas.append(abp_paciente)
+            ecg_filtradas.append(ecg_paciente)
+            sbp_filtradas.append(sbp_paciente)
+            dbp_filtradas.append(dbp_paciente)
+            sistolicos_filtrados.append(sist_paciente)
+            diastolicos_filtrados.append(diast_paciente)
+
+    print(f"Ventanas eliminadas por no tener picos detectados: {total_eliminadas}")
+    return (
+        ppg_filtradas,
+        abp_filtradas,
+        ecg_filtradas,
+        sbp_filtradas,
+        dbp_filtradas,
+        sistolicos_filtrados,
+        diastolicos_filtrados
+    )
 
 def save_partial_file(ppg_signals, ecg_signals, sbp_labels, dbp_labels, patient_id_inicial, nombre_archivo):
     output_dir = 'data_UCI'
@@ -200,7 +284,7 @@ with h5py.File(archivo_datos1, 'r') as f:
 fs=125
 
 window_duration=2
-
+"""
 all_ppg_values = np.concatenate(ppg_signal)
 all_ecg_values = np.concatenate(ecg_signal)
 all_abp_values = np.concatenate(abp_signal)
@@ -212,98 +296,50 @@ ABP_MIN, ABP_MAX = np.min(all_abp_values), np.max(all_abp_values)
 print(f"PPG: min={PPG_MIN:.2f}, max={PPG_MAX:.2f}")
 print(f"ECG: min={ECG_MIN:.2f}, max={ECG_MAX:.2f}")
 print(f"ABP: min={ABP_MIN:.2f}, max={ABP_MAX:.2f}")
-
+"""
 ppg_segmented, abp_segmented, ecg_segmented= signal_segmentation(fs, window_duration, ppg_signal, 
                                                                  abp_signal, ecg_signal)
 
-ppg_normalized, abp_normalized, ecg_normalized= signal_normalization(ppg_segmented, abp_segmented, ecg_segmented,
-                                                                     PPG_MAX,PPG_MIN,ECG_MAX,ECG_MIN,ABP_MAX,ABP_MIN)
 
 presiones_sistolicas, presiones_diastolicas, indices_sistolicos, indices_diastolicos = get_abp_labels(abp_segmented)
 
-presiones_sistolicas_norm, presiones_diastolicas_norm= labels_normalization(presiones_sistolicas, presiones_diastolicas)
-#%% Ploteo de señales    
-plt.figure(figsize=(10, 4))
-plt.plot(ppg_signal[1000][:1000])  # Mostrar los primeros 1000 puntos
-plt.title("Señal PPG - Primer Registro")
-plt.xlabel("Muestras")
-plt.ylabel("Amplitud")
-plt.show()
+ppg_depurada, abp_depurada, ecg_depurada, sbp_depurada, dbp_depurada, indices_sist_dep, indices_dias_dep = delete_signals_no_peaks(ppg_segmented, abp_segmented, ecg_segmented, presiones_sistolicas, 
+                                                                                                    presiones_diastolicas, indices_sistolicos, indices_diastolicos)
 
-plt.figure(figsize=(10, 4))
-plt.plot(abp_signal[1000][:1000])  # Mostrar los primeros 1000 puntos
-plt.title("Señal ABP - Primer Registro")
-plt.xlabel("Muestras")
-plt.ylabel("Amplitud")
-plt.show()
-    
-plt.figure(figsize=(10, 4))
-plt.plot(ecg_signal[1000][:1000])  # Mostrar los primeros 1000 puntos
-plt.title("Señal ECG - Primer Registro")
-plt.xlabel("Muestras")
-plt.ylabel("Amplitud")
-plt.show()
-#%% Ploteo de segmentación
-plt.figure(figsize=(10, 4))
-plt.plot(ppg_segmented[1000][0])  # Mostrar los primeros 1000 puntos
-plt.title("Recorte de 2 seg de señal de PPG")
-plt.xlabel("Muestras")
-plt.ylabel("Amplitud")
-plt.show()
+presiones_sistolicas_norm, presiones_diastolicas_norm= labels_normalization(sbp_depurada, dbp_depurada)
 
-plt.figure(figsize=(10, 4))
-plt.plot(abp_segmented[1000][0])  # Mostrar los primeros 1000 puntos
-plt.title("Recorte de 5 seg de señal de ABP")
-plt.xlabel("Muestras")
-plt.ylabel("Amplitud")
-plt.show()
-
-plt.figure(figsize=(10, 4))
-plt.plot(ecg_segmented[1000][0])  # Mostrar los primeros 1000 puntos
-plt.title("Recorte de 5 seg de señal de ECG")
-plt.xlabel("Muestras")
-plt.ylabel("Amplitud")
-plt.show()
-#%% Relación de señales en el recorte
-plt.figure(figsize=(10, 4))
-plt.plot(ppg_normalized[1100][0], color= "blue", label="PPG")
-plt.plot(abp_normalized[1100][0], color= "green", label="ABP")
-plt.plot(ecg_normalized[1100][0], color= "red", label="ECG") 
-plt.title("Relación entre señales en el tiempo")
-plt.xlabel("Muestras")
-plt.ylabel("Amplitud")
-plt.show()
+ppg_normalized, abp_normalized, ecg_normalized= signal_normalization(ppg_depurada, abp_depurada, ecg_depurada,
+                                                                     PPG_MAX,PPG_MIN,ECG_MAX,ECG_MIN,ABP_MAX,ABP_MIN)
 #%%
-plt.figure(figsize=(10, 4))
-prueba= (abp_segmented[1000][0])
-plt.plot((prueba))  # Mostrar los primeros 1000 puntos
-plt.title("Recorte de 5 seg de señal de ABP")
-plt.xlabel("Muestras")
-plt.ylabel("Amplitud")
-plt.show()
-#%%
-paciente_id = 2637
-ventana_id = 0
-senal_abp = abp_normalized[paciente_id][ventana_id]
+num_muestras=10
+for i in range(num_muestras):
 
-# Extraé los índices de picos sistólicos y diastólicos ya calculados
-ind_sistolicos = indices_sistolicos[paciente_id][ventana_id]
-ind_diastolicos= indices_diastolicos[paciente_id][ventana_id]
+    ind_diastolicos=[]
+    ind_sistolicos=[]
 
-# Graficá
-plt.figure(figsize=(10, 4))
-plt.plot(senal_abp, label='Señal ABP Normalizada')
-plt.plot(ind_sistolicos, senal_abp[ind_sistolicos], 'ro', label='Picos Sistólicos')
-plt.plot(ind_diastolicos, senal_abp[ind_diastolicos], 'bo', label='Picos Diastólicos')
-plt.xlabel('Muestras')
-plt.ylabel('Amplitud')
-plt.title(f'Paciente {paciente_id} - Ventana {ventana_id}')
-plt.legend()
-plt.grid(True)
-plt.tight_layout()
-plt.show()
+    paciente_id = random.randint(0, 2999)
+    ventana_id = random.randint(0, len(abp_normalized[paciente_id])-1 )
+    senal_abp = abp_normalized[paciente_id][ventana_id]
+
+    # Extraé los índices de picos sistólicos y diastólicos ya calculados
+    ind_sistolicos = indices_sist_dep[paciente_id][ventana_id]
+    ind_diastolicos= indices_dias_dep[paciente_id][ventana_id]
+
+    # Graficá
+    plt.figure(figsize=(10, 4))
+    plt.plot(senal_abp, label='Señal ABP Normalizada')
+    plt.plot(ind_sistolicos, senal_abp[ind_sistolicos], 'ro', label='Picos Sistólicos')
+    plt.plot(ind_diastolicos, senal_abp[ind_diastolicos], 'bo', label='Picos Diastólicos')
+    plt.xlabel('Muestras')
+    plt.ylabel('Amplitud')
+    plt.title(f'Paciente {paciente_id} - Ventana {ventana_id}')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
 #%% Generación de archivo parte 1 .pt y liberación de memoria RAM
 save_partial_file(ppg_normalized, ecg_normalized, presiones_sistolicas_norm, presiones_diastolicas_norm, 0, 'dataset_parte_1')
+#%%
 del ppg_signal
 del abp_signal
 del ecg_signal
@@ -348,16 +384,61 @@ with h5py.File(archivo_datos2, 'r') as f:
 fs=125
 
 window_duration=2
+"""
+all_ppg_values2 = np.concatenate(ppg_signal2)
+all_ecg_values2 = np.concatenate(ecg_signal2)
+all_abp_values2 = np.concatenate(abp_signal2)
 
+PPG_MIN, PPG_MAX = np.min(all_ppg_values2), np.max(all_ppg_values2)
+ECG_MIN, ECG_MAX = np.min(all_ecg_values2), np.max(all_ecg_values2)
+ABP_MIN, ABP_MAX = np.min(all_abp_values2), np.max(all_abp_values2)
+
+print(f"PPG2: min={PPG_MIN:.2f}, max={PPG_MAX:.2f}")
+print(f"ECG2: min={ECG_MIN:.2f}, max={ECG_MAX:.2f}")
+print(f"ABP2: min={ABP_MIN:.2f}, max={ABP_MAX:.2f}")
+"""
 ppg_segmented2, abp_segmented2, ecg_segmented2= signal_segmentation(fs, window_duration, ppg_signal2, 
                                                                  abp_signal2, ecg_signal2)
-ppg_normalized2, abp_normalized2, ecg_normalized2= signal_normalization(ppg_segmented2, abp_segmented2, ecg_segmented2)
 
-presiones_sistolicas2, presiones_diastolicas2 = get_abp_labels(abp_normalized2)
 
-presiones_sistolicas_norm2, presiones_diastolicas_norm2= labels_normalization(presiones_sistolicas2, presiones_diastolicas2)
+presiones_sistolicas2, presiones_diastolicas2, indices_sistolicos2, indices_diastolicos2 = get_abp_labels(abp_segmented2)
+
+ppg_depurada2, abp_depurada2, ecg_depurada2, sbp_depurada2, dbp_depurada2, indices_sist_dep2, indices_dias_dep2 = delete_signals_no_peaks(ppg_segmented2, abp_segmented2, ecg_segmented2, presiones_sistolicas2, 
+                                                                                                    presiones_diastolicas2, indices_sistolicos2, indices_diastolicos2)
+
+presiones_sistolicas_norm2, presiones_diastolicas_norm2= labels_normalization(sbp_depurada2, dbp_depurada2)
+
+ppg_normalized2, abp_normalized2, ecg_normalized2= signal_normalization(ppg_depurada2, abp_depurada2, ecg_depurada2,
+                                                                     PPG_MAX,PPG_MIN,ECG_MAX,ECG_MIN,ABP_MAX,ABP_MIN)
+#%%
+num_muestras=10
+for i in range(num_muestras):
+    ind_diastolicos2=[]
+    ind_sistolicos2=[]
+
+    paciente_id = random.randint(0, 2999)
+    ventana_id = random.randint(0, len(abp_normalized2[paciente_id])-1 )
+    senal_abp = abp_normalized2[paciente_id][ventana_id]
+
+    # Extraé los índices de picos sistólicos y diastólicos ya calculados
+    ind_sistolicos2 = indices_sist_dep2[paciente_id][ventana_id]
+    ind_diastolicos2= indices_dias_dep2[paciente_id][ventana_id]
+
+    # Graficá
+    plt.figure(figsize=(10, 4))
+    plt.plot(senal_abp, label='Señal ABP Normalizada')
+    plt.plot(ind_sistolicos2, senal_abp[ind_sistolicos2], 'ro', label='Picos Sistólicos')
+    plt.plot(ind_diastolicos2, senal_abp[ind_diastolicos2], 'bo', label='Picos Diastólicos')
+    plt.xlabel('Muestras')
+    plt.ylabel('Amplitud')
+    plt.title(f'Paciente {paciente_id} - Ventana {ventana_id}')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
 #%% Generación de archivo parte 2 .pt y liberación de memoria RAM
 save_partial_file(ppg_normalized2, ecg_normalized2, presiones_sistolicas_norm2, presiones_diastolicas_norm2, 3000, 'dataset_parte_2')
+#%%
 del ppg_signal2
 del abp_signal2
 del ecg_signal2
@@ -401,16 +482,61 @@ with h5py.File(archivo_datos3, 'r') as f:
 fs=125
 
 window_duration=2
+"""
+all_ppg_values3 = np.concatenate(ppg_signal3)
+all_ecg_values3 = np.concatenate(ecg_signal3)
+all_abp_values3 = np.concatenate(abp_signal3)
 
+PPG_MIN, PPG_MAX = np.min(all_ppg_values3), np.max(all_ppg_values3)
+ECG_MIN, ECG_MAX = np.min(all_ecg_values3), np.max(all_ecg_values3)
+ABP_MIN, ABP_MAX = np.min(all_abp_values3), np.max(all_abp_values3)
+
+print(f"PPG3: min={PPG_MIN:.2f}, max={PPG_MAX:.2f}")
+print(f"ECG3: min={ECG_MIN:.2f}, max={ECG_MAX:.2f}")
+print(f"ABP3: min={ABP_MIN:.2f}, max={ABP_MAX:.2f}")
+"""
 ppg_segmented3, abp_segmented3, ecg_segmented3= signal_segmentation(fs, window_duration, ppg_signal3, 
                                                                  abp_signal3, ecg_signal3)
-ppg_normalized3, abp_normalized3, ecg_normalized3= signal_normalization(ppg_segmented3, abp_segmented3, ecg_segmented3)
 
-presiones_sistolicas3, presiones_diastolicas3 = get_abp_labels(abp_normalized3)
 
-presiones_sistolicas_norm3, presiones_diastolicas_norm3= labels_normalization(presiones_sistolicas3, presiones_diastolicas3)
+presiones_sistolicas3, presiones_diastolicas3, indices_sistolicos3, indices_diastolicos3 = get_abp_labels(abp_segmented3)
+
+ppg_depurada3, abp_depurada3, ecg_depurada3, sbp_depurada3, dbp_depurada3, indices_sist_dep3, indices_dias_dep3 = delete_signals_no_peaks(ppg_segmented3, abp_segmented3, ecg_segmented3, presiones_sistolicas3, 
+                                                                                                    presiones_diastolicas3, indices_sistolicos3, indices_diastolicos3)
+
+presiones_sistolicas_norm3, presiones_diastolicas_norm3= labels_normalization(sbp_depurada3, dbp_depurada3)
+
+ppg_normalized3, abp_normalized3, ecg_normalized3= signal_normalization(ppg_depurada3, abp_depurada3, ecg_depurada3,
+                                                                     PPG_MAX,PPG_MIN,ECG_MAX,ECG_MIN,ABP_MAX,ABP_MIN)
+#%%
+num_muestras=10
+for i in range(num_muestras):
+    ind_diastolicos3=[]
+    ind_sistolicos3=[]
+
+    paciente_id = random.randint(0, 2999)
+    ventana_id = random.randint(0, len(abp_normalized3[paciente_id])-1 )
+    senal_abp = abp_normalized3[paciente_id][ventana_id]
+
+    # Extraé los índices de picos sistólicos y diastólicos ya calculados
+    ind_sistolicos3 = indices_sist_dep3[paciente_id][ventana_id]
+    ind_diastolicos3= indices_dias_dep3[paciente_id][ventana_id]
+
+    # Graficá
+    plt.figure(figsize=(10, 4))
+    plt.plot(senal_abp, label='Señal ABP Normalizada')
+    plt.plot(ind_sistolicos3, senal_abp[ind_sistolicos3], 'ro', label='Picos Sistólicos')
+    plt.plot(ind_diastolicos3, senal_abp[ind_diastolicos3], 'bo', label='Picos Diastólicos')
+    plt.xlabel('Muestras')
+    plt.ylabel('Amplitud')
+    plt.title(f'Paciente {paciente_id} - Ventana {ventana_id}')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
 #%% Generación de archivo parte 3 .pt y liberación de memoria RAM
 save_partial_file(ppg_normalized3, ecg_normalized3, presiones_sistolicas_norm3, presiones_diastolicas_norm3, 6000, 'dataset_parte_3')  
+#%%
 del ppg_signal3
 del abp_signal3
 del ecg_signal3
@@ -454,16 +580,141 @@ with h5py.File(archivo_datos4, 'r') as f:
 fs=125
 
 window_duration=2
+"""
+all_ppg_values4 = np.concatenate(ppg_signal4)
+all_ecg_values4 = np.concatenate(ecg_signal4)
+all_abp_values4 = np.concatenate(abp_signal4)
 
+PPG_MIN, PPG_MAX = np.min(all_ppg_values4), np.max(all_ppg_values4)
+ECG_MIN, ECG_MAX = np.min(all_ecg_values4), np.max(all_ecg_values4)
+ABP_MIN, ABP_MAX = np.min(all_abp_values4), np.max(all_abp_values4)
+
+print(f"PPG4: min={PPG_MIN:.2f}, max={PPG_MAX:.2f}")
+print(f"ECG4: min={ECG_MIN:.2f}, max={ECG_MAX:.2f}")
+print(f"ABP4: min={ABP_MIN:.2f}, max={ABP_MAX:.2f}")
+"""
 ppg_segmented4, abp_segmented4, ecg_segmented4= signal_segmentation(fs, window_duration, ppg_signal4, 
                                                                  abp_signal4, ecg_signal4)
-ppg_normalized4, abp_normalized4, ecg_normalized4= signal_normalization(ppg_segmented4, abp_segmented4, ecg_segmented4)
 
-presiones_sistolicas4, presiones_diastolicas4 = get_abp_labels(abp_normalized4)
 
-presiones_sistolicas_norm4, presiones_diastolicas_norm4= labels_normalization(presiones_sistolicas4, presiones_diastolicas4)
+presiones_sistolicas4, presiones_diastolicas4, indices_sistolicos4, indices_diastolicos4 = get_abp_labels(abp_segmented4)
+
+ppg_depurada4, abp_depurada4, ecg_depurada4, sbp_depurada4, dbp_depurada4, indices_sist_dep4, indices_dias_dep4 = delete_signals_no_peaks(ppg_segmented4, abp_segmented4, ecg_segmented4, presiones_sistolicas4, 
+                                                                                                    presiones_diastolicas4, indices_sistolicos4, indices_diastolicos4)
+
+presiones_sistolicas_norm4, presiones_diastolicas_norm4= labels_normalization(sbp_depurada4, dbp_depurada4)
+
+ppg_normalized4, abp_normalized4, ecg_normalized4= signal_normalization(ppg_depurada4, abp_depurada4, ecg_depurada4,
+                                                                     PPG_MAX,PPG_MIN,ECG_MAX,ECG_MIN,ABP_MAX,ABP_MIN)
+#%%
+num_muestras=10
+for i in range(num_muestras):
+    ind_diastolicos4=[]
+    ind_sistolicos4=[]
+
+    paciente_id = random.randint(0, 2999)
+    ventana_id = random.randint(0, len(abp_normalized4[paciente_id])-1 )
+    senal_abp = abp_normalized4[paciente_id][ventana_id]
+
+    # Extraé los índices de picos sistólicos y diastólicos ya calculados
+    ind_sistolicos4 = indices_sist_dep4[paciente_id][ventana_id]
+    ind_diastolicos4= indices_dias_dep4[paciente_id][ventana_id]
+
+    # Graficá
+    plt.figure(figsize=(10, 4))
+    plt.plot(senal_abp, label='Señal ABP Normalizada')
+    plt.plot(ind_sistolicos4, senal_abp[ind_sistolicos4], 'ro', label='Picos Sistólicos')
+    plt.plot(ind_diastolicos4, senal_abp[ind_diastolicos4], 'bo', label='Picos Diastólicos')
+    plt.xlabel('Muestras')
+    plt.ylabel('Amplitud')
+    plt.title(f'Paciente {paciente_id} - Ventana {ventana_id}')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+#%% Ploteo de señales    
+plt.figure(figsize=(10, 4))
+plt.plot(ppg_signal4[1000][:1000])  # Mostrar los primeros 1000 puntos
+plt.title("Señal PPG - Primer Registro")
+plt.xlabel("Muestras")
+plt.ylabel("Amplitud")
+plt.show()
+
+plt.figure(figsize=(10, 4))
+plt.plot(abp_signal4[1000][:1000])  # Mostrar los primeros 1000 puntos
+plt.title("Señal ABP - Primer Registro")
+plt.xlabel("Muestras")
+plt.ylabel("Amplitud")
+plt.show()
+    
+plt.figure(figsize=(10, 4))
+plt.plot(ecg_signal4[1000][:1000])  # Mostrar los primeros 1000 puntos
+plt.title("Señal ECG - Primer Registro")
+plt.xlabel("Muestras")
+plt.ylabel("Amplitud")
+plt.show()
+#%% Ploteo de segmentación
+plt.figure(figsize=(10, 4))
+plt.plot(ppg_segmented4[1000][0])  # Mostrar los primeros 1000 puntos
+plt.title("Recorte de 2 seg de señal de PPG")
+plt.xlabel("Muestras")
+plt.ylabel("Amplitud")
+plt.show()
+
+plt.figure(figsize=(10, 4))
+plt.plot(abp_segmented4[1000][0])  # Mostrar los primeros 1000 puntos
+plt.title("Recorte de 5 seg de señal de ABP")
+plt.xlabel("Muestras")
+plt.ylabel("Amplitud")
+plt.show()
+
+plt.figure(figsize=(10, 4))
+plt.plot(ecg_segmented4[1000][0])  # Mostrar los primeros 1000 puntos
+plt.title("Recorte de 5 seg de señal de ECG")
+plt.xlabel("Muestras")
+plt.ylabel("Amplitud")
+plt.show()
+#%% Relación de señales en el recorte
+plt.figure(figsize=(10, 4))
+plt.plot(ppg_normalized4[1100][0], color= "blue", label="PPG")
+plt.plot(abp_normalized4[1100][0], color= "green", label="ABP")
+plt.plot(ecg_normalized4[1100][0], color= "red", label="ECG") 
+plt.title("Relación entre señales en el tiempo")
+plt.xlabel("Muestras")
+plt.ylabel("Amplitud")
+plt.show()
+#%%
+plt.figure(figsize=(10, 4))
+prueba= (abp_normalized2[1100][10])
+plt.plot((prueba))  # Mostrar los primeros 1000 puntos
+plt.title("Recorte de 5 seg de señal de ABP")
+plt.xlabel("Muestras")
+plt.ylabel("Amplitud")
+plt.show()
+#%%
+paciente_id = 500
+ventana_id = 10
+senal_abp = abp_normalized4[paciente_id][ventana_id]
+
+# Extraé los índices de picos sistólicos y diastólicos ya calculados
+ind_sistolicos = indices_sistolicos[paciente_id][ventana_id]
+ind_diastolicos= indices_diastolicos[paciente_id][ventana_id]
+
+# Graficá
+plt.figure(figsize=(10, 4))
+plt.plot(senal_abp, label='Señal ABP Normalizada')
+plt.plot(ind_sistolicos, senal_abp[ind_sistolicos], 'ro', label='Picos Sistólicos')
+plt.plot(ind_diastolicos, senal_abp[ind_diastolicos], 'bo', label='Picos Diastólicos')
+plt.xlabel('Muestras')
+plt.ylabel('Amplitud')
+plt.title(f'Paciente {paciente_id} - Ventana {ventana_id}')
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()                                                             
 #%% Generación de archivo parte 4 .pt y liberación de memoria RAM
 save_partial_file(ppg_normalized4, ecg_normalized4, presiones_sistolicas_norm4, presiones_diastolicas_norm4, 9000, 'dataset_parte_4')
+#%%
 del ppg_signal4
 del abp_signal4
 del ecg_signal4
@@ -521,45 +772,81 @@ def visualizar_batch(start_idx=0, batch_size=10):
 visualizar_batch(start_idx=300000)
 """ 
 # %% Histograma SBP Y DBP (señales recortadas)
-"""
-# Ruta del archivo con las etiquetas
-ruta_dataset = 'data_UCI/dataset_completo_prueba.pt' 
+def plot_histogram_pressures(sbp, dbp, bins_sbp, bins_dbp, title):
+    # Histograma SBP
+    plt.subplot(1, 2, 1)
+    plt.hist(sbp, bins=bins_sbp, color='crimson', edgecolor='black', alpha=0.75)
+    plt.title(f"Distribución de SBP (Presión Sistólica) - {title}", fontsize=14)
+    plt.xlabel("mmHg", fontsize=12)
+    plt.ylabel("Frecuencia", fontsize=12)
+    plt.axvline(np.mean(sbp), color='black', linestyle='--', label=f"Media: {np.mean(sbp):.1f}")
+    plt.legend()
 
-# Cargar datos
-data_dict = torch.load(ruta_dataset)
-labels = data_dict['labels']  
+    # Histograma DBP
+    plt.subplot(1, 2, 2)
+    plt.hist(dbp, bins=bins_dbp, color='steelblue', edgecolor='black', alpha=0.75)
+    plt.title(f"Distribución de DBP (Presión Diastólica) - {title}", fontsize=14)
+    plt.xlabel("mmHg", fontsize=12)
+    plt.axvline(np.mean(dbp), color='black', linestyle='--', label=f"Media: {np.mean(dbp):.1f}")
+    plt.legend()
 
-labels_np = labels.numpy()
-sbp = labels_np[:, 0]
-dbp = labels_np[:, 1]
+    plt.tight_layout()
+    plt.show()
 
-# Desnormalización
-sbp = sbp * (SBP_MAX - SBP_MIN) + SBP_MIN
-dbp = dbp * (DBP_MAX - DBP_MIN) + DBP_MIN
+    plt.figure(figsize=(14, 6))
 
-# Rango de presiones arteriales
-bins_sbp = np.arange(SBP_MIN, SBP_MAX, 5)
-bins_dbp = np.arange(DBP_MIN, DBP_MAX, 5)
+def Histograma(SBP_MIN, SBP_MAX, DBP_MIN, DBP_MAX, ruta_dataset, title):
+    data_dict = torch.load(ruta_dataset)
+    labels = data_dict['labels']  
 
-plt.figure(figsize=(14, 6))
+    labels_np = labels.numpy()
+    sbp = labels_np[:, 0]
+    dbp = labels_np[:, 1]
 
-# Histograma SBP
-plt.subplot(1, 2, 1)
-plt.hist(sbp, bins=bins_sbp, color='crimson', edgecolor='black', alpha=0.75)
-plt.title("Distribución de SBP (Presión Sistólica)", fontsize=14)
-plt.xlabel("mmHg", fontsize=12)
-plt.ylabel("Frecuencia", fontsize=12)
-plt.axvline(np.mean(sbp), color='black', linestyle='--', label=f"Media: {np.mean(sbp):.1f}")
-plt.legend()
+    # Desnormalización
+    sbp = sbp * (SBP_MAX - SBP_MIN) + SBP_MIN
+    dbp = dbp * (DBP_MAX - DBP_MIN) + DBP_MIN
 
-# Histograma DBP
-plt.subplot(1, 2, 2)
-plt.hist(dbp, bins=bins_dbp, color='steelblue', edgecolor='black', alpha=0.75)
-plt.title("Distribución de DBP (Presión Diastólica)", fontsize=14)
-plt.xlabel("mmHg", fontsize=12)
-plt.axvline(np.mean(dbp), color='black', linestyle='--', label=f"Media: {np.mean(dbp):.1f}")
-plt.legend()
+    # Rango de presiones arteriales
+    bins_sbp = np.arange(SBP_MIN, SBP_MAX, 5)
+    bins_dbp = np.arange(DBP_MIN, DBP_MAX, 5)
 
-plt.tight_layout()
-plt.show()
-"""
+    plot_histogram_pressures(sbp, dbp, bins_sbp, bins_dbp, title)
+    
+datasets_info = [
+    {
+        "ruta": "data_UCI/dataset_parte_1.pt",
+        "SBP_MIN": 55.98, "SBP_MAX": 199.95,
+        "DBP_MIN": 50.00, "DBP_MAX": 190.30
+    },
+    {
+        "ruta": "data_UCI/dataset_parte_2.pt",
+        "SBP_MIN": 61.97, "SBP_MAX": 199.95,
+        "DBP_MIN": 50.00, "DBP_MAX": 191.26
+    },
+    {
+        "ruta": "data_UCI/dataset_parte_3.pt",
+        "SBP_MIN": 60.91, "SBP_MAX": 199.99,
+        "DBP_MIN": 50.00, "DBP_MAX": 182.93
+    },
+    {
+        "ruta": "data_UCI/dataset_parte_4.pt",
+        "SBP_MIN": 59.84, "SBP_MAX": 199.99,
+        "DBP_MIN": 50.00, "DBP_MAX": 178.92
+    }
+]
+
+# Histograma de cada dataset con sus respectivos parámetros
+for info in datasets_info:
+    ruta = info["ruta"]
+    title = os.path.basename(ruta).replace('.pt', '')
+    Histograma(
+        SBP_MIN=info["SBP_MIN"],
+        SBP_MAX=info["SBP_MAX"],
+        DBP_MIN=info["DBP_MIN"],
+        DBP_MAX=info["DBP_MAX"],
+        ruta_dataset=ruta,
+        title=title
+    )
+    
+# %%

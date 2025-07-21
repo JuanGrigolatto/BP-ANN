@@ -11,14 +11,27 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Valores reales de Min y Max que usaste al normalizar SBP y DBP
+
+SBP_MIN, SBP_MAX = 70, 199.99
+DBP_MIN, DBP_MAX = 50, 140
+SBP_MEAN = 134.02
+DBP_MEAN = 63.47
+SBP_STD = 22.75
+DBP_STD = 23.69
 """
-SBP_MIN, SBP_MAX = 80, 199.78
-DBP_MIN, DBP_MAX = 50, 192.09
+ABP_MAX, ABP_MIN = 60, 180.00
 """
-ABP_MAX, ABP_MIN = 50, 199.99
+def aami_metrics(y_true, y_pred):
+    errors = y_pred - y_true
+    mean_error = np.mean(errors)
+    std_error = np.std(errors, ddof=1)
+    return mean_error, std_error
 
 def desnormalizar_minmax(norm_array, min_val, max_val):
     return norm_array * (max_val - min_val) + min_val
+
+def desnormalizar_zscore(norm_array, media, std):
+    return norm_array * std + media
 
 def bland_altman_graf(preds, labels, title):
     differences = preds - labels
@@ -47,25 +60,25 @@ def bland_altman_graf(preds, labels, title):
 
 def main():
     parameters = {
-        'batch_size': 50,
+        'batch_size': 256,
         'shuffle': True,
         'num_workers': 0,
-        'pin_memory': True
+        'pin_memory': False
     }
 
     print(os.path.exists('data_UCI/test_set.pt'))
     dataset = UCIDataset('data_UCI/test_set.pt')
     
-    subset = torch.utils.data.Subset(dataset, indices=list(range(100)))
+    subset = torch.utils.data.Subset(dataset, indices=list(range(10000)))
     dataloader = torch.utils.data.DataLoader(subset, **parameters)
     
     #dataloader = torch.utils.data.DataLoader(dataset, **parameters)
 
-    path_model = 'best_model_conv_v2.pt'
+    path_model = 'best_model_Time32.pt'
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    #model = InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32)
-    model=Modelo_ConvolucionalV2(in_channels=2,out_channels=2, long_signal=250)
+    model = InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32)
+    #model=Modelo_ConvolucionalV2(in_channels=2,out_channels=2, long_signal=1250)
     
     checkpoint = torch.load(path_model, map_location=device)
     model.load_state_dict(checkpoint['model_state_dict'])
@@ -74,9 +87,14 @@ def main():
 
     bar = tqdm(dataloader)
     accmse, accrmse, accmae, accr2 = [], [], [], []
+    acc_mean_error_sbp = []
+    acc_std_error_sbp = []
+    acc_mean_error_dbp = []
+    acc_std_error_dbp = []
     all_preds = []
     all_labels = []
-
+    
+    n_error=0
     with torch.no_grad():
         for batch in bar:
             data, labels = batch
@@ -94,10 +112,10 @@ def main():
             true_SBP = desnormalizar_minmax(labels[:, 0], SBP_MIN, SBP_MAX)
             true_DBP = desnormalizar_minmax(labels[:, 1], DBP_MIN, DBP_MAX)
             """
-            pred_SBP = desnormalizar_minmax(pred[:, 0], ABP_MIN, ABP_MAX)
-            pred_DBP = desnormalizar_minmax(pred[:, 1], ABP_MIN, ABP_MAX)
-            true_SBP = desnormalizar_minmax(labels[:, 0], ABP_MIN, ABP_MAX)
-            true_DBP = desnormalizar_minmax(labels[:, 1], ABP_MIN, ABP_MAX)
+            pred_SBP = desnormalizar_zscore(pred[:, 0], SBP_MEAN, SBP_STD)
+            pred_DBP = desnormalizar_zscore(pred[:, 1], DBP_MEAN, DBP_STD)
+            true_SBP = desnormalizar_zscore(labels[:, 0], SBP_MEAN, SBP_STD)
+            true_DBP = desnormalizar_zscore(labels[:, 1], DBP_MEAN, DBP_STD)
             # Juntamos nuevamente para cálculo de métricas y gráficos
             pred_desnorm = np.stack([pred_SBP, pred_DBP], axis=1)
             labels_desnorm = np.stack([true_SBP, true_DBP], axis=1)
@@ -107,14 +125,61 @@ def main():
             mae = mean_absolute_error(labels_desnorm, pred_desnorm)
             r2 = r2_score(labels_desnorm, pred_desnorm)
 
+            mean_error_SBP, std_error_SBP = aami_metrics(true_SBP, pred_SBP)
+            mean_error_DBP, std_error_DBP = aami_metrics(true_DBP, pred_DBP)        
+
             accmse.append(mse)
             accrmse.append(rmse)
             accmae.append(mae)
             accr2.append(r2)
 
+            acc_mean_error_sbp.append(mean_error_SBP)
+            acc_std_error_sbp.append(std_error_SBP)
+            acc_mean_error_dbp.append(mean_error_DBP)
+            acc_std_error_dbp.append(std_error_DBP)
+
             all_preds.append(pred_desnorm)
             all_labels.append(labels_desnorm)
 
+            
+            for j in range(pred_desnorm.shape[0]):
+                pred_sbp, pred_dbp = pred_desnorm[j]
+                true_sbp, true_dbp = labels_desnorm[j]
+                error_sbp = abs(pred_sbp - true_sbp)
+                error_dbp = abs(pred_dbp - true_dbp)
+
+                # Umbral configurable para detección de error alto
+                if error_sbp > 10 or error_dbp > 10:
+                    n_error = n_error + 1 
+                    """
+                    print(f"\n Error alto detectado:")
+                    print(f"  Predicción SBP/DBP: {pred_sbp:.2f} / {pred_dbp:.2f}")
+                    print(f"  Real      SBP/DBP: {true_sbp:.2f} / {true_dbp:.2f}")
+                    print(f"  Error SBP: {error_sbp:.2f}, Error DBP: {error_dbp:.2f}")
+                    print(f"  n: {j}")
+                   
+
+                    # Graficar la señal cruda de entrada
+                    senal = data[j].cpu().numpy()  # [2, 250]
+                    ppg = senal[0]
+                    ecg = senal[1]
+
+                    plt.figure(figsize=(10, 4))
+                    plt.subplot(2, 1, 1)
+                    plt.plot(ecg, label='ECG', color='orange')
+                    plt.ylabel('Amplitud')
+                    plt.title('ECG')
+
+                    plt.subplot(2, 1, 2)
+                    plt.plot(ppg, label='PPG', color='blue')
+                    plt.xlabel('Muestras')
+                    plt.ylabel('Amplitud')
+                    plt.title('PPG')
+
+                    plt.tight_layout()
+                    plt.show()
+            """
+    print(f"numero de ventanas con errores: {n_error}")
     # Unimos todos los resultados para gráficos finales
     all_preds = np.concatenate(all_preds, axis=0)
     all_labels = np.concatenate(all_labels, axis=0)
@@ -124,6 +189,11 @@ def main():
     print(f" RMSE: {np.mean(accrmse):.4f}")
     print(f"  MAE: {np.mean(accmae):.4f}")
     print(f"   R2: {np.mean(accr2):.4f}")
+    print(f"\nPromedio de métricas AAMI (valores desnormalizados en mmHg):")
+    print(f"SBP - Mean Error: {np.mean(acc_mean_error_sbp):.2f}")
+    print(f"SBP - Std Error:  {np.mean(acc_std_error_sbp):.2f}")
+    print(f"DBP - Mean Error: {np.mean(acc_mean_error_dbp):.2f}")
+    print(f"DBP - Std Error:  {np.mean(acc_std_error_dbp):.2f}")
 
     # Gráfico real vs predicho
     plt.figure(figsize=(8, 5))
@@ -155,6 +225,6 @@ def main():
     plt.show()
 
     #Gráfico Bland Altman
-    bland_altman_graf(all_preds, all_labels, title="Modelo convolucional V1")
+    bland_altman_graf(all_preds, all_labels, title="Modelo convolucional Time32")
 if __name__ == '__main__':
     main()

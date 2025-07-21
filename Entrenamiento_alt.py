@@ -4,9 +4,9 @@ import os
 from torch.utils import data
 from torch.utils.data import TensorDataset, random_split
 import numpy as np
-#from Modelos.InceptionTime import InceptionTime
+from Modelos.InceptionTime import InceptionTime
 #from Modelos.Modelo_conv import Modelo_Convolucional
-from Modelos.ConvolucionalV1 import Modelo_ConvolucionalV1
+#from Modelos.ConvolucionalV1 import Modelo_ConvolucionalV1
 #from Modelos.ConvolucionalV2 import Modelo_ConvolucionalV2
 from tqdm.auto import tqdm 
 import matplotlib.pyplot as plt
@@ -17,8 +17,8 @@ def main():
     parameters = {
         'batch_size': 256,
         'shuffle': True,
-        'num_workers': 3,
-        'pin_memory': True
+        'num_workers': 0,
+        'pin_memory': False
     }
     """
     print(os.path.exists('data_UCI/dataset_completo.pt'))
@@ -92,10 +92,10 @@ def main():
 
     # Crear el modelo
 
-    #model=InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32)
+    model=InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32)
     #model=Modelo_Convolucional(in_channels=2,out_channels=2, long_signal=250)
-    model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=250)
-    #model=Modelo_ConvolucionalV2(in_channels=2,out_channels=2, long_signal=250)
+    #model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=1250)
+    #model=Modelo_ConvolucionalV2(in_channels=2,out_channels=2, long_signal=1250)
     # Añade esto después de crear el modelo
     """
     for layer in model.modules():
@@ -105,8 +105,8 @@ def main():
     """   
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)  # Mueve el modelo a la GPU
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=3, min_lr=1e-6, verbose=True)    
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay= 1e-4)
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, min_lr=1e-6, verbose=True)    
     criterion = torch.nn.MSELoss()  # MSELoss para regresión
 
     # ENTRENAMIENTO
@@ -164,9 +164,9 @@ def main():
     max_epochs = 100
     best_valid_loss = float('inf') 
     running_loss = np.zeros(shape=(max_epochs, 2))
-    min_delta = 0.0005  # mejora mínima requerida
+    min_delta = 0.00002  # mejora mínima requerida
     patience = 5
-    patience_significativa = 10
+    patience_significativa = 5
   
     for epoch in tqdm(range(max_epochs)):
         train_l, valid_l = train_one_epoch()
@@ -183,7 +183,7 @@ def main():
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': valid_l
-            }, 'best_model_conv_v1.pt')
+            }, 'best_model_Time32.pt')
             print(f"Nuevo mejor modelo guardado (valid_loss = {valid_l:.6f})")
 
             

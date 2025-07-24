@@ -1,6 +1,9 @@
 from MetaDataset import TaskDataset
 #from Clase_UCIDataset import UCIDataset
-from Modelos.Modelo_conv import Modelo_Convolucional
+#from Modelos.Modelo_conv import Modelo_Convolucional
+#from Modelos.InceptionTime import InceptionTime
+from Modelos.ConvolucionalV1 import Modelo_ConvolucionalV1
+#from Modelos.ConvolucionalV2 import Modelo_ConvolucionalV2
 import numpy as np
 import learn2learn as l2l
 from torch import nn, optim
@@ -9,18 +12,63 @@ import matplotlib.pyplot as plt
 import torch.utils.data as data
 from tqdm.auto import tqdm 
 import torch
+import random
 
-def main(shots=5, num_tasks=3000 ,tasks_per_batch=16, adapt_lr=0.01, meta_lr=0.001, adapt_steps=5):
+def main(shots=10, num_tasks=10000 ,tasks_per_batch=16, adapt_lr=0.01, meta_lr=0.001, adapt_steps=5, seed=42):
+    """
     data_dir = 'data_UCI/dataset_completo.pt'
     all_IDs = np.arange(0, num_tasks)    # IDs de pacientes, suponiendo que hay 3000 pacientes   
         
     # Crear el dataset y dataloader
     tasksets = TaskDataset(all_IDs,data_dir=data_dir, num_shots=shots)
     dataloader = data.DataLoader(tasksets, batch_size=tasks_per_batch, shuffle=True, drop_last=True)
+    """
+    data_paths = [
+        'data_UCI/dataset_parte_1.pt',
+        'data_UCI/dataset_parte_2.pt',
+        'data_UCI/dataset_parte_3.pt',
+        'data_UCI/dataset_parte_4.pt'
+    ]
+
+    all_data = []
+    all_labels = []
+    all_patient_ids = []
+
+    for path in data_paths:
+        dataset = torch.load(path)
+        all_data.append(dataset['data'])
+        all_labels.append(dataset['labels'])
+        all_patient_ids.append(dataset['patient_ids'])
+
+    merged_data = {
+        'data': torch.cat(all_data, dim=0),
+        'labels': torch.cat(all_labels, dim=0),
+        'patient_ids': torch.cat(all_patient_ids, dim=0)
+    }
+
+    random.seed(seed)
     
+    unique_patients = merged_data['patient_ids'].unique().tolist()
+    random.shuffle(unique_patients)
+    
+    test_patients = unique_patients[:50]       # 20 pacientes para few-shot
+    train_patients = unique_patients[50:]      # Resto para metaentrenamiento
+
+    # Guardar lista de pacientes para evaluación few-shot
+    torch.save({'test_patient_ids': test_patients}, 'data_UCI/few_shot_patient_data.pt')
+
+    if len(unique_patients) >= num_tasks:
+        list_IDs = random.sample(train_patients, num_tasks)
+    else:
+        raise ValueError(f"Solo hay {len(train_patients)} pacientes únicos, se solicita {num_tasks}")
+    
+    tasksets = TaskDataset(list_IDs=list_IDs, data_dict=merged_data, num_shots=shots)
+    dataloader = data.DataLoader(tasksets, batch_size=tasks_per_batch, shuffle=True, drop_last=True)
+
     # Modelo y MAML
     #model= InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32, nb_filters=None)
-    model = Modelo_Convolucional(in_channels=2, out_channels=2, long_signal=250)
+    #model = Modelo_Convolucional(in_channels=2, out_channels=2, long_signal=250)
+    model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=1250)
     maml = l2l.algorithms.MAML(model, lr=adapt_lr, first_order=False, allow_unused=True)
     opt = optim.Adam(maml.parameters(), meta_lr)
     lossfn = nn.MSELoss(reduction='mean')
@@ -67,7 +115,7 @@ def main(shots=5, num_tasks=3000 ,tasks_per_batch=16, adapt_lr=0.01, meta_lr=0.0
                         'model_state_dict': model.state_dict(),
                         'optimizer_state_dict': opt.state_dict(),
                         'meta_loss': meta_train_loss}, 
-                    'best_meta_model.pt')
+                    'best_meta_model_v1.pt')
             
         running_meta_loss[iter] = meta_train_loss.detach().numpy()
 

@@ -4,14 +4,17 @@ import numpy as np
 from collections import defaultdict
 
 class TaskDataset(data.Dataset):
-    def __init__(self,list_IDs,data_dir='data_UCI/dataset_completo.pt', num_shots=5):
-        self.data_dir = data_dir
+    def __init__(self, list_IDs, data_dir=None, data_dict=None, num_shots=5):
         self.num_shots = num_shots
         self.total_samples = 2 * num_shots
         self.list_IDs = list_IDs
         
-
-        data = torch.load(data_dir)
+        if data_dict is not None:
+            data = data_dict
+        elif data_dir is not None:
+            data = torch.load(data_dir)
+        else:
+            raise ValueError("Debes proporcionar 'data_dir' o 'data_dict'")
         
         all_signals= data['data']  # (2, L)
         all_labels = data['labels']   # (2,)

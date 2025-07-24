@@ -74,11 +74,11 @@ def main():
     
     #dataloader = torch.utils.data.DataLoader(dataset, **parameters)
 
-    path_model = 'best_model_Time32.pt'
+    path_model = 'best_model_conv_v1.pt'
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32)
-    #model=Modelo_ConvolucionalV2(in_channels=2,out_channels=2, long_signal=1250)
+    #model = InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32)
+    model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=1250)
     
     checkpoint = torch.load(path_model, map_location=device)
     model.load_state_dict(checkpoint['model_state_dict'])

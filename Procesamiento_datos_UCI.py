@@ -138,6 +138,24 @@ def signal_stats_analisis(signal):
     #return skewness_value, kurtosis_value, entropy_value
     return skewness_value, kurtosis_value, entropy_value
 
+def white_noise(signal, snr_db=20):
+    # Potencia de la señal
+    potencia_senal = np.mean(senal ** 2)
+
+    # Convertir SNR de dB a escala lineal
+    snr_lineal = 10 ** (snr_db / 10)
+
+    # Calcular la potencia del ruido deseada
+    potencia_ruido = potencia_senal / snr_lineal
+
+    # Generar ruido blanco gaussiano
+    ruido = np.random.normal(0, np.sqrt(potencia_ruido), senal.shape)
+
+    senal_con_ruido = senal + ruido
+
+    return senal_con_ruido
+
+
 def get_abp_labels(abp_signals):
     matriz_picos_sistolicos = []
     matriz_picos_diastolicos = []

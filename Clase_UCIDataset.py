@@ -4,18 +4,23 @@ import os
 
 
 class UCIDataset(data.Dataset):
-    def __init__(self, data_dir='data_UCI'):
-        """
-        Args:
-            list_IDs (list): List of IDs for the dataset.
-            labels (list): Corresponding labels for the dataset.
-        """
-        if not os.path.exists(data_dir):
-            raise FileNotFoundError(f"¡Archivo no encontrado: {data_dir}")
-
-        data_dict = torch.load(data_dir)
-        self.data = data_dict['data']        # Tensor [N, 2, 250]
-        self.labels = data_dict['labels']    # Tensor [N, 2]
+    def __init__(self, file_list):
+        self.data = []
+        self.labels = []
+        self.ID_patients = []
+        self.index_muestra = []
+    
+        for file_path in file_list:
+            data_dict = torch.load(file_path)
+            self.data.append(data_dict['data'])
+            self.labels.append(data_dict['labels'])
+            self.ID_patients.append(data_dict['patient_ids'])
+            self.index_muestra.append(data_dict['index'])
+    
+        self.data = torch.cat(self.data, dim=0)
+        self.labels = torch.cat(self.labels, dim=0)
+        self.ID_patients = torch.cat(self.ID_patients, dim=0)
+        self.index_muestra = torch.cat(self.index_muestra, dim=0)
 
         print(f"Datos cargados correctamente. Muestras: {len(self.data)}")  # Debug
     
@@ -37,7 +42,7 @@ class UCIDataset(data.Dataset):
 
         return x, y
         """
-        return self.data[index], self.labels[index]
+        return self.data[index], self.labels[index], self.ID_patients[index], self.index_muestra[index]
 
 
 

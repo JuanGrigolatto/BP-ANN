@@ -4,13 +4,24 @@ import os
 from torch.utils import data
 from torch.utils.data import TensorDataset, random_split
 import numpy as np
-from Modelos.InceptionTime import InceptionTime
+#from Modelos.InceptionTime import InceptionTime
 #from Modelos.Modelo_conv import Modelo_Convolucional
-#from Modelos.ConvolucionalV1 import Modelo_ConvolucionalV1
+from Modelos.ConvolucionalV1 import Modelo_ConvolucionalV1
 #from Modelos.ConvolucionalV2 import Modelo_ConvolucionalV2
 from tqdm.auto import tqdm 
 import matplotlib.pyplot as plt
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+import random
+
+def set_seed(seed=24):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)  # para multi-GPU
+
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 def main():
     # Configuración del dispositivo
@@ -20,6 +31,7 @@ def main():
         'num_workers': 0,
         'pin_memory': False
     }
+    set_seed(42)
     """
     print(os.path.exists('data_UCI/dataset_completo.pt'))
     dataset = UCIDataset('data_UCI/dataset_completo.pt')
@@ -40,20 +52,7 @@ def main():
     'data_UCI/dataset_parte_4.pt',
     ]
 
-    todas_las_senales = []
-    todas_las_etiquetas = []
-
-    for archivo in archivos:
-        data = torch.load(archivo)
-        todas_las_senales.append(data['data'])
-        todas_las_etiquetas.append(data['labels'])
-
-    tensor_señales = torch.cat(todas_las_senales, dim=0)
-    tensor_etiquetas = torch.cat(todas_las_etiquetas, dim=0)
-
-    print(f"Datos cargados: señales {tensor_señales.shape}, etiquetas {tensor_etiquetas.shape}")
-
-    dataset_completo = TensorDataset(tensor_señales, tensor_etiquetas)
+    dataset_completo = UCIDataset(archivos)
 
     total = len(dataset_completo)
     train_size = int(0.7 * total)
@@ -63,6 +62,7 @@ def main():
     # Dividir aleatoriamente el dataset
     train_set, val_set, test_set = random_split(dataset_completo, [train_size, val_size, test_size])
 
+
     print(f"Train: {len(train_set)}, Val: {len(val_set)}, Test: {len(test_set)}")
 
     training_generator = torch.utils.data.DataLoader(train_set, **parameters)
@@ -70,18 +70,24 @@ def main():
 
     test_signals = []
     test_labels = []
+    test_IDs = []
+    test_index = []
 
-    for signals, labels in test_set:
+    for signals, labels, IDs, index in test_set:
         test_signals.append(signals)
         test_labels.append(labels)
+        test_IDs.append(IDs)
+        test_index.append(index)
 
-    # Convertir listas a tensores
+    # listas a tensores
     test_signals = torch.stack(test_signals)
     test_labels = torch.stack(test_labels)
-
-    # Guardar en un archivo .pt
-    torch.save({'data': test_signals, 'labels': test_labels}, 'data_UCI/test_set.pt')
+    test_IDs = torch.stack(test_IDs)
+    test_index = torch.stack(test_index)
     
+    # Guardado en un archivo .pt
+    torch.save({'data': test_signals, 'labels': test_labels,'patient_ids': test_IDs,'index':test_index} ,'data_UCI/test_set.pt')
+    print("data_UCI/test_set.pt guardado")
     #Subset para testeo de modelos sin entrenamiento completo
     """
     subset_size = int(0.5 * len(dataset))  # 10%
@@ -92,9 +98,9 @@ def main():
 
     # Crear el modelo
 
-    model=InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32)
+    #model=InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32)
     #model=Modelo_Convolucional(in_channels=2,out_channels=2, long_signal=250)
-    #model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=1250)
+    model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=1250)
     #model=Modelo_ConvolucionalV2(in_channels=2,out_channels=2, long_signal=1250)
     # Añade esto después de crear el modelo
     """
@@ -112,7 +118,7 @@ def main():
     # ENTRENAMIENTO
     def train_one_step(batch):
         optimizer.zero_grad() # Reinicia los gradientes
-        data, labels = batch # Obtiene los datos y etiquetas
+        data, labels, _, _ = batch # Obtiene los datos y etiquetas
         data, labels = data.to(device), labels.to(device) # Mueve los datos y etiquetas a la GPU
         
         #print("Rango de datos:", torch.min(data).item(), torch.max(data).item())
@@ -139,7 +145,7 @@ def main():
 
     def evaluate_one_step(batch):
         with torch.no_grad():
-            data, labels = batch
+            data, labels, _, _ = batch
             data, labels = data.to(device), labels.to(device)
             preds = model.forward(data)
             loss = criterion(preds, labels)
@@ -183,7 +189,7 @@ def main():
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': valid_l
-            }, 'best_model_Time32.pt')
+            }, 'best_model_conv_v1.pt')
             print(f"Nuevo mejor modelo guardado (valid_loss = {valid_l:.6f})")
 
             

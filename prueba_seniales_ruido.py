@@ -2,10 +2,11 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 import random
+import os
 
-def white_noise(signal, snr_db=20):
+def white_noise_torch(signal: torch.Tensor, snr_db: float = 20) -> torch.Tensor:
     # Potencia de la señal
-    potencia_senal = np.mean(signal ** 2)
+    potencia_senal = torch.mean(signal ** 2)
 
     # Convertir SNR de dB a escala lineal
     snr_lineal = 10 ** (snr_db / 10)
@@ -14,31 +15,78 @@ def white_noise(signal, snr_db=20):
     potencia_ruido = potencia_senal / snr_lineal
 
     # Generar ruido blanco gaussiano
-    ruido = np.random.normal(0, np.sqrt(potencia_ruido), signal.shape)
+    ruido = torch.randn_like(signal) * torch.sqrt(potencia_ruido)
 
     senal_con_ruido = signal + ruido
 
     return senal_con_ruido
 
+def aplicar_ruido_por_partes():
+    archivos = [
+        'data_UCI/dataset_parte_1.pt',
+        'data_UCI/dataset_parte_2.pt',
+        'data_UCI/dataset_parte_3.pt',
+        'data_UCI/dataset_parte_4.pt',
+    ]
+
+    indices_errores = np.load('indices_errores.npy')
+    print("indices errores: ", indices_errores)
+
+    for archivo in archivos:
+        data = torch.load(archivo)
+        senales = data['data']
+        etiquetas = data['labels']
+        IDs = data['patient_ids']
+        indices_globales = data['index']
+
+        # Convertir a numpy para filtrado
+        indices_globales_np = indices_globales.numpy()
+
+        # Filtrar cuáles de los errores pertenecen a este archivo
+        mascara = np.isin(indices_globales_np, indices_errores)
+        indices_locales = np.where(mascara)[0]  # Posiciones dentro de este archivo
+
+        if len(indices_locales) > 0:
+            senales[indices_locales] = white_noise_torch(
+                senales[indices_locales],
+                snr_db=20
+            )
+
+        # Guardar nuevo archivo 
+        base_name = os.path.splitext(os.path.basename(archivo))[0]
+        nuevo_nombre = f"data_UCI/{base_name}_ruido.pt"
+
+        torch.save({
+            'data': senales,
+            'labels': etiquetas,
+            'patient_ids': IDs,
+            'index': indices_globales
+        }, nuevo_nombre)
+
+        print(f"Guardado: {nuevo_nombre}")
+
 def main():
-    path = 'data_UCI/dataset_parte_1.pt'
-
-    data = torch.load(path)
-
+    
+    #path = 'data_UCI/dataset_parte_1.pt'
+    
+    """
     signals = data['data']
     labels = data['labels']
     patient_ids = data['patient_ids']
-    
-    print (f"Señales cargadas: {signals.shape}")
+    indices_muestras= data['index'] 
+    """
 
-    # Aplicación de ruido blanco a las señales
+
+
+    """
     signals_con_ruido = []
     for signal in signals:
         signal_con_ruido = white_noise(signal.numpy(), snr_db=20)
         signals_con_ruido.append(signal_con_ruido)
-
+    
     # Selección de las señales a plotear
     signals_con_ruido = np.array(signals_con_ruido)
+    """
     """
     total_signals = signals_con_ruido.shape[0]
     selected_indices = random.sample(range(total_signals), k=10000)  # sin reemplazo
@@ -47,19 +95,12 @@ def main():
     labels_subset = labels[selected_indices]
     ids_subset = patient_ids[selected_indices]
     """
-    # Guardado en archivo .pt
-    save_path = 'data_UCI/dataset_parte_1_ruido.pt'
-    torch.save({
-        'data': torch.tensor(signals_con_ruido, dtype=torch.float32),
-        'labels': labels,
-        'patient_ids': patient_ids
-    }, save_path)
-    print(f"Señales con ruido guardadas en {save_path}")
-
-    signals_con_ruido_set = random.choices(signals_con_ruido, k=10000)  # Selecciona 10,000 señales aleatorias
-
+    """
     #signals_for_plot = signals_con_ruido[:10]  # Selecciona las primeras 10 señales
-    signals_for_plot = random.choices(signals_con_ruido, k=5) # Selecciona 5 señales aleatorias   
+
+    #Ploteo de señales con ruido (aleatorio)
+    signals_for_plot = random.choices(senales, k=5) # Selecciona 5 señales aleatorias   
+    signals_for_plot = signals_for_plot.numpy()
   
     for  signal in signals_for_plot:
            
@@ -81,6 +122,6 @@ def main():
 
         plt.tight_layout()
         plt.show()
-
+"""
 if __name__ == '__main__':
-    main()
+    aplicar_ruido_por_partes()

@@ -67,7 +67,7 @@ def main():
     }
 
     print(os.path.exists('data_UCI/test_set.pt'))
-    dataset = UCIDataset('data_UCI/test_set.pt')
+    dataset = UCIDataset(['data_UCI/test_set.pt'])
     
     subset = torch.utils.data.Subset(dataset, indices=list(range(10000)))
     dataloader = torch.utils.data.DataLoader(subset, **parameters)
@@ -95,9 +95,12 @@ def main():
     all_labels = []
     
     n_error=0
+
+    indices_errores = []
+
     with torch.no_grad():
         for batch in bar:
-            data, labels = batch
+            data, labels, ID_paciente, indice_muestra = batch
             data, labels = data.to(device), labels.to(device)
 
             pred = model(data)
@@ -116,7 +119,7 @@ def main():
             pred_DBP = desnormalizar_zscore(pred[:, 1], DBP_MEAN, DBP_STD)
             true_SBP = desnormalizar_zscore(labels[:, 0], SBP_MEAN, SBP_STD)
             true_DBP = desnormalizar_zscore(labels[:, 1], DBP_MEAN, DBP_STD)
-            # Juntamos nuevamente para cálculo de métricas y gráficos
+            
             pred_desnorm = np.stack([pred_SBP, pred_DBP], axis=1)
             labels_desnorm = np.stack([true_SBP, true_DBP], axis=1)
 
@@ -141,7 +144,6 @@ def main():
             all_preds.append(pred_desnorm)
             all_labels.append(labels_desnorm)
 
-            
             for j in range(pred_desnorm.shape[0]):
                 pred_sbp, pred_dbp = pred_desnorm[j]
                 true_sbp, true_dbp = labels_desnorm[j]
@@ -150,7 +152,9 @@ def main():
 
                 # Umbral configurable para detección de error alto
                 if error_sbp > 10 or error_dbp > 10:
-                    n_error = n_error + 1 
+                    n_error = n_error + 1
+                    indices_errores.append(indice_muestra[j].item())
+
                     """
                     print(f"\n Error alto detectado:")
                     print(f"  Predicción SBP/DBP: {pred_sbp:.2f} / {pred_dbp:.2f}")
@@ -180,6 +184,7 @@ def main():
                     plt.show()
             """
     print(f"numero de ventanas con errores: {n_error}")
+    np.save('indices_errores.npy', indices_errores)
     # Unimos todos los resultados para gráficos finales
     all_preds = np.concatenate(all_preds, axis=0)
     all_labels = np.concatenate(all_labels, axis=0)
@@ -225,6 +230,6 @@ def main():
     plt.show()
 
     #Gráfico Bland Altman
-    bland_altman_graf(all_preds, all_labels, title="Modelo convolucional Time32")
+    bland_altman_graf(all_preds, all_labels, title="Modelo convolucional V1")
 if __name__ == '__main__':
     main()

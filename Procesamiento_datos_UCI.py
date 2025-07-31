@@ -138,24 +138,6 @@ def signal_stats_analisis(signal):
     #return skewness_value, kurtosis_value, entropy_value
     return skewness_value, kurtosis_value, entropy_value
 
-def white_noise(signal, snr_db=20):
-    # Potencia de la señal
-    potencia_senal = np.mean(senal ** 2)
-
-    # Convertir SNR de dB a escala lineal
-    snr_lineal = 10 ** (snr_db / 10)
-
-    # Calcular la potencia del ruido deseada
-    potencia_ruido = potencia_senal / snr_lineal
-
-    # Generar ruido blanco gaussiano
-    ruido = np.random.normal(0, np.sqrt(potencia_ruido), senal.shape)
-
-    senal_con_ruido = senal + ruido
-
-    return senal_con_ruido
-
-
 def get_abp_labels(abp_signals):
     matriz_picos_sistolicos = []
     matriz_picos_diastolicos = []
@@ -318,9 +300,13 @@ def delete_signals_no_peaks(ppg, abp, ecg, presiones_sbp, presiones_dbp, indices
         diastolicos_filtrados
     )
 
+def get_num_patientsIDs(signals):
+    n_ids=0
+    for i in range(len(signals)):
+        n_ids=n_ids+1
+    return n_ids
 
-
-def save_partial_file(ppg_signals, ecg_signals, sbp_labels, dbp_labels, patient_id_inicial, nombre_archivo):
+def save_partial_file(ppg_signals, ecg_signals, sbp_labels, dbp_labels, patient_id_inicial, index_inicial, nombre_archivo):
     output_dir = 'data_UCI'
     os.makedirs(output_dir, exist_ok=True)
 
@@ -331,11 +317,13 @@ def save_partial_file(ppg_signals, ecg_signals, sbp_labels, dbp_labels, patient_
     data_path = os.path.join(output_dir, f'{nombre_archivo}_data.dat')
     labels_path = os.path.join(output_dir, f'{nombre_archivo}_labels.dat')
     patients_path = os.path.join(output_dir, f'{nombre_archivo}_patients.dat')
+    indexs_path = os.path.join(output_dir, f'{nombre_archivo}_indexs.dat')
 
     # Crear archivos memmap
     data_mmap = np.memmap(data_path, dtype='float32', mode='w+', shape=(num_total, 2, long_segmento))
     labels_mmap = np.memmap(labels_path, dtype='float32', mode='w+', shape=(num_total, 2))
     patients_mmap = np.memmap(patients_path, dtype='int64', mode='w+', shape=(num_total,))
+    indexs_mmap = np.memmap(indexs_path, dtype='int64', mode='w+', shape=(num_total,))
 
     index = 0
     for paciente_id, (ppg_segmentos, ecg_segmentos, sbp_segmentos, dbp_segmentos) in enumerate(zip(ppg_signals, ecg_signals, sbp_labels, dbp_labels)):
@@ -348,21 +336,26 @@ def save_partial_file(ppg_signals, ecg_signals, sbp_labels, dbp_labels, patient_
             data_mmap[index, 1] = ecg
             labels_mmap[index] = [sbp, dbp]
             patients_mmap[index] = paciente_id + patient_id_inicial
+            indexs_mmap[index] = index + index_inicial
             index += 1
 
     # Recortar arrays al número real de muestras válidas
     data_tensor = torch.from_numpy(np.array(data_mmap[:index]))
     labels_tensor = torch.from_numpy(np.array(labels_mmap[:index]))
     patients_tensor = torch.from_numpy(np.array(patients_mmap[:index]))
+    indexs_tensor = torch.from_numpy(np.array(indexs_mmap[:index]))
 
     # Guardar en archivo .pt
     torch.save({
         'data': data_tensor,
         'labels': labels_tensor,
-        'patient_ids': patients_tensor
-    }, os.path.join(output_dir, f'{nombre_archivo}.pt'))
+        'patient_ids': patients_tensor,
+        'index': indexs_tensor
+        }, os.path.join(output_dir, f'{nombre_archivo}.pt'))
 
     print(f"{nombre_archivo}.pt guardado con {index} muestras.")
+
+    return index
 #%% Carga de señales de Part_1.mat
 
 archivo_datos1 = "datos/Part_1.mat"
@@ -1354,16 +1347,26 @@ print(f"DBP_MEAN={DBP_MEAN:.2f}, DBP_STD={DBP_STD:.2f}")
 """
 #%%
 presiones_sistolicas_norm, presiones_diastolicas_norm= labels_normalization(sbp_depurada, dbp_depurada, SBP_MEAN, SBP_STD, DBP_MEAN, DBP_STD)
-#save_partial_file(ppg_normalized, ecg_normalized, presiones_sistolicas_norm, presiones_diastolicas_norm, 0, 'dataset_parte_1')
+index_1 = save_partial_file(ppg_normalized, ecg_normalized, presiones_sistolicas_norm, presiones_diastolicas_norm, 0, 0 , 'dataset_parte_1')
+num_pacientesIDs_1 = get_num_patientsIDs(ppg_normalized)
+print(f"Número de pacientes para archivo 1: {num_pacientesIDs_1}")
 #%%
 presiones_sistolicas_norm2, presiones_diastolicas_norm2= labels_normalization(sbp_depurada2, dbp_depurada2, SBP_MEAN, SBP_STD, DBP_MEAN, DBP_STD)
-#save_partial_file(ppg_normalized2, ecg_normalized2, presiones_sistolicas_norm2, presiones_diastolicas_norm2, 3000, 'dataset_parte_2')
+index_2 = save_partial_file(ppg_normalized2, ecg_normalized2, presiones_sistolicas_norm2, presiones_diastolicas_norm2, num_pacientesIDs_1, index_1, 'dataset_parte_2')
+num_pacientesIDs_2 = get_num_patientsIDs(ppg_normalized2)
+print(f"Número de pacientes para archivo 2: {num_pacientesIDs_2}")
+num_pacientesIDs_2 = num_pacientesIDs_2 + num_pacientesIDs_1
+
 #%%
 presiones_sistolicas_norm3, presiones_diastolicas_norm3= labels_normalization(sbp_depurada3, dbp_depurada3, SBP_MEAN, SBP_STD, DBP_MEAN, DBP_STD)
-#save_partial_file(ppg_normalized3, ecg_normalized3, presiones_sistolicas_norm3, presiones_diastolicas_norm3, 6000, 'dataset_parte_3')
+index_3 = save_partial_file(ppg_normalized3, ecg_normalized3, presiones_sistolicas_norm3, presiones_diastolicas_norm3, num_pacientesIDs_2, index_2,'dataset_parte_3')
+num_pacientesIDs_3 = get_num_patientsIDs(ppg_normalized3)
+print(f"Número de pacientes para archivo 3: {num_pacientesIDs_3}")
+num_pacientesIDs_3 = num_pacientesIDs_1 + num_pacientesIDs_2 + num_pacientesIDs_3   
 #%%
 presiones_sistolicas_norm4, presiones_diastolicas_norm4= labels_normalization(sbp_depurada4, dbp_depurada4, SBP_MEAN, SBP_STD, DBP_MEAN, DBP_STD)
-#save_partial_file(ppg_normalized4, ecg_normalized4, presiones_sistolicas_norm4, presiones_diastolicas_norm4, 9000, 'dataset_parte_4')
-
+index_4 = save_partial_file(ppg_normalized4, ecg_normalized4, presiones_sistolicas_norm4, presiones_diastolicas_norm4, num_pacientesIDs_3, index_3, 'dataset_parte_4')
+num_pacientesIDs_4 = get_num_patientsIDs(ppg_normalized4)
+print(f"Número de pacientes para archivo 3: {num_pacientesIDs_4}")
 
 

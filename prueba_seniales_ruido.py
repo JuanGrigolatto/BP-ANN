@@ -47,10 +47,20 @@ def aplicar_ruido_por_partes():
         indices_locales = np.where(mascara)[0]  # Posiciones dentro de este archivo
 
         if len(indices_locales) > 0:
-            senales[indices_locales] = white_noise_torch(
-                senales[indices_locales],
-                snr_db=20
-            )
+            # Extraer las señales con errores altos
+            senales_dificiles = senales[indices_locales]
+            etiquetas_dificiles = etiquetas[indices_locales]
+            IDs_dificiles = IDs[indices_locales]
+            indices_dificiles = indices_globales[indices_locales]
+
+            # Generar copias ruidosas
+            senales_ruidosas = white_noise_torch(senales_dificiles, snr_db=20)
+
+            # Concatenar al dataset original
+            senales = torch.cat([senales, senales_ruidosas], dim=0)
+            etiquetas = torch.cat([etiquetas, etiquetas_dificiles], dim=0)
+            IDs = torch.cat([IDs, IDs_dificiles], dim=0)
+            indices_globales = torch.cat([indices_globales, indices_dificiles], dim=0)
 
         # Guardar nuevo archivo 
         base_name = os.path.splitext(os.path.basename(archivo))[0]

@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import random
 
-def set_seed(seed=24):
+def set_seed(seed=42):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -22,6 +22,23 @@ def set_seed(seed=24):
 
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+
+def white_noise_torch(signal: torch.Tensor, snr_db: float = 20) -> torch.Tensor:
+    # Potencia de la señal
+    potencia_senal = torch.mean(signal ** 2)
+
+    # Convertir SNR de dB a escala lineal
+    snr_lineal = 10 ** (snr_db / 10)
+
+    # Calcular la potencia del ruido deseada
+    potencia_ruido = potencia_senal / snr_lineal
+
+    # Generar ruido blanco gaussiano
+    ruido = torch.randn_like(signal) * torch.sqrt(potencia_ruido)
+
+    senal_con_ruido = signal + ruido
+
+    return senal_con_ruido
 
 def main():
     # Configuración del dispositivo
@@ -59,9 +76,14 @@ def main():
     val_size = int(0.2 * total)
     test_size = total - train_size - val_size
 
+
     # Dividir aleatoriamente el dataset
     train_set, val_set, test_set = random_split(dataset_completo, [train_size, val_size, test_size])
 
+    # Guarda los índices originales del entrenamiento
+    train_indices = train_set.indices  
+    val_indices = val_set.indices
+    test_indices = test_set.indices
 
     print(f"Train: {len(train_set)}, Val: {len(val_set)}, Test: {len(test_set)}")
 
@@ -113,8 +135,9 @@ def main():
     model = model.to(device)  # Mueve el modelo a la GPU
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay= 1e-4)
     scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, min_lr=1e-6, verbose=True)    
-    criterion = torch.nn.MSELoss()  # MSELoss para regresión
-
+    criterion_train = torch.nn.MSELoss()  # MSELoss para regresión
+    criterion_valid = torch.nn.MSELoss(reduction='none') #error por muestra
+ 
     # ENTRENAMIENTO
     def train_one_step(batch):
         optimizer.zero_grad() # Reinicia los gradientes
@@ -129,7 +152,7 @@ def main():
         preds = model.forward(data) # Realiza la predicción
         #print("Preds:", preds[0])
         #print("Labels:", labels[0])
-        loss = criterion(preds, labels) # Calcula la pérdida
+        loss = criterion_train(preds, labels) # Calcula la pérdida
         """
         if torch.isnan(loss):
             print("¡Loss con NaN detectado! Abortando...")
@@ -144,15 +167,20 @@ def main():
         return loss.item() # Devuelve la pérdida
 
     def evaluate_one_step(batch):
+        
         with torch.no_grad():
-            data, labels, _, _ = batch
+            data, labels, _, index= batch
             data, labels = data.to(device), labels.to(device)
             preds = model.forward(data)
-            loss = criterion(preds, labels)
-            return loss.item()
+            loss = criterion_valid(preds, labels) # [B, 2]
+            sample_loss = loss.mean(dim=1)        # [B]
+            return sample_loss, index
     
     def train_one_epoch():    
         train_loss, valid_loss = 0.0, 0.0
+
+        all_errors = []
+        all_indexs = []
 
         model.train()
         for batch in training_generator:
@@ -162,10 +190,23 @@ def main():
 
         model.eval()    
         for batch in validation_generator:
-        #for batch in subset_loader:
-            valid_loss += evaluate_one_step(batch)
+       
+            sample_loss, sample_index = evaluate_one_step(batch)
+            valid_loss += sample_loss.mean().item()  # promedio del batch
+            all_errors.extend(sample_loss.cpu().numpy())
+            all_indexs.extend(sample_index.cpu().numpy())
 
-        return train_loss/len(training_generator), valid_loss/len(validation_generator)
+        all_errors = np.array(all_errors)
+
+        threshold = np.percentile(all_errors, 10)  # top 10% de errores
+        
+        indices_errores = []
+
+        for idx, err in zip(all_indexs, all_errors):
+            if err > threshold:
+                indices_errores.append(idx)
+
+        return train_loss/len(training_generator), valid_loss/len(validation_generator), indices_errores
     
     max_epochs = 100
     best_valid_loss = float('inf') 
@@ -173,12 +214,61 @@ def main():
     min_delta = 0.00002  # mejora mínima requerida
     patience = 5
     patience_significativa = 5
-  
+    max_augmentation = 1000
+    errores_augmentados = set()
+    total_augmented = 0
+
     for epoch in tqdm(range(max_epochs)):
-        train_l, valid_l = train_one_epoch()
+        train_l, valid_l, indices_errores = train_one_epoch()
         running_loss[epoch] = (train_l,valid_l)
-        print(f"[Época {epoch}] Train Loss: {train_l:.6f} - Valid Loss: {valid_l:.6f}")
+
         
+        print(f"[Época {epoch}] Train Loss: {train_l:.6f} - Valid Loss: {valid_l:.6f}")
+
+        if len(indices_errores) > 0 and epoch > 5:  # Filtra errores que ya fueron augmentados
+            nuevos_indices_errores = []
+            for idx in indices_errores:
+                if idx not in errores_augmentados:
+                    nuevos_indices_errores.append(idx)
+            
+            #Se limita solo a 1000 errores
+            indices_errores = nuevos_indices_errores[:max_augmentation] 
+
+            print(f"Errores no repetidos seleccionados para augmentación: {len(indices_errores)}")
+
+            if len(indices_errores) > 50:
+
+                errores_augmentados.update(indices_errores)
+                x_errores =  dataset_completo.data[indices_errores]
+                y_errores = dataset_completo.labels[indices_errores]
+                id_errores = dataset_completo.ID_patients[indices_errores]
+                index_errores = dataset_completo.index_muestra[indices_errores]
+
+                x_augmented = white_noise_torch(x_errores)
+                y_augmented = y_errores
+                id_augmented = id_errores
+                index_augmented = index_errores 
+
+                dataset_completo.data = torch.cat([dataset_completo.data, x_augmented], dim=0)
+                dataset_completo.labels = torch.cat([dataset_completo.labels, y_augmented], dim=0)
+                dataset_completo.ID_patients = torch.cat([dataset_completo.ID_patients, id_augmented], dim=0)
+                dataset_completo.index_muestra= torch.cat([dataset_completo.index_muestra, index_augmented], dim=0)
+                
+                total_augmented += len(x_augmented)
+                print(f"Total augmentado acumulado: {total_augmented}")
+                #Se actualiza train_set para agregar las muestras aumentadas al final
+            
+                #Indices de muestras agregadas
+                nuevos_indices = list(range(len(dataset_completo) - len(x_augmented), len(dataset_completo)))
+                train_indices.extend(nuevos_indices)
+            
+                train_set = torch.utils.data.Subset(dataset_completo, train_indices)
+                training_generator = torch.utils.data.DataLoader(train_set, **parameters)
+
+
+                print(f"Se realiza data augmentation con {len(x_errores)} muestras")
+            
+
         improvement = best_valid_loss - valid_l
 
         if valid_l < best_valid_loss:
@@ -189,7 +279,7 @@ def main():
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': valid_l
-            }, 'best_model_conv_v1.pt')
+            }, 'Best_models/best_model_conv_v1_aug.pt')
             print(f"Nuevo mejor modelo guardado (valid_loss = {valid_l:.6f})")
 
             
@@ -201,7 +291,6 @@ def main():
             no_improvement_count += 1
             no_significant_improvement_count += 1
 
-        
         if no_improvement_count >= patience:
             print(f"Early stopping por falta de mejoras (últimas {patience} épocas).")
             break

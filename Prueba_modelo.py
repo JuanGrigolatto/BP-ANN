@@ -74,7 +74,7 @@ def main():
     
     #dataloader = torch.utils.data.DataLoader(dataset, **parameters)
 
-    path_model = 'best_model_conv_v1.pt'
+    path_model = 'Best_models/best_model_conv_v1_aug.pt'
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     #model = InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32)
@@ -230,6 +230,6 @@ def main():
     plt.show()
 
     #Gráfico Bland Altman
-    bland_altman_graf(all_preds, all_labels, title="Modelo convolucional V1")
+    bland_altman_graf(all_preds, all_labels, title="Modelo convolucional V1 - Data Augmentation (1000)")
 if __name__ == '__main__':
     main()

@@ -23,7 +23,7 @@ def set_seed(seed=42):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-def white_noise_torch(signal: torch.Tensor, snr_db: float = 20) -> torch.Tensor:
+def white_noise_torch(signal: torch.Tensor, snr_db = random.randint(10, 30)) -> torch.Tensor:
     # Potencia de la señal
     potencia_senal = torch.mean(signal ** 2)
 
@@ -237,6 +237,7 @@ def main():
             print(f"Errores no repetidos seleccionados para augmentación: {len(indices_errores)}")
 
             if len(indices_errores) > 50:
+
 
                 errores_augmentados.update(indices_errores)
                 x_errores =  dataset_completo.data[indices_errores]

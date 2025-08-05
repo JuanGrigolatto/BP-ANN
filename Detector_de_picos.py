@@ -48,7 +48,7 @@ def filtrar_ppg(senial_ppg):
 
     w, h = signal.freqz(b,a, worN=8000, fs=125)
 
-    ppg_filtrada = signal.filtfilt(b,a, ppg_muestras[i].numpy())
+    ppg_filtrada = signal.filtfilt(b,a, senial_ppg)
 
     """
     plt.subplot(2, 1, 2)
@@ -69,6 +69,26 @@ def filtrar_ppg(senial_ppg):
     
     return ppg_filtrada
 
+def filtrar_ecg(senial_ecg):
+    orden = 4
+    frec_sup = 40
+    frec_inf = 0.5
+
+    frecs_corte = [frec_inf, frec_sup]
+    b, a = signal.butter(orden, frecs_corte, 'bandpass', fs = 125)
+
+    w, h = signal.freqz(b,a, worN=8000, fs=125)
+
+    ecg_filtrada = signal.filtfilt(b,a, senial_ecg)
+
+    # Línea de base estimada con media móvil
+    baseline = np.convolve(ecg_filtrada, np.ones(125)/125, mode='same')
+
+    # Señal sin línea de base
+    ecg_filtrada = ecg_filtrada - baseline
+
+    return ecg_filtrada
+
 def filtrar_picos_por_distancia(peaks, min_distance = 40):
 
     picos_filtrados = [peaks[0]]
@@ -82,8 +102,9 @@ def filtrar_picos_por_distancia(peaks, min_distance = 40):
 def extraer_pulso_ecg_fixed_length(signal, fs=125, ancho_pulso=100):
         wd, m = hp.process(signal, fs)
         peaks = wd['peaklist']
+        print(wd.keys())
 
-        intervalos_rr = wd['rr_list']  # Lista de intervalos RR en milisegundos
+        intervalos_rr = wd['RR_list']  # Lista de intervalos RR en milisegundos
 
         frec_cardiaca = m['bpm'] / 60  # Frecuencia cardiaca en Hz
 
@@ -94,16 +115,38 @@ def extraer_pulso_ecg_fixed_length(signal, fs=125, ancho_pulso=100):
         print(f"Frecuencia cardiaca: {frec_cardiaca:.2f} Hz")
         print(f"Picos detectados ECG: {len(peaks)}")
 
-        window_pre = int(0.4 * fs)  # Ventana de 0.4 segundos antes del pico
-        window_post = int(0.6 * fs)  # Ventana de 0.6 segundos después del pico
-
-        
-
-
         if len(peaks) < 2:
             return None
-        
-    
+
+        #Recorte de la señal
+        segmentos = []
+        foots_ecg = []
+        for i in range(len(peaks)-1):
+            
+            #ignora el primer y ultimo pico
+            if i>0 and i < len(peaks):
+                pre_qrs=int(0.25 * intervalos_rr[i])   # para incluir onda P
+                post_qrs=int(0.45 * intervalos_rr[i])  # para incluir onda T
+
+                inicio = max(0, peaks[i] - pre_qrs)
+                fin = min(len(signal), peaks[i] + post_qrs)
+            
+
+                foots_ecg.append(inicio)
+                foots_ecg.append(fin)
+                onda_ecg = signal[inicio:fin]
+
+                largo_actual = len(onda_ecg)
+                if largo_actual >= ancho_pulso:
+                    onda_seg = onda_ecg[:ancho_pulso]
+            
+                else:
+                    onda_seg = np.zeros(ancho_pulso)
+                    onda_seg[:largo_actual] = onda_ecg
+
+                segmentos.append(onda_seg)
+
+        return segmentos, peaks, foots_ecg
 
     
 def extraer_pulso_ppg_fixed_length(signal, fs=125, ancho_pulso=100):
@@ -167,19 +210,21 @@ def extraer_pulso_ppg_fixed_length(signal, fs=125, ancho_pulso=100):
 archivo = 'data_UCI/dataset_parte_2.pt'
 data = torch.load(archivo)
 ppg_muestras = data['data'][:, 0, :]  # Todas las muestras, canal PPG
+ecg_muestras = data['data'][:, 1, :]  # Todas las muestras, canal ECG
 
 i=10001
 
 #ppg_muestras_ruido = white_noise_torch(ppg_muestras[i], 10)
 ppg_filtrada = filtrar_ppg(ppg_muestras[i].numpy())
-pulsos_segmented, peaks, foots = extraer_pulso_ppg_fixed_length(ppg_filtrada)
+ecg_filtrada = filtrar_ecg(ecg_muestras[i].numpy())
+pulsos_segmented_ppg, peaks_ppg, foots_ppg = extraer_pulso_ppg_fixed_length(ppg_filtrada)
+pulsos_segmented_ecg, peaks_ecg, foots_ecg= extraer_pulso_ecg_fixed_length(ecg_filtrada) 
 
-
-if pulsos_segmented is not None:
+if pulsos_segmented_ppg is not None:
     plt.figure(figsize=(12, 5))
     plt.plot(ppg_filtrada, label='Señal PPG', color='blue')
-    plt.plot(peaks, ppg_filtrada[peaks], 'ro', label='Picos')
-    plt.plot(foots, ppg_filtrada[foots], 'go', label='Foots')
+    plt.plot(peaks_ppg, ppg_filtrada[peaks_ppg], 'ro', label='Picos')
+    plt.plot(foots_ppg, ppg_filtrada[foots_ppg], 'go', label='Foots')
     #plt.plot(ppg_muestras_ruido.numpy(), label='Señal PPG', color='blue')
     #plt.plot(peaks, ppg_muestras_ruido[peaks].numpy(), 'ro', label='Picos')
     #plt.plot(foots, ppg_muestras_ruido[foots].numpy(), 'go', label='Foots')
@@ -190,11 +235,30 @@ if pulsos_segmented is not None:
     plt.grid(True)
     plt.tight_layout()
     plt.show()
-    print(f"Se detectaron {len(pulsos_segmented)} pulsos en la señal.")
-    print(f"Picos detectados: {len(peaks)}, Foots detectados: {len(foots)}")
+    print(f"Se detectaron {len(pulsos_segmented_ppg)} pulsos en la señal.")
+    print(f"Picos detectados: {len(peaks_ppg)}, Foots detectados: {len(foots_ppg)}")
 else:
     print("Todo lo que pudo fallar lo hizo")
 
 
+if pulsos_segmented_ecg is not None:
+    plt.figure(figsize=(12, 5))
+    plt.plot(ecg_filtrada, label='Señal ECG', color='blue')
+    plt.plot(peaks_ecg, ecg_filtrada[peaks_ecg], 'ro', label='Picos')
+    plt.plot(foots_ecg, ecg_filtrada[foots_ecg], 'go', label='Foots')
+    #plt.plot(ppg_muestras_ruido.numpy(), label='Señal PPG', color='blue')
+    #plt.plot(peaks, ppg_muestras_ruido[peaks].numpy(), 'ro', label='Picos')
+    #plt.plot(foots, ppg_muestras_ruido[foots].numpy(), 'go', label='Foots')
+    plt.xlabel('Muestras')
+    plt.ylabel('Amplitud')
+    plt.title('Detección de Picos y Foots en Señal de ecg')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+    print(f"Se detectaron {len(pulsos_segmented_ecg)} pulsos en la señal.")
+    print(f"Picos detectados: {len(peaks_ecg)}, Foots detectados: {len(foots_ecg)}")
+else:
+    print("Todo lo que pudo fallar lo hizo")
 
 

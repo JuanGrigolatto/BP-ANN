@@ -1,3 +1,7 @@
+## @file Entrenamiento_alt.py
+#  @brief Entrenamiento y augmentación de modelos de machine learning para estimación de la presión arterial.
+#  @author [Juan Marcos Grigolatto]
+#  @date 2025-08-01
 import torch
 from Clase_UCIDataset import UCIDataset
 import os
@@ -13,6 +17,8 @@ import matplotlib.pyplot as plt
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import random
 
+## @brief Define una semilla para reproducibilidad del entrenamiento. Reproduce los datos de entrenamiento, validación y prueba.
+#  @param seed Valor de la semilla (por defecto 42).
 def set_seed(seed=42):
     random.seed(seed)
     np.random.seed(seed)
@@ -23,6 +29,10 @@ def set_seed(seed=42):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
+## @brief Añade ruido blanco gaussiano a una señal torch.
+#  @param signal Tensor de la señal.
+#  @param snr_db Relación señal/ruido en dB.
+#  @return Tensor con ruido añadido.
 def white_noise_torch(signal: torch.Tensor, snr_db = random.randint(10, 30)) -> torch.Tensor:
     # Potencia de la señal
     potencia_senal = torch.mean(signal ** 2)
@@ -40,8 +50,9 @@ def white_noise_torch(signal: torch.Tensor, snr_db = random.randint(10, 30)) -> 
 
     return senal_con_ruido
 
+## @brief Función principal de entrenamiento, validación y augmentación de datos.
 def main():
-    # Configuración del dispositivo
+    # Configuración de parámetros para DataLoader
     parameters = {
         'batch_size': 256,
         'shuffle': True,
@@ -49,19 +60,7 @@ def main():
         'pin_memory': False
     }
     set_seed(42)
-    """
-    print(os.path.exists('data_UCI/dataset_completo.pt'))
-    dataset = UCIDataset('data_UCI/dataset_completo.pt')
-    
-    
-    train_size = int(0.8 * len(dataset))
-    val_size = len(dataset) - train_size
-    
-    training_set, validation_set = random_split(dataset, [train_size, val_size])
-    
-    training_generator = torch.utils.data.DataLoader(training_set, **parameters)
-    validation_generator = torch.utils.data.DataLoader(validation_set, **parameters)
-    """
+
     archivos = [
     'data_UCI/dataset_parte_1.pt',
     'data_UCI/dataset_parte_2.pt',
@@ -69,6 +68,8 @@ def main():
     'data_UCI/dataset_parte_4.pt',
     ]
 
+    ## @var dataset_completo
+    #  Dataset combinado de todas las partes.
     dataset_completo = UCIDataset(archivos)
 
     total = len(dataset_completo)
@@ -77,10 +78,10 @@ def main():
     test_size = total - train_size - val_size
 
 
-    # Dividir aleatoriamente el dataset
+    # División aleatoria del dataset en entrenamiento, validación y prueba
     train_set, val_set, test_set = random_split(dataset_completo, [train_size, val_size, test_size])
 
-    # Guarda los índices originales del entrenamiento
+    # Guarda los índices originales de cada subconjunto
     train_indices = train_set.indices  
     val_indices = val_set.indices
     test_indices = test_set.indices
@@ -90,6 +91,7 @@ def main():
     training_generator = torch.utils.data.DataLoader(train_set, **parameters)
     validation_generator = torch.utils.data.DataLoader(val_set, **parameters)
 
+    # Extracción y guardado del set de test
     test_signals = []
     test_labels = []
     test_IDs = []
@@ -101,36 +103,24 @@ def main():
         test_IDs.append(IDs)
         test_index.append(index)
 
-    # listas a tensores
+    # Conversión de listas a tensores y guardado en archivo .pt
     test_signals = torch.stack(test_signals)
     test_labels = torch.stack(test_labels)
     test_IDs = torch.stack(test_IDs)
     test_index = torch.stack(test_index)
     
-    # Guardado en un archivo .pt
+    
     torch.save({'data': test_signals, 'labels': test_labels,'patient_ids': test_IDs,'index':test_index} ,'data_UCI/test_set.pt')
     print("data_UCI/test_set.pt guardado")
-    #Subset para testeo de modelos sin entrenamiento completo
-    """
-    subset_size = int(0.5 * len(dataset))  # 10%
-    subset_indices = np.random.choice(len(dataset), subset_size, replace=False)
-    subset = torch.utils.data.Subset(dataset, subset_indices)
-    subset_loader = torch.utils.data.DataLoader(subset, **parameters)
-    """
 
-    # Crear el modelo
+    # Creación del modelo de estimación de presión arterial
 
     #model=InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32)
     #model=Modelo_Convolucional(in_channels=2,out_channels=2, long_signal=250)
     model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=1250)
     #model=Modelo_ConvolucionalV2(in_channels=2,out_channels=2, long_signal=1250)
     # Añade esto después de crear el modelo
-    """
-    for layer in model.modules():
-        if isinstance(layer, (torch.nn.Conv1d, torch.nn.Linear)):
-            torch.nn.init.xavier_uniform_(layer.weight)
-            torch.nn.init.zeros_(layer.bias)
-    """   
+  
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)  # Mueve el modelo a la GPU
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay= 1e-4)
@@ -138,34 +128,24 @@ def main():
     criterion_train = torch.nn.MSELoss()  # MSELoss para regresión
     criterion_valid = torch.nn.MSELoss(reduction='none') #error por muestra
  
-    # ENTRENAMIENTO
+    ## @brief Realiza un paso de entrenamiento (entrena el modelo con un lote de datos).
+    #  @param batch Lote de datos.
+    #  @return Pérdida del lote.
     def train_one_step(batch):
         optimizer.zero_grad() # Reinicia los gradientes
         data, labels, _, _ = batch # Obtiene los datos y etiquetas
         data, labels = data.to(device), labels.to(device) # Mueve los datos y etiquetas a la GPU
         
-        #print("Rango de datos:", torch.min(data).item(), torch.max(data).item())
-
-        #for name, param in model.named_parameters():
-        #    print(f"{name}: mean={param.mean().item():.4f}, std={param.std().item():.4f}")
-
         preds = model.forward(data) # Realiza la predicción
-        #print("Preds:", preds[0])
-        #print("Labels:", labels[0])
+        
         loss = criterion_train(preds, labels) # Calcula la pérdida
-        """
-        if torch.isnan(loss):
-            print("¡Loss con NaN detectado! Abortando...")
-            print("Preds:", preds[0])
-            print("Labels:", labels[0])
-            exit()
-        """
         loss.backward() # Calcula los gradientes mediante backpropagation
-        # Añade gradient clipping (busca evitar explosión de gradiente)
-        #torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optimizer.step() # Actualiza los parámetros del modelo
         return loss.item() # Devuelve la pérdida
 
+    ## @brief Evalúa un lote de validación.
+    #  @param batch Lote de datos.
+    #  @return Pérdida por muestra y los índices.
     def evaluate_one_step(batch):
         
         with torch.no_grad():
@@ -176,6 +156,8 @@ def main():
             sample_loss = loss.mean(dim=1)        # [B]
             return sample_loss, index
     
+    ## @brief Entrena y valida una época completa.
+    #  @return Tupla con loss de entrenamiento, validación e índices de errores altos.
     def train_one_epoch():    
         train_loss, valid_loss = 0.0, 0.0
 
@@ -208,6 +190,7 @@ def main():
 
         return train_loss/len(training_generator), valid_loss/len(validation_generator), indices_errores
     
+    # Entrenamiento principal con augmentación de datos
     max_epochs = 100
     best_valid_loss = float('inf') 
     running_loss = np.zeros(shape=(max_epochs, 2))
@@ -257,6 +240,7 @@ def main():
                 
                 total_augmented += len(x_augmented)
                 print(f"Total augmentado acumulado: {total_augmented}")
+
                 #Se actualiza train_set para agregar las muestras aumentadas al final
             
                 #Indices de muestras agregadas
@@ -301,6 +285,7 @@ def main():
 
         scheduler.step(valid_l)
 
+    # Graficar curva de pérdida
     fig, ax = plt.subplots(figsize=(7, 4), tight_layout=True)
     ax.plot(running_loss[:epoch, 0], label='Entrenamiento')
     ax.plot(running_loss[:epoch, 1], label='Validación')

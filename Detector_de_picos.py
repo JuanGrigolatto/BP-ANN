@@ -149,7 +149,7 @@ def extraer_pulso_ecg_fixed_length(signal, fs=125, ancho_pulso=100):
         return segmentos, peaks, foots_ecg
 
     
-def extraer_pulso_ppg_fixed_length(signal, fs=125, ancho_pulso=100):
+def extraer_pulso_ppg_fixed_length(signal, fs=125, ancho_pulso=500, num_picos=5):
     # Procesar con heartpy para obtener picos sistólicos
    
     try:
@@ -186,7 +186,7 @@ def extraer_pulso_ppg_fixed_length(signal, fs=125, ancho_pulso=100):
     # Verifica que haya al menos un pulso completo
     if len(foots) < 2:
         return None
-    
+    blanking = 100
     pulsos_segmented = []
     
     for i in range(len(foots)-1):
@@ -212,7 +212,7 @@ data = torch.load(archivo)
 ppg_muestras = data['data'][:, 0, :]  # Todas las muestras, canal PPG
 ecg_muestras = data['data'][:, 1, :]  # Todas las muestras, canal ECG
 
-i=10001
+i=0
 
 #ppg_muestras_ruido = white_noise_torch(ppg_muestras[i], 10)
 ppg_filtrada = filtrar_ppg(ppg_muestras[i].numpy())

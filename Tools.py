@@ -211,8 +211,15 @@ def detectar_picos_ecg(ecg, fs=125, hr_min=40, hr_max=180):
     return peaks
 
 # Ventaneo
+def recortar_por_ventanas_cuadradas(signal, fs, t_window, overlap):
+    window_size = fs * t_window  # Tamaño de la ventana en muestras
+    step = int(window_size * (1 - overlap))  # Paso entre ventanas
+    windows = []
+    for i in range(0, len(signal) - window_size + 1, step):
+        windows.append(signal[i:i + window_size])
+    return np.array(windows)
 
-def recortar_por_ventanas_fijas(senial, fs = 125, window ='Hamming', t_duration = 10, overlap = 0.7):
+def recortar_por_ventanas_no_cuadradas(senial, fs = 125, window ='Hamming', t_duration = 10, overlap = 0.7):
     window_width = t_duration * fs
     
     if window == 'Hamming':

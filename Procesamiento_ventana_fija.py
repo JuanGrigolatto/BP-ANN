@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import random
 #%% Procesamiento 
 
-# Carga de señales
-ppg_signal, abp_signal, ecg_signal = Tools.leer_archivos_mat("datos/Part_1.mat") 
+#%%Carga de señales
+ppg_signal, abp_signal, ecg_signal = Tools.leer_archivos_mat("datos/Part_4.mat") 
 print(f"Cantidad de señales cargadas: {len(ppg_signal)}, {len(ecg_signal)}, {len(abp_signal)}")
 """
 indice_paciente = 0 
@@ -30,28 +30,72 @@ plt.ylabel('Amplitud')
 plt.tight_layout()
 plt.show()
 """
-#Filtrado de señales
+#%%Filtrado de señales
 ppg_signal_filtrada = []
 ecg_signal_filtrada = []
 
 for i in range(len(ppg_signal)):
     ppg_signal_filtrada.append(Tools.filtrar_ppg(ppg_signal[i]))
     ecg_signal_filtrada.append(Tools.filtrar_ecg(ecg_signal[i]))
+"""
+indice_paciente = 0 
+plt.figure(figsize=(12, 8))
 
+plt.subplot(3, 1, 1)
+plt.plot(ppg_signal_filtrada[indice_paciente][:1000], color='red')
+plt.title(f'PPG - Paciente {indice_paciente}')
+plt.ylabel('Amplitud')
+
+plt.subplot(3, 1, 2)
+plt.plot(abp_signal[indice_paciente][:1000], color='blue')
+plt.title(f'ABP - Paciente {indice_paciente}')
+plt.ylabel('Presión (mmHg)')
+
+plt.subplot(3, 1, 3)
+plt.plot(ecg_signal_filtrada[indice_paciente][:1000], color='green')
+plt.title(f'ECG - Paciente {indice_paciente}')
+plt.xlabel('Muestras')
+plt.ylabel('Amplitud')
+
+plt.tight_layout()
+plt.show()
+"""
 print(f"Cantidad de señales post filtrado: {len(ppg_signal_filtrada)}, {len(ecg_signal_filtrada)}")
-#Ventaneo con ventanas de 10 seg y Hanning
+#%%Ventaneo con ventanas de 10 seg y Hanning
 
 ppg_segmentada = []
 ecg_segmentada = []
 abp_segmentada = []
 for j in range(len(ppg_signal_filtrada)):
-    ppg_segmentada.append(Tools.recortar_por_ventanas_fijas(ppg_signal_filtrada[j], window = 'Hanning')) 
-    ecg_segmentada.append(Tools.recortar_por_ventanas_fijas(ecg_signal_filtrada[j], window = 'Hanning')) 
-    abp_segmentada.append(Tools.recortar_por_ventanas_fijas(abp_signal[j], window = 'Hanning'))
+    ppg_segmentada.append(Tools.recortar_por_ventanas_no_cuadradas(ppg_signal_filtrada[j], window = 'Hanning', overlap=0.7)) 
+    ecg_segmentada.append(Tools.recortar_por_ventanas_no_cuadradas(ecg_signal_filtrada[j], window = 'Hanning', overlap=0.7)) 
+    abp_segmentada.append(Tools.recortar_por_ventanas_cuadradas(abp_signal[j], fs=125 ,t_window=10, overlap=0.7))
 
 print(f"Cantidad de ventanas: {len(ppg_segmentada)}, {len(ecg_segmentada)}")
+"""
+indice_paciente = 0 
+plt.figure(figsize=(12, 8))
 
-#Obtención de etiquetas
+plt.subplot(3, 1, 1)
+plt.plot(ppg_segmentada[indice_paciente][0], color='red')
+plt.title(f'PPG - Paciente {indice_paciente}')
+plt.ylabel('Amplitud')
+
+plt.subplot(3, 1, 2)
+plt.plot(abp_segmentada[indice_paciente][0], color='blue')
+plt.title(f'ABP - Paciente {indice_paciente}')
+plt.ylabel('Presión (mmHg)')
+
+plt.subplot(3, 1, 3)
+plt.plot(ecg_segmentada[indice_paciente][0], color='green')
+plt.title(f'ECG - Paciente {indice_paciente}')
+plt.xlabel('Muestras')
+plt.ylabel('Amplitud')
+
+plt.tight_layout()
+plt.show()
+"""
+#%%Obtención de etiquetas
 presiones_sistolicas, presiones_diastolicas, indices_sistolicos, indices_diastolicos = Tools.get_abp_labels(abp_segmentada, fs=125)
 
 #Eliminación de señales sin picos de presión detectados
@@ -100,7 +144,7 @@ DBP_STD = 23.69
 presiones_sistolicas_norm, presiones_diastolicas_norm= Tools.labels_normalization(sbp_depurada, dbp_depurada, SBP_MEAN, SBP_STD, DBP_MEAN, DBP_STD)
 
 #Guardado de indice final de paciente 
-index = Tools.save_partial_file(ppg_depurada, ecg_depurada, presiones_sistolicas_norm, presiones_diastolicas_norm, 0, 0 , 'dataset_parte_1_hanning')
+index = Tools.save_partial_file(ppg_depurada, ecg_depurada, presiones_sistolicas_norm, presiones_diastolicas_norm, 8175, 640108 , 'dataset_parte_4_hanning')
 
 num_pacientesIDs = Tools.get_num_patientsIDs(ppg_depurada)
 

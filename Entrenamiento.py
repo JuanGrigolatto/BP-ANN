@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import random
 
-def set_seed(seed=24):
+def set_seed(seed=42):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -46,10 +46,10 @@ def main():
     validation_generator = torch.utils.data.DataLoader(validation_set, **parameters)
     """
     archivos = [
-    'data_UCI/dataset_parte_1.pt',
-    'data_UCI/dataset_parte_2.pt',
-    'data_UCI/dataset_parte_3.pt',
-    'data_UCI/dataset_parte_4.pt',
+    'data_UCI/dataset_parte_1_hanning.pt',
+    'data_UCI/dataset_parte_2_hanning.pt',
+    'data_UCI/dataset_parte_3_hanning.pt',
+    'data_UCI/dataset_parte_4_hanning.pt',
     ]
 
     dataset_completo = UCIDataset(archivos)
@@ -189,7 +189,7 @@ def main():
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': valid_l
-            }, 'best_model_conv_v1.pt')
+            }, 'best_model_conv_v1_hanning.pt')
             print(f"Nuevo mejor modelo guardado (valid_loss = {valid_l:.6f})")
 
             

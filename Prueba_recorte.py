@@ -269,16 +269,54 @@ plt.legend()
 plt.tight_layout()
 plt.show()
 # %% Recorte de pulsos PPG y ECG a longitud variable 
-def recortar_por_picos(senial, peaks, fs=125):
-    segments = []
-    for i in range(len(peaks) - 1):
-        center_peak = peaks[i+2]
-        intervalo_rr_first = peaks[i+1] - peaks[i]
-        intervalo_rr_last = peaks[i+3] - peaks[i+2] 
+def recortar_por_picos(seniales, list_peaks, overlap_peaks=4):
+    all_segments = []
+    all_starts = []
+    all_stops = []
+    
+    for senial, peaks in zip(seniales, list_peaks):
+        i=0
+        segments = []
+        starts = []
+        stops = []        
+        while i < (len(peaks) - 4):
         
-        pre_qrs=int(0.25 * intervalo_rr_first)   # para incluir onda P
-        post_qrs=int(0.45 *intervalo_rr_last)  # para incluir onda T
+            intervalo_rr_first = peaks[i+1] - peaks[i]
+            intervalo_rr_last = peaks[i+4] - peaks[i+3] 
+        
+            pre_qrs=int(0.25 * intervalo_rr_first)   # para incluir onda P 
+            post_qrs=int(0.45 *intervalo_rr_last)   # para incluir onda T
 
+            start = max(0, peaks[i] - pre_qrs)
+            stop  = min(len(senial), peaks[i+4] + post_qrs)
 
+            window = senial[start:stop]
 
+            starts.append(start)
+            stops.append(stop)
+            segments.append(window)
 
+            avance = max(1, overlap_peaks)  # avance mínimo de 1 pico
+            i += avance
+
+        all_segments.append(segments)
+        all_starts.append(starts)
+        all_stops.append(stops)
+
+    return all_segments, all_starts, all_stops
+
+#Segmentación de señales
+ecg_signal_segmented, starts_ecg, stops_ecg = recortar_por_picos(ecg_signal, picos_ecg, 0)
+
+#%% Graficación de recortes
+
+plt.figure(figsize=(12, 6))
+for k in range(10):
+    plt.subplot(10, 1, k + 1)
+    plt.plot(ecg_signal_segmented[1740][k], label='Señal de ECG', color='blue')
+    plt.title(f'Señal de ECG segmentada {k + 1}')
+    plt.xlabel('muestras')
+    plt.ylabel('Amplitud')
+    plt.legend()
+
+# %%

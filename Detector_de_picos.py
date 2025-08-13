@@ -99,6 +99,13 @@ def filtrar_picos_por_distancia(peaks, min_distance = 40):
     
     return picos_filtrados
 
+def filtrar_picos_en_extremos(signal, peaks, blanking=100):
+    picos_filtrados = []
+    for pico in peaks:
+        if pico >= blanking and pico <= len(signal) - blanking:
+            picos_filtrados.append(pico)
+    return picos_filtrados
+
 def extraer_pulso_ecg_fixed_length(signal, fs=125, ancho_pulso=100):
         wd, m = hp.process(signal, fs)
         peaks = wd['peaklist']
@@ -124,7 +131,7 @@ def extraer_pulso_ecg_fixed_length(signal, fs=125, ancho_pulso=100):
         for i in range(len(peaks)-1):
             
             #ignora el primer y ultimo pico
-            if i>0 and i < len(peaks):
+            if i > 0 and i < len(peaks):
                 pre_qrs=int(0.25 * intervalos_rr[i])   # para incluir onda P
                 post_qrs=int(0.45 * intervalos_rr[i])  # para incluir onda T
 

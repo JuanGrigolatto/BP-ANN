@@ -210,6 +210,20 @@ def detectar_picos_ecg(ecg, fs=125, hr_min=40, hr_max=180):
     peaks, _ = signal.find_peaks(ecg, height=height, prominence=prominence, distance=distancia_min)
     return peaks
 
+def detectar_picos_abp(abp, fs=125):
+    max_val = np.max(abp)
+    min_val = np.min(abp)
+    rango = max_val - min_val
+
+    prominence = 0.2 * rango
+    height_sbp = min_val + 0.6 * rango
+    height_dbp = min_val + 0.2 * rango
+    distancia_min = int(0.3 * fs)
+
+    peaks, _ = find_peaks(abp, height=height_sbp, prominence=prominence, distance=distancia_min)
+
+    return peaks
+
 # Ventaneo
 def recortar_por_ventanas_cuadradas(signal, fs, t_window, overlap):
     window_size = fs * t_window  # Tamaño de la ventana en muestras
@@ -276,6 +290,59 @@ def recortar_por_picos(seniales, list_peaks, overlap_peaks=4):
         all_stops.append(stops)
 
     return all_segments, all_starts, all_stops
+
+def adjust_window(win, max_len):
+    if len(win) < max_len:
+        return np.pad(win, (0, max_len - len(win)), mode='constant')
+    elif len(win) > max_len:
+        center = len(win)//2
+        start_cut = max(0, center - max_len//2)
+        return win[start_cut:start_cut + max_len]
+    else:
+        return win
+
+def recortar_por_picos_sincronizado(ppg, abp, ecg, peaks, overlap_peaks=4, lenght_segment=500):
+    
+    segments_ppg = []
+    segments_abp = []
+    segments_ecg = []
+    
+    starts = []
+    stops = []
+    
+    i = 0
+
+    while i < (len(peaks) - 4):
+        
+            intervalo_rr_first = peaks[i+1] - peaks[i]
+            intervalo_rr_last = peaks[i+4] - peaks[i+3] 
+        
+            pre_qrs=int(0.25 * intervalo_rr_first)   # para incluir onda P 
+            post_qrs=int(0.45 *intervalo_rr_last)   # para incluir onda T
+
+            start = max(0, peaks[i] - pre_qrs)
+            stop  = min(len(ecg), peaks[i+4] + post_qrs)
+
+            window_ecg = ecg[start:stop]
+            window_ppg = ppg[start:stop]
+            window_abp = abp[start:stop]
+
+            window_ecg = adjust_window(window_ecg, lenght_segment)
+            window_ppg = adjust_window(window_ppg, lenght_segment)
+            window_abp = adjust_window(window_abp, lenght_segment)
+
+            segments_ecg.append(window_ecg)
+            segments_ppg.append(window_ppg)
+            segments_abp.append(window_abp)    
+
+            starts.append(start)
+            stops.append(stop)
+            # Avanzar al siguiente pico
+            avance = max(1, overlap_peaks)  # avance mínimo de 1 pico
+            i += avance
+            
+    return segments_ppg, segments_abp, segments_ecg, starts, stops
+
 
 # Analisis estadistico de señales
 

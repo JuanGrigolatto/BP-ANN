@@ -67,9 +67,9 @@ ppg_segmentada = []
 ecg_segmentada = []
 abp_segmentada = []
 for j in range(len(ppg_signal_filtrada)):
-    ppg_segmentada.append(Tools.recortar_por_ventanas_no_cuadradas(ppg_signal_filtrada[j], window = 'Hanning', overlap=0.7)) 
-    ecg_segmentada.append(Tools.recortar_por_ventanas_no_cuadradas(ecg_signal_filtrada[j], window = 'Hanning', overlap=0.7)) 
-    abp_segmentada.append(Tools.recortar_por_ventanas_cuadradas(abp_signal[j], fs=125 ,t_window=10, overlap=0.7))
+    ppg_segmentada.append(Tools.recortar_por_ventanas_no_cuadradas(ppg_signal_filtrada[j], window = 'Hanning', t_duration=4, overlap=0.7)) 
+    ecg_segmentada.append(Tools.recortar_por_ventanas_no_cuadradas(ecg_signal_filtrada[j], window = 'Hanning', t_duration=4, overlap=0.7)) 
+    abp_segmentada.append(Tools.recortar_por_ventanas_cuadradas(abp_signal[j], fs=125 ,t_window=4, overlap=0.7))
 
 print(f"Cantidad de ventanas: {len(ppg_segmentada)}, {len(ecg_segmentada)}")
 """
@@ -105,7 +105,7 @@ ppg_depurada, abp_depurada, ecg_depurada, sbp_depurada, dbp_depurada, indices_si
 #Normalización de señales por ventana
 ppg_norm, abp_norm, ecg_norm = Tools.signal_normalization(ppg_depurada, abp_depurada, ecg_depurada)
 print(f"Cantidad de ventanas normalizadas: {len(ppg_segmentada)}, {len(ecg_segmentada)} ")
-
+"""
 num_muestras=10
 for i in range(num_muestras):
 
@@ -132,7 +132,7 @@ for i in range(num_muestras):
     plt.grid(True)
     plt.tight_layout()
     plt.show()
-
+"""
 #Normalización de etiquetas
 
 SBP_MEAN = 134.02
@@ -144,7 +144,7 @@ DBP_STD = 23.69
 presiones_sistolicas_norm, presiones_diastolicas_norm= Tools.labels_normalization(sbp_depurada, dbp_depurada, SBP_MEAN, SBP_STD, DBP_MEAN, DBP_STD)
 
 #Guardado de indice final de paciente 
-index = Tools.save_partial_file(ppg_depurada, ecg_depurada, presiones_sistolicas_norm, presiones_diastolicas_norm, 8175, 640108 , 'dataset_parte_4_hanning')
+index = Tools.save_partial_file(ppg_depurada, ecg_depurada, presiones_sistolicas_norm, presiones_diastolicas_norm, 8994,  1635159, 'dataset_parte_4_hanning')
 
 num_pacientesIDs = Tools.get_num_patientsIDs(ppg_depurada)
 

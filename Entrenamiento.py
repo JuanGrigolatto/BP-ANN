@@ -23,6 +23,27 @@ def set_seed(seed=42):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
+def save_subset_to_pt(subset, filepath):
+    signals, labels, IDs, indices = [], [], [], []
+    for x, y, pid, idx in subset:
+        signals.append(x)
+        labels.append(y)
+        IDs.append(pid)
+        indices.append(idx)
+
+    signals = torch.stack(signals)
+    labels = torch.stack(labels)
+    IDs = torch.stack(IDs)
+    indices = torch.stack(indices)
+
+    torch.save({
+        'data': signals,
+        'labels': labels,
+        'patient_ids': IDs,
+        'index': indices
+    }, filepath)
+    print(f"Guardado {filepath} con {len(signals)} muestras.")
+
 def main():
     # Configuración del dispositivo
     parameters = {
@@ -68,6 +89,7 @@ def main():
     training_generator = torch.utils.data.DataLoader(train_set, **parameters)
     validation_generator = torch.utils.data.DataLoader(val_set, **parameters)
 
+    """
     test_signals = []
     test_labels = []
     test_IDs = []
@@ -86,7 +108,11 @@ def main():
     test_index = torch.stack(test_index)
     
     # Guardado en un archivo .pt
-    torch.save({'data': test_signals, 'labels': test_labels,'patient_ids': test_IDs,'index':test_index} ,'data_UCI/test_set.pt')
+    torch.save({'data': test_signals, 'labels': test_labels,'patient_ids': test_IDs,'index':test_index} ,'data_UCI/test_set_hanning.pt')
+    print("data_UCI/test_set.pt guardado")
+    """
+
+    save_subset_to_pt(test_set, 'data_UCI/test_set_hanning.pt')
     print("data_UCI/test_set.pt guardado")
     #Subset para testeo de modelos sin entrenamiento completo
     """
@@ -100,7 +126,7 @@ def main():
 
     #model=InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32)
     #model=Modelo_Convolucional(in_channels=2,out_channels=2, long_signal=250)
-    model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=1250)
+    model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=500)
     #model=Modelo_ConvolucionalV2(in_channels=2,out_channels=2, long_signal=1250)
     # Añade esto después de crear el modelo
     """

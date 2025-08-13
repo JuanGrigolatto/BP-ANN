@@ -66,19 +66,19 @@ def main():
         'pin_memory': False
     }
 
-    print(os.path.exists('data_UCI/test_set.pt'))
-    dataset = UCIDataset(['data_UCI/test_set.pt'])
+    print(os.path.exists('data_UCI/test_set_hanning.pt'))
+    dataset = UCIDataset(['data_UCI/test_set_hanning.pt'])
     
     subset = torch.utils.data.Subset(dataset, indices=list(range(10000)))
     dataloader = torch.utils.data.DataLoader(subset, **parameters)
     
     #dataloader = torch.utils.data.DataLoader(dataset, **parameters)
 
-    path_model = 'Best_models/best_model_conv_v1_aug.pt'
+    path_model = 'best_model_conv_v1_hanning.pt'
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     #model = InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32)
-    model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=1250)
+    model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=500)
     
     checkpoint = torch.load(path_model, map_location=device)
     model.load_state_dict(checkpoint['model_state_dict'])
@@ -230,6 +230,6 @@ def main():
     plt.show()
 
     #Gráfico Bland Altman
-    bland_altman_graf(all_preds, all_labels, title="Modelo convolucional V1 - Data Augmentation (1000)")
+    bland_altman_graf(all_preds, all_labels, title="Modelo convolucional V1 - hanning")
 if __name__ == '__main__':
     main()

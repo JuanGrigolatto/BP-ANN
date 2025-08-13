@@ -1,48 +1,43 @@
-import torch.utils.data as data
 import torch
-import os
-
+import torch.utils.data as data
 
 class UCIDataset(data.Dataset):
     def __init__(self, file_list):
-        self.data = []
-        self.labels = []
-        self.ID_patients = []
-        self.index_muestra = []
-    
-        for file_path in file_list:
-            data_dict = torch.load(file_path)
-            self.data.append(data_dict['data'])
-            self.labels.append(data_dict['labels'])
-            self.ID_patients.append(data_dict['patient_ids'])
-            self.index_muestra.append(data_dict['index'])
-    
-        self.data = torch.cat(self.data, dim=0)
-        self.labels = torch.cat(self.labels, dim=0)
-        self.ID_patients = torch.cat(self.ID_patients, dim=0)
-        self.index_muestra = torch.cat(self.index_muestra, dim=0)
+        """
+        file_list: lista de rutas a archivos .pt que contienen:
+            - 'data': tensor (num_muestras, canales, long_signal)
+            - 'labels': tensor (num_muestras, 2)
+            - 'patient_ids': tensor (num_muestras,)
+            - 'index': tensor (num_muestras,)
+        """
+        self.file_list = file_list
+        self.datasets = []  # aquí guardaremos cada archivo cargado en RAM una sola vez
+        self.index_map = [] # lista de (file_idx, sample_idx)
 
-        print(f"Datos cargados correctamente. Muestras: {len(self.data)}")  # Debug
-    
+        for file_idx, file_path in enumerate(file_list):
+            data_dict = torch.load(file_path, map_location='cpu')
+            self.datasets.append(data_dict)  # guardamos el archivo en memoria (no concatenamos)
+
+            num_samples = data_dict['data'].shape[0]
+            for sample_idx in range(num_samples):
+                self.index_map.append((file_idx, sample_idx))
+
+        print(f"Datos indexados correctamente. Muestras totales: {len(self.index_map)}")
+        print(f"Archivos cargados: {len(self.datasets)}")
+
     def __len__(self):
-        """Returns the total number of samples in the dataset."""
-        return len(self.data)
-    
-    def __getitem__(self, index):
-        """
-        Generates one sample of data.
-        Args:
-            index (int): Index of the sample to retrieve.  
-        ID = self.list_IDs[index]
-        # Load data and get label
-        file_path = f'{self.data_dir}/{ID}.pt'
-        data = torch.load(file_path)
-        x = data['signal'] # Tensor (2, longitud_segmento)
-        y = data['label']  # Tensor (SBP, DBP)
+        return len(self.index_map)
 
-        return x, y
-        """
-        return self.data[index], self.labels[index], self.ID_patients[index], self.index_muestra[index]
+    def __getitem__(self, index):
+        file_idx, sample_idx = self.index_map[index]
+        data_dict = self.datasets[file_idx]
+
+        x = data_dict['data'][sample_idx]
+        y = data_dict['labels'][sample_idx]
+        pid = data_dict['patient_ids'][sample_idx]
+        idx = data_dict['index'][sample_idx]
+
+        return x, y, pid, idx
 
 
 

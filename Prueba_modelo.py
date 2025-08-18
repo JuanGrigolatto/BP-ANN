@@ -158,6 +158,8 @@ def main():
             pred_desnorm = np.stack([pred_SBP, pred_DBP], axis=1)
             labels_desnorm = np.stack([true_SBP, true_DBP], axis=1)
 
+            print(f"Predicciones: {pred_desnorm}, Etiquetas: {labels_desnorm}")
+            
             mse = mean_squared_error(labels_desnorm, pred_desnorm)
             rmse = np.sqrt(mse)
             mae = mean_absolute_error(labels_desnorm, pred_desnorm)

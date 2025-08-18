@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 #%%Carga de señales
 
-ppg_signal, abp_signal, ecg_signal = Tools.leer_archivos_mat("datos/Part_1.mat") 
+ppg_signal, abp_signal, ecg_signal = Tools.leer_archivos_mat("datos/Part_4.mat") 
 
 #%%Filtrado de señales
 
@@ -102,6 +102,7 @@ ppg_norm, abp_norm, ecg_norm = Tools.signal_normalization(ppg_dep, abp_dep, ecg_
 presiones_sistolicas_norm, presiones_diastolicas_norm= Tools.labels_normalization(sbp_dep, dbp_dep, SBP_MEAN, SBP_STD, DBP_MEAN, DBP_STD)
 
 #%% 
+"""
 inicio=0
 plt.figure(figsize=(12, 6))    
 for i in range(20):
@@ -112,13 +113,13 @@ for i in range(20):
     plt.xlabel('muestras')
     plt.ylabel('Amplitud')
     plt.legend()
-#%% Guardado de indice final de paciente
 """
-index = Tools.save_partial_file(ppg_norm, ecg_norm, presiones_sistolicas_norm, presiones_diastolicas_norm, 2989, 940991, 'dataset_parte_2_por_picos')
+#%% Guardado de indice final de paciente
+
+index = Tools.save_partial_file(ppg_norm, ecg_norm, presiones_sistolicas_norm, presiones_diastolicas_norm, 8985, 2922776, 'dataset_parte_4_por_picos')
 
 num_pacientesIDs = Tools.get_num_patientsIDs(ppg_norm)
 
 print((f"indice final del archivo : {index}")) 
 print(f"Número de pacientes para archivo : {num_pacientesIDs}")
 
-"""

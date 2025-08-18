@@ -30,31 +30,31 @@ def save_subset_to_pt(subset, filename):
     indices = []
 
     for signal, label, patient_id, index in subset:
-        signals.append(signal.numpy())
-        labels.append(label.numpy())
-        patient_ids.append(patient_id.numpy())
-        indices.append(index.numpy())
+        signals.append(signal.clone().detach().cpu())
+        labels.append(label.clone().detach().cpu())
+        patient_ids.append(patient_id.clone().detach().cpu())
+        indices.append(index.clone().detach().cpu())
 
-    signals = np.stack(signals).astype('float32')       # (N, 2, segment_length)
-    labels = np.stack(labels).astype('float32')         # (N, 2)
-    patient_ids = np.stack(patient_ids).astype('int64') # (N,)
-    indices = np.stack(indices).astype('int64')         # (N,)
+    signals = torch.stack(signals).float()      # (N, 2, segment_length)
+    labels = torch.stack(labels).float()        # (N, 2)
+    patient_ids = torch.stack(patient_ids).long()  # (N,)
+    indices = torch.stack(indices).long()          # (N,)
 
     # Inferimos dimensiones
     num_samples = signals.shape[0]
     segment_length = signals.shape[-1]
 
-    # Guardamos los .npy
+    # Guardamos cada tensor como .pt
     base = filename.replace('.pt', '')
-    data_path = base + '_data.npy'
-    labels_path = base + '_labels.npy'
-    patients_path = base + '_patients.npy'
-    indexs_path = base + '_indexs.npy'
+    data_path = base + '_data.pt'
+    labels_path = base + '_labels.pt'
+    patients_path = base + '_patients.pt'
+    indexs_path = base + '_indexs.pt'
 
-    np.save(data_path, signals)
-    np.save(labels_path, labels)
-    np.save(patients_path, patient_ids)
-    np.save(indexs_path, indices)
+    torch.save(signals, data_path)
+    torch.save(labels, labels_path)
+    torch.save(patient_ids, patients_path)
+    torch.save(indices, indexs_path)
 
     # Guardamos el meta con claves esperadas por UCIDataset
     meta = {
@@ -238,7 +238,7 @@ def main():
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': valid_l
-            }, 'best_model_conv_v1_picos.pt')
+            }, 'best_model_conv_v1_prueba.pt')
             print(f"Nuevo mejor modelo guardado (valid_loss = {valid_l:.6f})")
 
             

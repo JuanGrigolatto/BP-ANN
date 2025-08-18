@@ -7,6 +7,7 @@ from scipy.signal import find_peaks
 import os
 import torch
 import h5py
+import matplotlib.pyplot as plt
 
 #Normalización
 
@@ -54,12 +55,16 @@ def signal_normalization(ppg_signals, abp_signals, ecg_signals):
     ppg_normalized = []
     ecg_normalized = []
     abp_normalized = []
+
+    total_ventanas = 0
+    ventanas_eliminadas = 0
     for i in range(len(ppg_signals)):  # Recorre pacientes
         ppg_paciente = []
         ecg_paciente = []
         abp_paciente = []
 
         for j in range(len(ppg_signals[i])):  # Recorre ventanas del paciente i
+            total_ventanas += 1
             ppg = ppg_signals[i][j]
             ecg = ecg_signals[i][j]
             abp = abp_signals[i][j]
@@ -67,17 +72,30 @@ def signal_normalization(ppg_signals, abp_signals, ecg_signals):
             #abp_n = min_max_normalization(abp, np.max(abp), np.min(abp))
             #ecg_n = min_max_normalization(ecg, np.max(ecg), np.min(ecg))
 
+            if(np.isnan(ppg).any() or np.isnan(ecg).any() or np.isnan(abp).any() or \
+               np.isinf(ppg).any() or np.isinf(ecg).any() or np.isinf(abp).any()):
+                ventanas_eliminadas += 1
+                continue
+
             ppg_n = z_score_normalization(ppg)
             ecg_n = z_score_normalization(ecg)
             abp_n = z_score_normalization(abp)
+
+            if (np.isnan(ppg_n).any() or np.isnan(ecg_n).any() or np.isnan(abp_n).any()):
+                    ventanas_eliminadas += 1
+                    continue
 
             ppg_paciente.append(ppg_n)
             ecg_paciente.append(ecg_n)
             abp_paciente.append(abp_n)
 
-        ppg_normalized.append(ppg_paciente)
-        ecg_normalized.append(ecg_paciente)
-        abp_normalized.append(abp_paciente)
+        if ppg_paciente:
+            ppg_normalized.append(ppg_paciente)
+            ecg_normalized.append(ecg_paciente)
+            abp_normalized.append(abp_paciente)
+
+    print(f"Ventanas eliminadas por NaN/inf: {ventanas_eliminadas}")
+
     return ppg_normalized, abp_normalized, ecg_normalized
 
 def labels_normalization(matriz_presiones_sistolicas, matriz_presiones_diastolicas, SBP_MEAN, SBP_STD, DBP_MEAN, DBP_STD):
@@ -180,6 +198,17 @@ def filtrado_para_deteccion_Q(senial_ecg):
     
     return ecg_filtrada
 
+def filtrar_abp(senial_abp):
+    orden = 4
+    frec_corte= 21
+   
+
+    b, a = signal.butter(orden, frec_corte, 'lowpass', fs = 125)
+
+    ecg_filtrada = signal.filtfilt(b,a, senial_abp)
+
+    return ecg_filtrada
+
 # Detección de picos en PPG y ECG
 
 def detectar_picos_ppg(ppg, fs=125):
@@ -223,6 +252,7 @@ def detectar_picos_abp(abp, fs=125):
     peaks, _ = find_peaks(abp, height=height_sbp, prominence=prominence, distance=distancia_min)
 
     return peaks
+
 
 # Ventaneo
 def recortar_por_ventanas_cuadradas(signal, fs, t_window, overlap):
@@ -292,15 +322,20 @@ def recortar_por_picos(seniales, list_peaks, overlap_peaks=4):
     return all_segments, all_starts, all_stops
 
 def adjust_window(win, max_len):
-    if len(win) < max_len:
-        return np.pad(win, (0, max_len - len(win)), mode='constant')
-    elif len(win) > max_len:
-        center = len(win)//2
-        start_cut = max(0, center - max_len//2)
+    diff = max_len - len(win)
+    if diff > 0:
+        # Pad a izquierda y derecha para mantener centrado
+        pad_left = diff // 2
+        pad_right = diff - pad_left
+        return np.pad(win, (pad_left, pad_right), mode='constant')
+    elif diff < 0:
+        # Recortar desde el centro
+        center = len(win) // 2
+        start_cut = center - max_len // 2
         return win[start_cut:start_cut + max_len]
     else:
         return win
-
+    
 def recortar_por_picos_sincronizado(ppg, abp, ecg, peaks, overlap_peaks=4, lenght_segment=500):
     
     segments_ppg = []
@@ -313,7 +348,23 @@ def recortar_por_picos_sincronizado(ppg, abp, ecg, peaks, overlap_peaks=4, lengh
     i = 0
 
     while i < (len(peaks) - 4):
-        
+            
+        ventana_muestras = lenght_segment
+        start = peaks[i] - ventana_muestras // 2
+        stop = start + ventana_muestras
+
+        # Si el inicio es negativo, correr la ventana hacia adelante
+        if start < 0:
+            start = 0
+            stop = ventana_muestras
+
+        # Si el final se pasa, correr hacia atrás
+        if stop > len(ecg):
+            stop = len(ecg)
+            start = stop - ventana_muestras
+            if start < 0:  # si la señal es más corta que la ventana
+                start = 0
+            """
             intervalo_rr_first = peaks[i+1] - peaks[i]
             intervalo_rr_last = peaks[i+4] - peaks[i+3] 
         
@@ -322,24 +373,27 @@ def recortar_por_picos_sincronizado(ppg, abp, ecg, peaks, overlap_peaks=4, lengh
 
             start = max(0, peaks[i] - pre_qrs)
             stop  = min(len(ecg), peaks[i+4] + post_qrs)
+            """
 
-            window_ecg = ecg[start:stop]
-            window_ppg = ppg[start:stop]
-            window_abp = abp[start:stop]
+        window_ecg = ecg[start:stop]
+        window_ppg = ppg[start:stop]
+        window_abp = abp[start:stop]
 
-            window_ecg = adjust_window(window_ecg, lenght_segment)
-            window_ppg = adjust_window(window_ppg, lenght_segment)
-            window_abp = adjust_window(window_abp, lenght_segment)
+            
+        window_ecg = adjust_window(window_ecg, lenght_segment)
+        window_ppg = adjust_window(window_ppg, lenght_segment)
+        window_abp = adjust_window(window_abp, lenght_segment)
+            
 
-            segments_ecg.append(window_ecg)
-            segments_ppg.append(window_ppg)
-            segments_abp.append(window_abp)    
+        segments_ecg.append(window_ecg)
+        segments_ppg.append(window_ppg)
+        segments_abp.append(window_abp)    
 
-            starts.append(start)
-            stops.append(stop)
-            # Avanzar al siguiente pico
-            avance = max(1, overlap_peaks)  # avance mínimo de 1 pico
-            i += avance
+        starts.append(start)
+        stops.append(stop)
+        # Avanzar al siguiente pico
+        avance = max(1, overlap_peaks)  # avance mínimo de 1 pico
+        i += avance
             
     return segments_ppg, segments_abp, segments_ecg, starts, stops
 
@@ -376,11 +430,15 @@ def get_abp_labels(abp_signals, fs):
         picos_diastolicos = []
         presiones_sistolicas = []
         presiones_diastolicas = []
-
+        """
+        num_plots = min(10, len(abp_signals[i]))
+        fig, axes = plt.subplots(num_plots, 1, figsize=(12, 2*num_plots))
+        fig.suptitle(f"Paciente {i} - Primeras {num_plots} señales ABP", fontsize=14)
+        """
         for j in range(len(abp_signals[i])):
-            señal = abp_signals[i][j]
-            max_val = np.max(señal)
-            min_val = np.min(señal)
+            senial = abp_signals[i][j]
+            max_val = np.max(senial)
+            min_val = np.min(senial)
             rango = max_val - min_val
 
             prominence = 0.2 * rango
@@ -389,16 +447,18 @@ def get_abp_labels(abp_signals, fs):
             distancia_min = int(0.3 * fs)
 
             # Detectar picos
-            peakss, _ = find_peaks(señal, height=height_sbp, prominence=prominence, distance=distancia_min)
-            peaksd, _ = find_peaks(-señal, height=-height_dbp, prominence=prominence, distance=distancia_min)
+            peakss, _ = find_peaks(senial, height=height_sbp, prominence=prominence, distance=distancia_min)
+            peaksd, _ = find_peaks(-senial, height=-height_dbp, prominence=prominence, distance=distancia_min)
 
             picos_sistolicos.append(peakss)
             picos_diastolicos.append(peaksd)
+                
+            #ps = np.max(senial[peakss])
+            #pd = np.min(senial[peaksd])
 
-    
             if len(peakss) > 0 and len(peaksd) > 0:
-                ps_val = np.max(señal[peakss])
-                pd_val = np.min(señal[peaksd])
+                ps_val = np.max(senial[peakss])
+                pd_val = np.min(senial[peaksd])
 
                 if ps_val > pd_val:  # Solo si tiene sentido fisiológico
                     ps = ps_val
@@ -408,13 +468,22 @@ def get_abp_labels(abp_signals, fs):
                     ps = np.nan
                     pd = np.nan
             else:
-                # Demasiado pocos picos, probablemente ruido
+                # pocos picos, probablemente ruido
                 ps = np.nan
                 pd = np.nan
-
+            
             presiones_sistolicas.append(ps)
             presiones_diastolicas.append(pd)
-
+            """
+            if j < 10 and i < 10:
+                ax = axes[j]
+                ax.plot(senial, label='ABP', color='blue')
+                ax.plot(peakss, senial[peakss], 'ro', label='Picos SBP')
+                ax.plot(peaksd, senial[peaksd], 'go', label='Picos DBP')
+                ax.set_ylabel("mmHg")
+                ax.set_xlabel("Muestras")
+                ax.legend(loc='upper right')
+            """
         matriz_presiones_sistolicas.append(presiones_sistolicas)
         matriz_presiones_diastolicas.append(presiones_diastolicas)
         matriz_picos_sistolicos.append(picos_sistolicos)
@@ -452,6 +521,7 @@ def delete_signals_no_peaks(ppg, abp, ecg, presiones_sbp, presiones_dbp, indices
         for j in range(len(ppg[i])):
             sbp = presiones_sbp[i][j]
             dbp = presiones_dbp[i][j]
+
 
             if not (np.isnan(sbp) or np.isnan(dbp) or sbp > 200 or sbp < 70 or 
                    dbp > 140 or dbp < 50):
@@ -511,7 +581,8 @@ def leer_archivos_mat(ruta_archivo):
 
 #Guardar datos en archivo .pt
 
-def save_partial_file(ppg_signals, ecg_signals, sbp_labels, dbp_labels, patient_id_inicial, index_inicial, nombre_archivo):
+def save_partial_file(ppg_signals, ecg_signals, sbp_labels, dbp_labels,
+                      patient_id_inicial, index_inicial, nombre_archivo):
     output_dir = 'data_UCI'
     os.makedirs(output_dir, exist_ok=True)
 
@@ -524,14 +595,16 @@ def save_partial_file(ppg_signals, ecg_signals, sbp_labels, dbp_labels, patient_
     patients_path = os.path.join(output_dir, f'{nombre_archivo}_patients.dat')
     indexs_path = os.path.join(output_dir, f'{nombre_archivo}_indexs.dat')
 
-    # Crear archivos memmap
+    # Crear archivos memmap (en disco, no cargan en RAM completa)
     data_mmap = np.memmap(data_path, dtype='float32', mode='w+', shape=(num_total, 2, long_segmento))
     labels_mmap = np.memmap(labels_path, dtype='float32', mode='w+', shape=(num_total, 2))
     patients_mmap = np.memmap(patients_path, dtype='int64', mode='w+', shape=(num_total,))
     indexs_mmap = np.memmap(indexs_path, dtype='int64', mode='w+', shape=(num_total,))
 
     index = 0
-    for paciente_id, (ppg_segmentos, ecg_segmentos, sbp_segmentos, dbp_segmentos) in enumerate(zip(ppg_signals, ecg_signals, sbp_labels, dbp_labels)):
+    for paciente_id, (ppg_segmentos, ecg_segmentos, sbp_segmentos, dbp_segmentos) in enumerate(
+        zip(ppg_signals, ecg_signals, sbp_labels, dbp_labels)
+    ):
         for ppg, ecg, sbp, dbp in zip(ppg_segmentos, ecg_segmentos, sbp_segmentos, dbp_segmentos):
 
             if np.isnan(ppg).any() or np.isnan(ecg).any() or np.isnan(sbp) or np.isnan(dbp):
@@ -544,22 +617,23 @@ def save_partial_file(ppg_signals, ecg_signals, sbp_labels, dbp_labels, patient_
             indexs_mmap[index] = index + index_inicial
             index += 1
 
-    # Recortar arrays al número real de muestras válidas
-    data_tensor = torch.from_numpy(np.array(data_mmap[:index]))
-    labels_tensor = torch.from_numpy(np.array(labels_mmap[:index]))
-    patients_tensor = torch.from_numpy(np.array(patients_mmap[:index]))
-    indexs_tensor = torch.from_numpy(np.array(indexs_mmap[:index]))
+    # Flush a disco (importante para que no quede en buffer)
+    data_mmap.flush()
+    labels_mmap.flush()
+    patients_mmap.flush()
+    indexs_mmap.flush()
 
-    # Guardar en archivo .pt
+    # Guardar solo metadatos en el .pt
     torch.save({
-        'data': data_tensor,
-        'labels': labels_tensor,
-        'patient_ids': patients_tensor,
-        'index': indexs_tensor
-        }, os.path.join(output_dir, f'{nombre_archivo}.pt'))
+        'data_path': data_path,
+        'labels_path': labels_path,
+        'patients_path': patients_path,
+        'indexs_path': indexs_path,
+        'num_samples': index,
+        'segment_length': long_segmento
+    }, os.path.join(output_dir, f'{nombre_archivo}.pt'))
 
-    print(f"{nombre_archivo}.pt guardado con {index} muestras.")
-
+    print(f"{nombre_archivo}.pt guardado con {index} muestras (memmap en disco).")
     return index
 
 def get_num_patientsIDs(signals):

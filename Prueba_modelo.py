@@ -1,6 +1,6 @@
 import torch
 #from Modelos.Modelo_conv import Modelo_Convolucional
-from Modelos.InceptionTime import InceptionTime
+#from Modelos.InceptionTime import InceptionTime
 from Modelos.ConvolucionalV1 import Modelo_ConvolucionalV1
 from Modelos.ConvolucionalV2 import Modelo_ConvolucionalV2
 from Clase_UCIDataset import UCIDataset
@@ -57,6 +57,37 @@ def bland_altman_graf(preds, labels, title):
     plt.tight_layout()
     plt.show()
 
+def plot_comparacion_errores(dataset, indices_alto, indices_bajo, n=3):
+    """
+    dataset: tu UCIDataset o similar
+    indices_alto: lista de indices con error alto
+    indices_bajo: lista de indices con error bajo
+    n: cantidad de ejemplos a graficar de cada grupo
+    """
+    fig, axes = plt.subplots(2, n, figsize=(4*n, 6))
+
+    # Graficar n ejemplos con error alto
+    for i in range(n):
+        idx = indices_alto[i]
+        senales, _, _, _ = dataset[idx]
+        ppg, ecg = senales[0].numpy(), senales[1].numpy()
+
+        axes[0, i].plot(ecg, color="orange", label="ECG")
+        axes[0, i].plot(ppg, color="blue", label="PPG")
+        axes[0, i].set_title(f"Error alto (idx {idx})")
+
+    # Graficar n ejemplos con error bajo
+    for i in range(n):
+        idx = indices_bajo[i]
+        senales, _ , _, _ = dataset[idx]
+        ppg, ecg = senales[0].numpy(), senales[1].numpy()
+
+        axes[1, i].plot(ecg, color="orange", label="ECG")
+        axes[1, i].plot(ppg, color="blue", label="PPG")
+        axes[1, i].set_title(f"Error bajo (idx {idx})")
+
+    plt.tight_layout()
+    plt.show()
 
 def main():
     parameters = {
@@ -66,15 +97,15 @@ def main():
         'pin_memory': False
     }
 
-    print(os.path.exists('data_UCI/test_set_hanning.pt'))
-    dataset = UCIDataset(['data_UCI/test_set_hanning.pt'])
+    print(os.path.exists('data_UCI/test_set_por_picos.pt'))
+    dataset = UCIDataset(['data_UCI/test_set_por_picos.pt'])
     
     subset = torch.utils.data.Subset(dataset, indices=list(range(10000)))
     dataloader = torch.utils.data.DataLoader(subset, **parameters)
     
     #dataloader = torch.utils.data.DataLoader(dataset, **parameters)
 
-    path_model = 'best_model_conv_v1_hanning.pt'
+    path_model = 'best_model_conv_v1_picos.pt'
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     #model = InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32)
@@ -98,6 +129,9 @@ def main():
 
     indices_errores = []
 
+    indices_error_alto = []
+    indices_error_bajo = []
+
     with torch.no_grad():
         for batch in bar:
             data, labels, ID_paciente, indice_muestra = batch
@@ -108,6 +142,7 @@ def main():
             # Conversión a NumPy
             pred = pred.cpu().numpy()
             labels = labels.cpu().numpy()
+
             """
             # Desnormalización
             pred_SBP = desnormalizar_minmax(pred[:, 0], SBP_MIN, SBP_MAX)
@@ -143,20 +178,57 @@ def main():
 
             all_preds.append(pred_desnorm)
             all_labels.append(labels_desnorm)
-
+            """
             for j in range(pred_desnorm.shape[0]):
                 pred_sbp, pred_dbp = pred_desnorm[j]
                 true_sbp, true_dbp = labels_desnorm[j]
                 error_sbp = abs(pred_sbp - true_sbp)
                 error_dbp = abs(pred_dbp - true_dbp)
-
-                # Umbral configurable para detección de error alto
+                
                 if error_sbp > 10 or error_dbp > 10:
+                    indices_error_alto.append(indice_muestra[j])
+                else:
+                    indices_error_bajo.append(indice_muestra[j])
+    
+                # Umbral configurable para detección de error alto
+                if error_sbp > 20 or error_dbp > 20:
                     n_error = n_error + 1
                     indices_errores.append(indice_muestra[j].item())
 
-                    """
+       
                     print(f"\n Error alto detectado:")
+                    print(f"  Predicción SBP/DBP: {pred_sbp:.2f} / {pred_dbp:.2f}")
+                    print(f"  Real      SBP/DBP: {true_sbp:.2f} / {true_dbp:.2f}")
+                    print(f"  Error SBP: {error_sbp:.2f}, Error DBP: {error_dbp:.2f}")
+                    print(f"  n: {j}")
+
+
+                    # Graficar la señal cruda de entrada
+                    senal = data[j].cpu().numpy()  # [2, 250]
+                    ppg = senal[0]
+                    ecg = senal[1]
+
+                    plt.figure(figsize=(10, 4))
+                    plt.subplot(2, 1, 1)
+                    plt.plot(ecg, label='ECG', color='orange')
+                    plt.ylabel('Amplitud')
+                    plt.title('ECG')
+
+                    plt.subplot(2, 1, 2)
+                    plt.plot(ppg, label='PPG', color='blue')
+                    plt.xlabel('Muestras')
+                    plt.ylabel('Amplitud')
+                    plt.title('PPG')
+
+                    plt.tight_layout()
+                    plt.show()
+                
+                if error_sbp < 10 and error_dbp < 10:
+                    n_error = n_error + 1
+                    indices_errores.append(indice_muestra[j].item())
+
+                    
+                    print(f"\n Error bajo detectado:")
                     print(f"  Predicción SBP/DBP: {pred_sbp:.2f} / {pred_dbp:.2f}")
                     print(f"  Real      SBP/DBP: {true_sbp:.2f} / {true_dbp:.2f}")
                     print(f"  Error SBP: {error_sbp:.2f}, Error DBP: {error_dbp:.2f}")
@@ -182,9 +254,15 @@ def main():
 
                     plt.tight_layout()
                     plt.show()
-            """
+
+    print(f"Muestras con error alto: {len(indices_error_alto)}")
+    print(f"Muestras con error bajo: {len(indices_error_bajo)}")
+            
+    plot_comparacion_errores(dataset, indices_error_alto, indices_error_bajo, n=5)
+    
     print(f"numero de ventanas con errores: {n_error}")
     np.save('indices_errores.npy', indices_errores)
+    """
     # Unimos todos los resultados para gráficos finales
     all_preds = np.concatenate(all_preds, axis=0)
     all_labels = np.concatenate(all_labels, axis=0)
@@ -230,6 +308,7 @@ def main():
     plt.show()
 
     #Gráfico Bland Altman
-    bland_altman_graf(all_preds, all_labels, title="Modelo convolucional V1 - hanning")
+    bland_altman_graf(all_preds, all_labels, title="Modelo V1 - Picos")
+
 if __name__ == '__main__':
     main()

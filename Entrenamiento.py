@@ -23,26 +23,49 @@ def set_seed(seed=42):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-def save_subset_to_pt(subset, filepath):
-    signals, labels, IDs, indices = [], [], [], []
-    for x, y, pid, idx in subset:
-        signals.append(x)
-        labels.append(y)
-        IDs.append(pid)
-        indices.append(idx)
+def save_subset_to_pt(subset, filename):
+    signals = []
+    labels = []
+    patient_ids = []
+    indices = []
 
-    signals = torch.stack(signals)
-    labels = torch.stack(labels)
-    IDs = torch.stack(IDs)
-    indices = torch.stack(indices)
+    for signal, label, patient_id, index in subset:
+        signals.append(signal.numpy())
+        labels.append(label.numpy())
+        patient_ids.append(patient_id.numpy())
+        indices.append(index.numpy())
 
-    torch.save({
-        'data': signals,
-        'labels': labels,
-        'patient_ids': IDs,
-        'index': indices
-    }, filepath)
-    print(f"Guardado {filepath} con {len(signals)} muestras.")
+    signals = np.stack(signals).astype('float32')       # (N, 2, segment_length)
+    labels = np.stack(labels).astype('float32')         # (N, 2)
+    patient_ids = np.stack(patient_ids).astype('int64') # (N,)
+    indices = np.stack(indices).astype('int64')         # (N,)
+
+    # Inferimos dimensiones
+    num_samples = signals.shape[0]
+    segment_length = signals.shape[-1]
+
+    # Guardamos los .npy
+    base = filename.replace('.pt', '')
+    data_path = base + '_data.npy'
+    labels_path = base + '_labels.npy'
+    patients_path = base + '_patients.npy'
+    indexs_path = base + '_indexs.npy'
+
+    np.save(data_path, signals)
+    np.save(labels_path, labels)
+    np.save(patients_path, patient_ids)
+    np.save(indexs_path, indices)
+
+    # Guardamos el meta con claves esperadas por UCIDataset
+    meta = {
+        'data_path': data_path,
+        'labels_path': labels_path,
+        'patients_path': patients_path,
+        'indexs_path': indexs_path,
+        'num_samples': num_samples,
+        'segment_length': segment_length
+    }
+    torch.save(meta, filename)
 
 def main():
     # Configuración del dispositivo
@@ -67,10 +90,10 @@ def main():
     validation_generator = torch.utils.data.DataLoader(validation_set, **parameters)
     """
     archivos = [
-    'data_UCI/dataset_parte_1_hanning.pt',
-    'data_UCI/dataset_parte_2_hanning.pt',
-    'data_UCI/dataset_parte_3_hanning.pt',
-    'data_UCI/dataset_parte_4_hanning.pt',
+    'data_UCI/dataset_parte_1_por_picos.pt',
+    'data_UCI/dataset_parte_2_por_picos.pt',
+    'data_UCI/dataset_parte_3_por_picos.pt',
+    'data_UCI/dataset_parte_4_por_picos.pt',
     ]
 
     dataset_completo = UCIDataset(archivos)
@@ -112,7 +135,7 @@ def main():
     print("data_UCI/test_set.pt guardado")
     """
 
-    save_subset_to_pt(test_set, 'data_UCI/test_set_hanning.pt')
+    save_subset_to_pt(test_set, 'data_UCI/test_set_por_picos.pt')
     print("data_UCI/test_set.pt guardado")
     #Subset para testeo de modelos sin entrenamiento completo
     """
@@ -215,7 +238,7 @@ def main():
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': valid_l
-            }, 'best_model_conv_v1_hanning.pt')
+            }, 'best_model_conv_v1_picos.pt')
             print(f"Nuevo mejor modelo guardado (valid_loss = {valid_l:.6f})")
 
             

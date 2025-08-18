@@ -150,3 +150,4 @@ num_pacientesIDs = Tools.get_num_patientsIDs(ppg_depurada)
 
 print((f"indice final del archivo : {index}")) 
 print(f"Número de pacientes para archivo : {num_pacientesIDs}")
+# %%

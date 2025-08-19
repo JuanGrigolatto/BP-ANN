@@ -191,7 +191,7 @@ def main():
 
             all_preds.append(pred_desnorm)
             all_labels.append(labels_desnorm)
-            """
+            
             for j in range(pred_desnorm.shape[0]):
                 pred_sbp, pred_dbp = pred_desnorm[j]
                 true_sbp, true_dbp = labels_desnorm[j]
@@ -199,16 +199,16 @@ def main():
                 error_dbp = abs(pred_dbp - true_dbp)
                 
                 if error_sbp > 10 or error_dbp > 10:
-                    indices_error_alto.append(indice_muestra[j])
+                    indices_error_alto.append(j)
                 else:
-                    indices_error_bajo.append(indice_muestra[j])
+                    indices_error_bajo.append(j)
     
                 # Umbral configurable para detección de error alto
                 if error_sbp > 20 or error_dbp > 20:
                     n_error = n_error + 1
-                    indices_errores.append(indice_muestra[j].item())
+                    indices_errores.append(j)
 
-       
+                    """
                     print(f"\n Error alto detectado:")
                     print(f"  Predicción SBP/DBP: {pred_sbp:.2f} / {pred_dbp:.2f}")
                     print(f"  Real      SBP/DBP: {true_sbp:.2f} / {true_dbp:.2f}")
@@ -235,12 +235,12 @@ def main():
 
                     plt.tight_layout()
                     plt.show()
-                
+                """
                 if error_sbp < 10 and error_dbp < 10:
                     n_error = n_error + 1
-                    indices_errores.append(indice_muestra[j].item())
+                    indices_errores.append(j)
 
-                    
+                """    
                     print(f"\n Error bajo detectado:")
                     print(f"  Predicción SBP/DBP: {pred_sbp:.2f} / {pred_dbp:.2f}")
                     print(f"  Real      SBP/DBP: {true_sbp:.2f} / {true_dbp:.2f}")
@@ -267,15 +267,15 @@ def main():
 
                     plt.tight_layout()
                     plt.show()
-
+                """
     print(f"Muestras con error alto: {len(indices_error_alto)}")
     print(f"Muestras con error bajo: {len(indices_error_bajo)}")
             
-    plot_comparacion_errores(dataset, indices_error_alto, indices_error_bajo, n=5)
+    plot_comparacion_errores(subset, indices_error_alto, indices_error_bajo, n=7)
     
     print(f"numero de ventanas con errores: {n_error}")
     np.save('indices_errores.npy', indices_errores)
-    """
+    
     # Unimos todos los resultados para gráficos finales
     all_preds = np.concatenate(all_preds, axis=0)
     all_labels = np.concatenate(all_labels, axis=0)

@@ -78,16 +78,16 @@ for i in range(20):
     plt.ylabel('Amplitud')
     plt.legend()
 """
-#%% Normalización y obtención de etiquetas
-SBP_MEAN = 134.02
-DBP_MEAN = 63.47
-SBP_STD = 22.75
-DBP_STD = 23.69
+#%% Obtención de etiquetas
 
 presiones_sistolicas, presiones_diastolicas, indices_sistolicos, indices_diastolicos = Tools.get_abp_labels(all_segments_abp, fs=125)
 
 ppg_dep, abp_dep, ecg_dep, sbp_dep, dbp_dep, sistolicos_dep, diastolicos_dep = Tools.delete_signals_no_peaks(all_segments_ppg, all_segments_abp, all_segments_ecg, presiones_sistolicas, presiones_diastolicas, indices_sistolicos, indices_diastolicos)
 
+sbp_min, sbp_max, dbp_min, dbp_max = Tools.max_min_pressures(sbp_dep, dbp_dep)
+
+print(f"Presión sistólica mínima: {sbp_min}, máxima: {sbp_max}")
+print(f"Presión diastólica mínima: {dbp_min}, máxima: {dbp_max}")
 #%% Normalización
 """
 for k in range(len(ppg_signal_filtrada)):
@@ -96,6 +96,10 @@ for k in range(len(ppg_signal_filtrada)):
     abp_norm.append(Tools.z_score_normalization(abp_dep[k]))
     ecg_norm.append(Tools.z_score_normalization(ecg_dep[k]))
 """
+SBP_MEAN = 134.02
+DBP_MEAN = 63.47
+SBP_STD = 22.75
+DBP_STD = 23.69
 
 ppg_norm, abp_norm, ecg_norm = Tools.signal_normalization(ppg_dep, abp_dep, ecg_dep)
 
@@ -115,11 +119,11 @@ for i in range(20):
     plt.legend()
 """
 #%% Guardado de indice final de paciente
-
+"""
 index = Tools.save_partial_file(ppg_norm, ecg_norm, presiones_sistolicas_norm, presiones_diastolicas_norm, 8985, 2922776, 'dataset_parte_4_por_picos')
 
 num_pacientesIDs = Tools.get_num_patientsIDs(ppg_norm)
 
 print((f"indice final del archivo : {index}")) 
 print(f"Número de pacientes para archivo : {num_pacientesIDs}")
-
+"""

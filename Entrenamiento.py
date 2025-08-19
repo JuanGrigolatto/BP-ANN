@@ -23,49 +23,56 @@ def set_seed(seed=42):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-def save_subset_to_pt(subset, filename):
-    signals = []
-    labels = []
-    patient_ids = []
-    indices = []
+def save_test_dataset(save_dir, prefix, data, labels, patients, indexs):
+    """
+    Guarda los datos de test en formato compatible con UCIDataset.
+    
+    Args:
+        save_dir (str): Carpeta donde guardar los archivos.
+        prefix (str): Prefijo de los archivos (ej: "test").
+        data (np.ndarray): Señales, shape (N, 2, segment_length), dtype float32.
+        labels (np.ndarray): Etiquetas, shape (N, 2), dtype float32.
+        patients (np.ndarray): IDs de pacientes, shape (N,), dtype int64.
+        indexs (np.ndarray): Índices globales, shape (N,), dtype int64.
+    """
 
-    for signal, label, patient_id, index in subset:
-        signals.append(signal.clone().detach().cpu())
-        labels.append(label.clone().detach().cpu())
-        patient_ids.append(patient_id.clone().detach().cpu())
-        indices.append(index.clone().detach().cpu())
+    os.makedirs(save_dir, exist_ok=True)
 
-    signals = torch.stack(signals).float()      # (N, 2, segment_length)
-    labels = torch.stack(labels).float()        # (N, 2)
-    patient_ids = torch.stack(patient_ids).long()  # (N,)
-    indices = torch.stack(indices).long()          # (N,)
+    num_samples, _, segment_length = data.shape
 
-    # Inferimos dimensiones
-    num_samples = signals.shape[0]
-    segment_length = signals.shape[-1]
+    # Asegurar dtypes correctos
+    data = data.astype("float32")
+    labels = labels.astype("float32")
+    patients = patients.astype("int64")
+    indexs = indexs.astype("int64")
 
-    # Guardamos cada tensor como .pt
-    base = filename.replace('.pt', '')
-    data_path = base + '_data.pt'
-    labels_path = base + '_labels.pt'
-    patients_path = base + '_patients.pt'
-    indexs_path = base + '_indexs.pt'
+    # Paths de los .dat
+    data_path    = os.path.join(save_dir, f"{prefix}_data.dat")
+    labels_path  = os.path.join(save_dir, f"{prefix}_labels.dat")
+    patients_path= os.path.join(save_dir, f"{prefix}_patients.dat")
+    indexs_path  = os.path.join(save_dir, f"{prefix}_indexs.dat")
+    meta_path    = os.path.join(save_dir, f"{prefix}_meta.pt")
 
-    torch.save(signals, data_path)
-    torch.save(labels, labels_path)
-    torch.save(patient_ids, patients_path)
-    torch.save(indices, indexs_path)
+    # Guardar con memmap
+    np.memmap(data_path, dtype="float32", mode="w+", shape=data.shape)[:] = data[:]
+    np.memmap(labels_path, dtype="float32", mode="w+", shape=labels.shape)[:] = labels[:]
+    np.memmap(patients_path, dtype="int64", mode="w+", shape=patients.shape)[:] = patients[:]
+    np.memmap(indexs_path, dtype="int64", mode="w+", shape=indexs.shape)[:] = indexs[:]
 
-    # Guardamos el meta con claves esperadas por UCIDataset
+    # Guardar metadata en un .pt
     meta = {
-        'data_path': data_path,
-        'labels_path': labels_path,
-        'patients_path': patients_path,
-        'indexs_path': indexs_path,
-        'num_samples': num_samples,
-        'segment_length': segment_length
+        "data_path": data_path,
+        "labels_path": labels_path,
+        "patients_path": patients_path,
+        "indexs_path": indexs_path,
+        "num_samples": num_samples,
+        "segment_length": segment_length
     }
-    torch.save(meta, filename)
+    torch.save(meta, meta_path)
+
+    print(f" Dataset de test guardado en {save_dir}")
+    print(f" Total muestras: {num_samples}, tamaño: {segment_length}")
+    return meta_path
 
 def main():
     # Configuración del dispositivo
@@ -111,6 +118,7 @@ def main():
 
     training_generator = torch.utils.data.DataLoader(train_set, **parameters)
     validation_generator = torch.utils.data.DataLoader(val_set, **parameters)
+    test_generator = torch.utils.data.DataLoader(test_set, **parameters)
 
     """
     test_signals = []
@@ -134,8 +142,32 @@ def main():
     torch.save({'data': test_signals, 'labels': test_labels,'patient_ids': test_IDs,'index':test_index} ,'data_UCI/test_set_hanning.pt')
     print("data_UCI/test_set.pt guardado")
     """
+    all_data= []
+    all_labels = []
+    all_patients = []
+    all_indexs = []    
 
-    save_subset_to_pt(test_set, 'data_UCI/test_set_por_picos.pt')
+    for x, y, pid, idx in test_generator:
+        all_data.append(x.numpy())
+        all_labels.append(y.numpy())
+        all_patients.append(pid.numpy())
+        all_indexs.append(idx.numpy())
+
+
+    test_data = np.concatenate(all_data, axis=0)
+    test_labels = np.concatenate(all_labels, axis=0)
+    test_patients = np.concatenate(all_patients, axis=0)
+    test_indexs = np.concatenate(all_indexs, axis=0)
+
+    
+    meta_test = save_test_dataset(
+    save_dir='data_UCI/test_set_por_picos',
+    prefix="test",
+    data=test_data,         # (N,2,L)
+    labels=test_labels,     # (N,2)
+    patients=test_patients, # (N,)
+    indexs=test_indexs      # (N,)
+    )
     print("data_UCI/test_set.pt guardado")
     #Subset para testeo de modelos sin entrenamiento completo
     """

@@ -97,11 +97,24 @@ def main():
         'pin_memory': False
     }
 
-    print(os.path.exists('data_UCI/test_set_por_picos.pt'))
-    dataset = UCIDataset(['data_UCI/test_set_por_picos.pt'])
+    print(os.path.exists('data_UCI/test_set_por_picos/test_meta.pt"'))
+    dataset = UCIDataset(['data_UCI/test_set_por_picos/test_meta.pt'])
     
     subset = torch.utils.data.Subset(dataset, indices=list(range(10000)))
     dataloader = torch.utils.data.DataLoader(subset, **parameters)
+
+    all_labels = []
+    for x, y, pid, idx in dataloader:
+        all_labels.append(y)
+
+    labels = torch.cat(all_labels, dim=0)
+
+    print("min:", labels.min().item())
+    print("max:", labels.max().item())
+    print("mean:", labels.mean().item())
+    print("std:", labels.std().item())
+    print("Hay NaNs:", torch.isnan(labels).any().item())
+    print("Hay Infs:", torch.isinf(labels).any().item())
     
     #dataloader = torch.utils.data.DataLoader(dataset, **parameters)
 
@@ -157,8 +170,6 @@ def main():
             
             pred_desnorm = np.stack([pred_SBP, pred_DBP], axis=1)
             labels_desnorm = np.stack([true_SBP, true_DBP], axis=1)
-
-            print(f"Predicciones: {pred_desnorm}, Etiquetas: {labels_desnorm}")
             
             mse = mean_squared_error(labels_desnorm, pred_desnorm)
             rmse = np.sqrt(mse)

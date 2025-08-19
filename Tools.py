@@ -9,6 +9,19 @@ import torch
 import h5py
 import matplotlib.pyplot as plt
 
+
+def max_min_pressures(sbp,dbp):
+    
+    SBP_MIN = np.min(sbp)
+    SBP_MAX = np.max(sbp)
+    DBP_MIN = np.min(dbp)
+    DBP_MAX = np.max(dbp)
+
+    print(f"SBP_MIN={SBP_MIN:.2f}, SBP_MAX={SBP_MAX:.2f}")
+    print(f"DBP_MIN={DBP_MIN:.2f}, DBP_MAX={DBP_MAX:.2f}")
+    
+    return SBP_MIN, SBP_MAX, DBP_MIN, DBP_MAX 
+
 #Normalización
 
 def min_max_normalization(signal, max, min):
@@ -98,49 +111,6 @@ def signal_normalization(ppg_signals, abp_signals, ecg_signals):
 
     return ppg_normalized, abp_normalized, ecg_normalized
 
-def labels_normalization(matriz_presiones_sistolicas, matriz_presiones_diastolicas, SBP_MEAN, SBP_STD, DBP_MEAN, DBP_STD):
-
-    # Aplanar y convertir a arrays de numpy
-    """
-    todas_sbp = np.array([x for sublista in matriz_presiones_sistolicas for x in sublista if not np.isnan(x)])
-    todas_dbp = np.array([x for sublista in matriz_presiones_diastolicas for x in sublista if not np.isnan(x)])
-
-    SBP_MIN = np.min(todas_sbp)
-    SBP_MAX = np.max(todas_sbp)
-    DBP_MIN = np.min(todas_dbp)
-    DBP_MAX = np.max(todas_dbp)
-    SBP_MEAN = np.mean(todas_sbp)
-    DBP_MEAN = np.mean(todas_dbp)
-    SBP_STD = np.std(todas_sbp)
-    DBP_STD = np.std(todas_dbp)
-
-
-    print(f"SBP_MIN={SBP_MIN:.2f}, SBP_MAX={SBP_MAX:.2f}")
-    print(f"DBP_MIN={DBP_MIN:.2f}, DBP_MAX={DBP_MAX:.2f}")
-    print(f"SBP_MEAN={SBP_MEAN:.2f}, SBP_STD={SBP_STD:.2f}")
-    print(f"DBP_MEAN={DBP_MEAN:.2f}, DBP_STD={DBP_STD:.2f}")
-    """
-    matriz_presiones_sistolicas_norm=[]
-    matriz_presiones_diastolicas_norm=[]
-    for i in range(len(matriz_presiones_sistolicas)):
-        list_sbp=[]
-        list_dbp=[]  
-        for j in range(len(matriz_presiones_sistolicas[i])):
-
-            #ps_norm,pd_norm=pressure_normalization(matriz_presiones_sistolicas[i][j], matriz_presiones_diastolicas[i][j],
-            #                         SBP_MIN, SBP_MAX,DBP_MIN,DBP_MAX)
-            
-            ps_norm,pd_norm=pressure_normalization_z_score(matriz_presiones_sistolicas[i][j], matriz_presiones_diastolicas[i][j],
-                                                            SBP_MEAN, SBP_STD, DBP_MEAN, DBP_STD)
-            
-            if not np.isnan(ps_norm) and not np.isnan(pd_norm):
-                list_sbp.append(ps_norm)
-                list_dbp.append(pd_norm)
-            else:
-                print(f"Etiqueta inválida normalizada: SBP={ps_norm}, DBP={pd_norm}")    
-        matriz_presiones_sistolicas_norm.append(list_sbp)
-        matriz_presiones_diastolicas_norm.append(list_dbp)
-    return matriz_presiones_sistolicas_norm, matriz_presiones_diastolicas_norm
 #Filtrado
 
 def filtrar_ppg(senial_ppg):

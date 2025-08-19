@@ -27,6 +27,7 @@ def visualizar_datos(nombre_archivo, sample_index=0):
                             shape=(meta["num_samples"],))
 
     # Extraer muestra seleccionada
+  
     signal = data_mmap[sample_index]
     ppg = signal[0]
     ecg = signal[1]
@@ -51,9 +52,27 @@ def visualizar_datos(nombre_archivo, sample_index=0):
     plt.tight_layout()
     plt.show()
 
+    # Inicializar min y max
+    sbp_min, sbp_max = float("inf"), float("-inf")
+    dbp_min, dbp_max = float("inf"), float("-inf")
+
+    # Recorrer todas las etiquetas
+    for sbp_norm, dbp_norm in labels_mmap:
+        sbp = sbp_norm * SBP_STD + SBP_MEAN
+        dbp = dbp_norm * DBP_STD + DBP_MEAN
+
+        if sbp < sbp_min: sbp_min = sbp
+        if sbp > sbp_max: sbp_max = sbp
+        if dbp < dbp_min: dbp_min = dbp
+        if dbp > dbp_max: dbp_max = dbp
+
+    print(f"SBP -> min: {sbp_min:.2f}, max: {sbp_max:.2f}")
+    print(f"DBP -> min: {dbp_min:.2f}, max: {dbp_max:.2f}")
+
+
 
 if __name__ == "__main__":
-    visualizar_datos("dataset_parte_1_por_picos.pt", sample_index=900010)
+    visualizar_datos("test_set_por_picos/test_meta.pt", sample_index=910)
 
 # %%
 """

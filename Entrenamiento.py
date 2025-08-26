@@ -4,7 +4,7 @@ import os
 from torch.utils import data
 from torch.utils.data import TensorDataset, random_split
 import numpy as np
-#from Modelos.InceptionTime import InceptionTime
+from Modelos.InceptionTime import InceptionTime
 #from Modelos.Modelo_conv import Modelo_Convolucional
 from Modelos.ConvolucionalV1 import Modelo_ConvolucionalV1
 #from Modelos.ConvolucionalV2 import Modelo_ConvolucionalV2
@@ -179,11 +179,15 @@ def main():
 
     # Crear el modelo
 
-    #model=InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32)
+    model=InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32)
     #model=Modelo_Convolucional(in_channels=2,out_channels=2, long_signal=250)
-    model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=500)
+    #model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=500)
     #model=Modelo_ConvolucionalV2(in_channels=2,out_channels=2, long_signal=1250)
     # Añade esto después de crear el modelo
+
+    
+
+
     """
     for layer in model.modules():
         if isinstance(layer, (torch.nn.Conv1d, torch.nn.Linear)):
@@ -195,6 +199,18 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay= 1e-4)
     scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, min_lr=1e-6, verbose=True)    
     criterion = torch.nn.MSELoss()  # MSELoss para regresión
+
+    #retomar entrenamiento 
+    start_epoch = 0
+    checkpoint_path = "best_model_time32_picos.pt"
+    if os.path.exists(checkpoint_path):
+        checkpoint = torch.load(checkpoint_path, map_location=device)
+        model.load_state_dict(checkpoint["model_state_dict"])
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        start_epoch = checkpoint.get("epoca", 0) + 1
+        print(f" Modelo cargado desde {checkpoint_path}, continuando en epoch {start_epoch}")
+    else:
+        print("⚠ No se encontró un checkpoint, se comienza entrenamiento desde cero.")
 
     # ENTRENAMIENTO
     def train_one_step(batch):
@@ -255,7 +271,7 @@ def main():
     patience = 5
     patience_significativa = 5
   
-    for epoch in tqdm(range(max_epochs)):
+    for epoch in tqdm(range(start_epoch, max_epochs)):
         train_l, valid_l = train_one_epoch()
         running_loss[epoch] = (train_l,valid_l)
         print(f"[Época {epoch}] Train Loss: {train_l:.6f} - Valid Loss: {valid_l:.6f}")
@@ -270,7 +286,7 @@ def main():
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': valid_l
-            }, 'best_model_conv_v1_prueba.pt')
+            }, 'best_model_time32_picos.pt')
             print(f"Nuevo mejor modelo guardado (valid_loss = {valid_l:.6f})")
 
             

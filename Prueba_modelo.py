@@ -1,6 +1,6 @@
 import torch
 #from Modelos.Modelo_conv import Modelo_Convolucional
-#from Modelos.InceptionTime import InceptionTime
+from Modelos.InceptionTime import InceptionTime
 from Modelos.ConvolucionalV1 import Modelo_ConvolucionalV1
 from Modelos.ConvolucionalV2 import Modelo_ConvolucionalV2
 from Clase_UCIDataset import UCIDataset
@@ -100,7 +100,7 @@ def main():
     print(os.path.exists('data_UCI/test_set_por_picos/test_meta.pt"'))
     dataset = UCIDataset(['data_UCI/test_set_por_picos/test_meta.pt'])
     
-    subset = torch.utils.data.Subset(dataset, indices=list(range(10000)))
+    subset = torch.utils.data.Subset(dataset, indices=list(range(500)))
     dataloader = torch.utils.data.DataLoader(subset, **parameters)
 
     all_labels = []
@@ -141,6 +141,7 @@ def main():
     n_error=0
 
     indices_errores = []
+    valores_errores = []
 
     indices_error_alto = []
     indices_error_bajo = []
@@ -149,7 +150,7 @@ def main():
         for batch in bar:
             data, labels, ID_paciente, indice_muestra = batch
             data, labels = data.to(device), labels.to(device)
-
+            
             pred = model(data)
             
             # Conversión a NumPy
@@ -198,17 +199,20 @@ def main():
                 error_sbp = abs(pred_sbp - true_sbp)
                 error_dbp = abs(pred_dbp - true_dbp)
                 
-                if error_sbp > 10 or error_dbp > 10:
+                valores_errores.append([error_sbp, error_dbp])
+                indices_errores.append(indice_muestra[j].item())
+                if error_sbp >= 10 or error_dbp >= 10:
                     indices_error_alto.append(j)
                 else:
                     indices_error_bajo.append(j)
     
                 # Umbral configurable para detección de error alto
+            """
                 if error_sbp > 20 or error_dbp > 20:
                     n_error = n_error + 1
-                    indices_errores.append(j)
-
-                    """
+                    indices_errores.append(indice_muestra)
+            """
+            """
                     print(f"\n Error alto detectado:")
                     print(f"  Predicción SBP/DBP: {pred_sbp:.2f} / {pred_dbp:.2f}")
                     print(f"  Real      SBP/DBP: {true_sbp:.2f} / {true_dbp:.2f}")
@@ -235,12 +239,13 @@ def main():
 
                     plt.tight_layout()
                     plt.show()
-                """
+        """
+        """
                 if error_sbp < 10 and error_dbp < 10:
                     n_error = n_error + 1
-                    indices_errores.append(j)
-
-                """    
+                    indices_errores.append(indice_muestra)
+        """
+        """    
                     print(f"\n Error bajo detectado:")
                     print(f"  Predicción SBP/DBP: {pred_sbp:.2f} / {pred_dbp:.2f}")
                     print(f"  Real      SBP/DBP: {true_sbp:.2f} / {true_dbp:.2f}")
@@ -267,14 +272,20 @@ def main():
 
                     plt.tight_layout()
                     plt.show()
-                """
+        """
     print(f"Muestras con error alto: {len(indices_error_alto)}")
     print(f"Muestras con error bajo: {len(indices_error_bajo)}")
             
     plot_comparacion_errores(subset, indices_error_alto, indices_error_bajo, n=7)
     
     print(f"numero de ventanas con errores: {n_error}")
-    np.save('indices_errores.npy', indices_errores)
+
+    errores = {
+        'valores': valores_errores,
+        'indices': indices_errores
+    }
+
+    np.savez('Errores_predicción', **errores)
     
     # Unimos todos los resultados para gráficos finales
     all_preds = np.concatenate(all_preds, axis=0)

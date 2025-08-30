@@ -100,7 +100,7 @@ def main():
     print(os.path.exists('data_UCI/test_set_por_picos/test_meta.pt"'))
     dataset = UCIDataset(['data_UCI/test_set_por_picos/test_meta.pt'])
     
-    subset = torch.utils.data.Subset(dataset, indices=list(range(500)))
+    subset = torch.utils.data.Subset(dataset, indices=list(range(5000)))
     dataloader = torch.utils.data.DataLoader(subset, **parameters)
 
     all_labels = []
@@ -118,11 +118,11 @@ def main():
     
     #dataloader = torch.utils.data.DataLoader(dataset, **parameters)
 
-    path_model = 'best_model_conv_v1_picos.pt'
+    path_model = 'best_model_time32_picos.pt'
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    #model = InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32)
-    model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=500)
+    model = InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32)
+    #model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=500)
     
     checkpoint = torch.load(path_model, map_location=device)
     model.load_state_dict(checkpoint['model_state_dict'])
@@ -332,7 +332,7 @@ def main():
     plt.show()
 
     #Gráfico Bland Altman
-    bland_altman_graf(all_preds, all_labels, title="Modelo V1 - Picos")
+    bland_altman_graf(all_preds, all_labels, title="Modelo time32 - Picos")
 
 if __name__ == '__main__':
     main()

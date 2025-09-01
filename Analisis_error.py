@@ -90,10 +90,24 @@ def procesamiento_dimensional(dataloader, dual=False):
         # Separar canales
         ppg = X_filtrado[:, 0, :]   # (N_filtrado, 250)
         ecg = X_filtrado[:, 1, :]   # (N_filtrado, 250)
+        """
+        pca = PCA()  
+        pca.fit(ecg)
+
+        explained_var = pca.explained_variance_ratio_     # varianza explicada por cada componente
+        cumulative_var = np.cumsum(explained_var)         # varianza acumulada
+
+        print("Varianza explicada acumulada:")
+        print(cumulative_var[:30])  # mostramos los primeros 20
+
+        # Número de componentes para 95%
+        n_components_95 = np.argmax(cumulative_var >= 0.95) + 1
+        print(f"Se necesitan {n_components_95} componentes para llegar al 95% de la varianza.")
+        """
 
         print("Aplicando PCA...")
-        X_pca_ppg = PCA(n_components=50, random_state=42).fit_transform(ppg)
-        X_pca_ecg = PCA(n_components=50, random_state=42).fit_transform(ecg)
+        X_pca_ppg = PCA(n_components=24, random_state=42).fit_transform(ppg)
+        X_pca_ecg = PCA(n_components=118, random_state=42).fit_transform(ecg)
 
         print("Aplicando t-SNE...")
         X_emb_ppg = TSNE(n_components=2, perplexity=30, random_state=42, n_jobs=-1).fit_transform(X_pca_ppg)
@@ -105,8 +119,23 @@ def procesamiento_dimensional(dataloader, dual=False):
 
         # PCA a 50 componentes sobre PPG+ECG juntos
         print("Aplicando PCA...")
-        X_pca = PCA(n_components=50, random_state=42).fit_transform(X_filtrado.reshape(X_filtrado.shape[0], -1))
+        
+        X_pca = PCA(n_components=119, random_state=42).fit_transform(X_filtrado.reshape(X_filtrado.shape[0], -1))
+        """
+        pca = PCA()  
+        pca.fit(X_filtrado.reshape(X_filtrado.shape[0], -1))
 
+        explained_var = pca.explained_variance_ratio_     # varianza explicada por cada componente
+        cumulative_var = np.cumsum(explained_var)         # varianza acumulada
+
+        print("Varianza explicada acumulada:")
+        print(cumulative_var[:30])  # mostramos los primeros 20
+
+        # Número de componentes para 95%
+        n_components_95 = np.argmax(cumulative_var >= 0.95) + 1
+        print(f"Se necesitan {n_components_95} componentes para llegar al 95% de la varianza.")
+        """
+    
         print("Aplicando t-SNE...")
         X_emb = TSNE(n_components=2, perplexity=30, random_state=42, n_jobs=-1).fit_transform(X_pca)
     
@@ -121,7 +150,7 @@ archivos = [
 dataset = UCIDataset(archivos)
 
 errores = np.load('Errores_predicción.npz')
-subset = torch.utils.data.Subset(dataset, indices=list(range(500)))
+subset = torch.utils.data.Subset(dataset, indices=list(range(5000)))
 dataloader = torch.utils.data.DataLoader(subset, batch_size = 256, shuffle = False)
 
 X_emb, valores_error_filtrados = procesamiento_dimensional(dataloader)
@@ -129,6 +158,7 @@ X_emb_dual, valores_error_filtrados2 =procesamiento_dimensional(dataloader, dual
 
 X_emb_dual_ppg, X_emb_dual_ecg = X_emb_dual 
 valores_error_filtrados = np.array(valores_error_filtrados)
+
 
 plt.figure(figsize=(8,6))
 sc = plt.scatter(X_emb[:,0], X_emb[:,1], c=valores_error_filtrados[:,0], cmap="coolwarm", alpha=0.6)
@@ -177,6 +207,7 @@ plt.title("Mapa de señales ECG")
 plt.xlabel("Dim 1")
 plt.ylabel("Dim 2")
 plt.show()
+
 
 
 

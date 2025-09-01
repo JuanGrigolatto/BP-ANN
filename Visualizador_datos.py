@@ -72,7 +72,15 @@ def visualizar_datos(nombre_archivo, sample_index=0):
 
 
 if __name__ == "__main__":
-    visualizar_datos("test_set_por_picos/test_meta.pt", sample_index=910)
+    visualizar_datos("data_UCI/dataset_parte_3.pt", sample_index=910)
+    
+    archivo = [
+    'data_UCI/dataset_parte_3.pt'
+    ]
+    dataset = UCIDataset(archivo)
+    
+
+    print()
 
 # %%
 """

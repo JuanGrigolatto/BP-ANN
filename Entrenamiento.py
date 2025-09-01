@@ -208,7 +208,8 @@ def main():
         model.load_state_dict(checkpoint["model_state_dict"])
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         start_epoch = checkpoint.get("epoca", 0) + 1
-        print(f" Modelo cargado desde {checkpoint_path}, continuando en epoch {start_epoch}")
+        best_valid_loss = checkpoint.get("best_valid_loss", float('inf')) 
+        print(f" Modelo cargado desde {checkpoint_path}, continuando en epoch {start_epoch}, best_valid_loss={best_valid_loss:.6f}")
     else:
         print("⚠ No se encontró un checkpoint, se comienza entrenamiento desde cero.")
 
@@ -285,7 +286,8 @@ def main():
                 'epoca': epoch,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
-                'loss': valid_l
+                'loss': valid_l,
+                'best_valid_loss': best_valid_loss 
             }, 'best_model_time32_picos.pt')
             print(f"Nuevo mejor modelo guardado (valid_loss = {valid_l:.6f})")
 

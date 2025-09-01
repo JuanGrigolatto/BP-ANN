@@ -39,6 +39,9 @@ def pressure_normalization_z_score(sbp, dbp, sbp_mean, sbp_std, dbp_mean, dbp_st
     dbp_norm = (dbp - dbp_mean) / dbp_std
     return sbp_norm, dbp_norm
 
+def desnormalizar_zscore(norm_array, media, std):
+    return norm_array * std + media
+
 def labels_normalization(matriz_presiones_sistolicas, matriz_presiones_diastolicas, SBP_MEAN, SBP_STD, DBP_MEAN, DBP_STD):
  
     matriz_presiones_sistolicas_norm=[]

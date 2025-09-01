@@ -60,7 +60,7 @@ def intrapatient_pca(patient_id, signals, patients, n_samples=500):
     pca_full.fit(X)
     cumulative_var = np.cumsum(pca_full.explained_variance_ratio_)
     n_components_95 = np.argmax(cumulative_var >= 0.95) + 1
-    print(f"✅ Para paciente {patient_id}: se necesitan {n_components_95} componentes para el 95% de la varianza")
+    print(f" Para paciente {patient_id}: se necesitan {n_components_95} componentes para el 95% de la varianza")
 
     # --- PCA a 2D para visualización ---
     pca_2d = PCA(n_components=n_components_95)
@@ -70,10 +70,10 @@ def intrapatient_pca(patient_id, signals, patients, n_samples=500):
 
 #Cargar y combinar los datos de los cuatro archivos .pt
 data_paths = [
-        'data_UCI/dataset_parte_1_por_picos.pt',
-        'data_UCI/dataset_parte_2_por_picos.pt',
-        'data_UCI/dataset_parte_3_por_picos.pt',
-        'data_UCI/dataset_parte_4_por_picos.pt'
+        'data_UCI/dataset_parte_1.pt',
+        'data_UCI/dataset_parte_2.pt',
+        'data_UCI/dataset_parte_3.pt',
+        'data_UCI/dataset_parte_4.pt'
     ]
 
 all_data = []
@@ -92,10 +92,12 @@ merged_data = {
         'patient_ids': torch.cat(all_patient_ids, dim=0)
     }
 
-    
+#print (f"ID_pacientes: {merged_data['patient_ids']}")    
 unique_patients = merged_data['patient_ids'].unique().tolist()
-
+#print(f"Número de pacientes únicos: {len(unique_patients)}")
+#print(f"Pacientes únicos: {unique_patients}")
 # 5000 muestras aleatorias del dataset
+
 total_samples = len(merged_data['data'])
 subset_idx = np.random.choice(total_samples, size=5000)
 subset_signals = merged_data['data'][subset_idx].numpy().reshape(5000, -1)  # Convertir a numpy y aplanar
@@ -181,7 +183,7 @@ plt.show()
 
 # === Scatter comparando ambos ===
 plt.figure(figsize=(6,6))
-plt.scatter(sbp_std, dbp_std, alpha=0.7)
+plt.scatter(sbp_std, dbp_std, alpha=0.7, c="#00000022")
 plt.xlabel("STD SBP")
 plt.ylabel("STD DBP")
 plt.title("Comparación de variabilidad intra-paciente (SBP vs DBP)")
@@ -198,3 +200,4 @@ plt.ylabel("PC2")
 plt.title(f"Distribución de señales (PCA 2D) - Paciente {num_patient}")
 plt.grid(True)
 plt.show()
+

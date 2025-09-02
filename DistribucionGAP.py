@@ -31,6 +31,7 @@ def intrapatient_variability_all(desnorm_SBP, desnorm_DBP, patients):
     """Calcula la variabilidad intra-paciente (std de SBP y DBP) por paciente"""
     unique_patients = np.unique(patients)   #
     sbp_std_list, dbp_std_list = [], []
+    sbp_mean_list, dbp_mean_list = [], []
 
     for pid in unique_patients:
         idx = patients == pid
@@ -39,11 +40,15 @@ def intrapatient_variability_all(desnorm_SBP, desnorm_DBP, patients):
             dbp = desnorm_DBP[idx]
             sbp_std_list.append(np.std(sbp))
             dbp_std_list.append(np.std(dbp))
+            sbp_mean_list.append(np.mean(sbp))
+            dbp_mean_list.append(np.mean(dbp))
         else:
             sbp_std_list.append(0.0)  # o np.nan si preferís
             dbp_std_list.append(0.0)
+            sbp_mean_list.append(0.0)
+            dbp_mean_list.append(0.0)
 
-    return unique_patients, np.array(sbp_std_list), np.array(dbp_std_list)
+    return unique_patients, np.array(sbp_std_list), np.array(dbp_std_list), np.array(sbp_mean_list), np.array(dbp_mean_list)
 
 def intrapatient_pca(patient_id, signals, patients, n_samples=500):
     idx = patients == patient_id
@@ -67,6 +72,21 @@ def intrapatient_pca(patient_id, signals, patients, n_samples=500):
     X_pca = pca_2d.fit_transform(X)
 
     return X_pca
+    
+
+def calculate_cv(sbp_std, dbp_std, sbp_mean, dbp_mean):
+    """Calcula el coeficiente de variación (CV) para SBP y DBP"""
+
+    valid_idx = (sbp_mean > 0) & (dbp_mean > 0) & ~np.isnan(sbp_mean) & ~np.isnan(dbp_mean)
+
+    cv_sbp = np.zeros_like(sbp_std)
+    cv_dbp = np.zeros_like(dbp_std)
+
+    cv_sbp[valid_idx] = sbp_std[valid_idx] / sbp_mean[valid_idx] * 100
+    cv_dbp[valid_idx] = dbp_std[valid_idx] / dbp_mean[valid_idx] * 100
+
+    return cv_sbp, cv_dbp
+
 
 #Cargar y combinar los datos de los cuatro archivos .pt
 data_paths = [
@@ -91,7 +111,7 @@ merged_data = {
         'labels': torch.cat(all_labels, dim=0),
         'patient_ids': torch.cat(all_patient_ids, dim=0)
     }
-
+"""
 #print (f"ID_pacientes: {merged_data['patient_ids']}")    
 unique_patients = merged_data['patient_ids'].unique().tolist()
 #print(f"Número de pacientes únicos: {len(unique_patients)}")
@@ -153,7 +173,7 @@ plt.title("Distribución de PACIENTES (PCA de promedios de señales)")
 plt.xlabel("PC1")
 plt.ylabel("PC2")
 plt.show()
-
+"""
 SBP_MEAN = 134.02
 DBP_MEAN = 63.47
 SBP_STD = 22.75
@@ -163,8 +183,14 @@ desnorm_SBP = Tools.desnormalizar_zscore(merged_data['labels'][:, 0].numpy(), SB
 desnorm_DBP = Tools.desnormalizar_zscore(merged_data['labels'][:, 1].numpy(), DBP_MEAN, DBP_STD)
 
 
-unique_patients_p,sbp_std, dbp_std = intrapatient_variability_all(desnorm_SBP=desnorm_SBP, desnorm_DBP=desnorm_DBP, patients=merged_data['patient_ids'].numpy())
+unique_patients_p,sbp_std, dbp_std, sbp_mean, dbp_mean = intrapatient_variability_all(desnorm_SBP=desnorm_SBP, desnorm_DBP=desnorm_DBP, patients=merged_data['patient_ids'].numpy())
 
+
+
+print("std_SBP len:", len(sbp_std))
+print("std_DBP len:", len(dbp_std))
+
+"""
 # === Plot SBP intra-paciente ===
 plt.figure(figsize=(12,5))
 plt.bar(unique_patients_p, sbp_std, alpha=0.7)
@@ -200,4 +226,40 @@ plt.ylabel("PC2")
 plt.title(f"Distribución de señales (PCA 2D) - Paciente {num_patient}")
 plt.grid(True)
 plt.show()
+"""
+sbp_cv, dbp_cv = calculate_cv(sbp_std, dbp_std, sbp_mean, dbp_mean)
+"""
+# === Histogramas de CV ===
+plt.figure(figsize=(12,5))
+plt.hist(sbp_cv, bins=30, alpha=0.7, label="SBP CV")
+plt.xlabel("Coeficiente de variación (%)")
+plt.ylabel("Cantidad de pacientes")
+plt.title("Distribución del coeficiente de variación intra-paciente")
+plt.legend()
+plt.show()
 
+plt.figure(figsize=(12,5))
+plt.hist(dbp_cv, bins=30, alpha=0.7, label="DBP CV")
+plt.xlabel("Coeficiente de variación (%)")
+plt.ylabel("Cantidad de pacientes")
+plt.title("Distribución del coeficiente de variación intra-paciente")
+plt.legend()
+plt.show()
+
+# === Scatter SBP vs DBP CV ===
+plt.figure(figsize=(6,6))
+plt.scatter(sbp_cv, dbp_cv, alpha=0.7, c="#D7000B21")
+plt.xlabel("SBP CV (%)")
+plt.ylabel("DBP CV (%)")
+plt.title("Comparación CV intra-paciente (SBP vs DBP)")
+plt.grid(True)
+plt.show()
+"""
+# === Detectar pacientes de alta variabilidad ===
+sbp_thresh = np.percentile(sbp_cv, 75)
+dbp_thresh = np.percentile(dbp_cv, 75)
+
+high_var_patients = np.where((sbp_cv > sbp_thresh) | (dbp_cv > dbp_thresh))[0]
+
+print(f"Pacientes con alta variabilidad (arriba del percentil 75): {high_var_patients}")
+print(f"Cantidad de pacientes con alta variabilidad: {len(high_var_patients)} de {len(unique_patients_p)}")

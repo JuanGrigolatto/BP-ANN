@@ -111,7 +111,7 @@ merged_data = {
         'labels': torch.cat(all_labels, dim=0),
         'patient_ids': torch.cat(all_patient_ids, dim=0)
     }
-"""
+
 #print (f"ID_pacientes: {merged_data['patient_ids']}")    
 unique_patients = merged_data['patient_ids'].unique().tolist()
 #print(f"Número de pacientes únicos: {len(unique_patients)}")
@@ -123,7 +123,7 @@ subset_idx = np.random.choice(total_samples, size=5000)
 subset_signals = merged_data['data'][subset_idx].numpy().reshape(5000, -1)  # Convertir a numpy y aplanar
 subset_labels = merged_data['labels'][subset_idx].numpy()
 subset_patients = merged_data['patient_ids'][subset_idx].numpy()
-
+"""
 n_components_95 = get_95_component_variance(subset_signals)
 
 # Reducir dimensionalidad
@@ -140,7 +140,54 @@ plt.title("Distribución interpaciente (PCA de señales - 5000 muestras aleatori
 plt.xlabel("PC1")
 plt.ylabel("PC2")
 plt.show()
-    
+"""
+"""
+# PCA previo para reducir ruido (ej: 50 componentes)
+pca_full = PCA(n_components=500)
+pca_full.fit(subset_signals)
+
+# Varianza explicada por cada componente
+explained_var = pca_full.explained_variance_ratio_
+
+# Varianza acumulada
+cumulative_var = np.cumsum(explained_var)
+
+# Mostrar primeros dos componentes
+print(f"Varianza explicada por los dos primeros componentes: {explained_var[:2]}")
+print(f"Varianza acumulada en los dos primeros componentes: {cumulative_var[1]:.2f}")
+
+# Gráfico
+plt.figure(figsize=(8,6))
+plt.plot(np.arange(1, len(cumulative_var)+1), cumulative_var, marker='o')
+plt.axhline(y=0.95, color='r', linestyle='--', label='95% varianza')
+plt.xlabel("Número de componentes")
+plt.ylabel("Varianza acumulada")
+plt.title("Curva de varianza acumulada (PCA)")
+plt.legend()
+plt.grid(True)
+plt.show()
+"""
+
+pca_150 = PCA(n_components=50)
+n_components_95 = get_95_component_variance(subset_signals)
+
+signals_reduced = pca_150.fit_transform(subset_signals)
+
+print(f"n_components_95: {n_components_95}")
+print(f"primeros dos componentes de la varianza acumulada: {pca_150.explained_variance_ratio_[:2]}")
+# Aplicar t-SNE (2D)
+tsne = TSNE(n_components=2, perplexity=30, learning_rate=200, n_iter=1000, random_state=42)
+tsne_result = tsne.fit_transform(signals_reduced)
+
+# Graficar con colores por paciente
+plt.figure(figsize=(8,6))
+scatter = plt.scatter(tsne_result[:,0], tsne_result[:,1], c=subset_patients, cmap="tab20", s=10, alpha=0.7)
+plt.colorbar(scatter, label="Patient ID")
+plt.title("Distribución interpaciente (t-SNE de señales - 5000 muestras aleatorias)")
+plt.xlabel("t-SNE 1")
+plt.ylabel("t-SNE 2")
+plt.show()
+
 
 # Calcular el promedio de señales por paciente
 patient_means = []
@@ -160,7 +207,7 @@ patient_means = np.array(patient_means)
 patient_ids = np.array(patient_ids)
 
 # Reducir dimensionalidad del promedio por paciente
-
+""""
 n_components_95 = get_95_component_variance(patient_means)
 pca = PCA(n_components=n_components_95)
 pca_result = pca.fit_transform(patient_means.reshape(len(patient_means), -1))
@@ -173,6 +220,26 @@ plt.title("Distribución de PACIENTES (PCA de promedios de señales)")
 plt.xlabel("PC1")
 plt.ylabel("PC2")
 plt.show()
+"""
+
+pca_50 = PCA(n_components=50)
+pca_result = pca_50.fit_transform(patient_means.reshape(len(patient_means), -1))
+
+signals_reduced_patients = pca_50.fit_transform(patient_means.reshape(len(patient_means), -1))
+
+# Aplicar t-SNE (2D)
+tsne = TSNE(n_components=2, perplexity=30, learning_rate=200, n_iter=1000, random_state=42)
+tsne_result = tsne.fit_transform(signals_reduced_patients)
+
+# Graficar con colores por paciente
+plt.figure(figsize=(8,6))
+scatter = plt.scatter(tsne_result[:,0], tsne_result[:,1], c=patient_ids, cmap="tab20", s=10, alpha=0.7)
+plt.colorbar(scatter, label="Patient ID")
+plt.title("Distribución de PACIENTES (PCA de promedios de señales)")
+plt.xlabel("t-SNE 1")
+plt.ylabel("t-SNE 2")
+plt.show()
+
 """
 SBP_MEAN = 134.02
 DBP_MEAN = 63.47
@@ -190,7 +257,7 @@ unique_patients_p,sbp_std, dbp_std, sbp_mean, dbp_mean = intrapatient_variabilit
 print("std_SBP len:", len(sbp_std))
 print("std_DBP len:", len(dbp_std))
 
-"""
+
 # === Plot SBP intra-paciente ===
 plt.figure(figsize=(12,5))
 plt.bar(unique_patients_p, sbp_std, alpha=0.7)
@@ -226,9 +293,9 @@ plt.ylabel("PC2")
 plt.title(f"Distribución de señales (PCA 2D) - Paciente {num_patient}")
 plt.grid(True)
 plt.show()
-"""
+
 sbp_cv, dbp_cv = calculate_cv(sbp_std, dbp_std, sbp_mean, dbp_mean)
-"""
+
 # === Histogramas de CV ===
 plt.figure(figsize=(12,5))
 plt.hist(sbp_cv, bins=30, alpha=0.7, label="SBP CV")
@@ -254,7 +321,7 @@ plt.ylabel("DBP CV (%)")
 plt.title("Comparación CV intra-paciente (SBP vs DBP)")
 plt.grid(True)
 plt.show()
-"""
+
 # === Detectar pacientes de alta variabilidad ===
 sbp_thresh = np.percentile(sbp_cv, 75)
 dbp_thresh = np.percentile(dbp_cv, 75)
@@ -263,3 +330,4 @@ high_var_patients = np.where((sbp_cv > sbp_thresh) | (dbp_cv > dbp_thresh))[0]
 
 print(f"Pacientes con alta variabilidad (arriba del percentil 75): {high_var_patients}")
 print(f"Cantidad de pacientes con alta variabilidad: {len(high_var_patients)} de {len(unique_patients_p)}")
+"""

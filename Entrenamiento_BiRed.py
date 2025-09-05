@@ -48,7 +48,7 @@ def train_one_epoch(model, training_generator, validation_generator, optimizer=N
     model.eval()    
     for batch in validation_generator:
     #for batch in subset_loader:
-        valid_loss += evaluate_one_step(batch, optimizer, model, criterion, device)
+        valid_loss += evaluate_one_step(batch, model, criterion, device)
 
     return train_loss/len(training_generator), valid_loss/len(validation_generator)
 
@@ -114,21 +114,22 @@ def main():
     )
     print("data_UCI/test_set.pt guardado")
 
-    model_S = Modelo_ConvolucionalV1(in_channels=2,out_channels=1, long_signal=500)
+    model = Modelo_ConvolucionalV1(in_channels=2,out_channels=1, long_signal=500)
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model_S = model_S.to(device)  # Mueve el modelo a la GPU
-    optimizer = torch.optim.Adam(model_S.parameters(), lr=1e-3, weight_decay= 1e-4)
+    model = model.to(device)  # Mueve el modelo a la GPU
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay= 1e-4)
     criterion = torch.nn.MSELoss()  # MSELoss para regresión
 
     max_epochs = 100
     best_valid_loss = float('inf') 
     running_loss = np.zeros(shape=(max_epochs, 2))
+    min_delta = 0.002  # mejora mínima requerida
     patience = 5
-
-
+    patience_significativa = 5
+  
     for epoch in tqdm(range(max_epochs)):
-        train_l, valid_l = train_one_epoch(model_S, training_generator=training_generator, validation_generator=validation_generator, optimizer=optimizer, criterion=criterion, device=device)
+        train_l, valid_l = train_one_epoch(model, training_generator=training_generator, validation_generator=validation_generator, optimizer=optimizer, criterion=criterion, device=device)
         running_loss[epoch] = (train_l,valid_l)
         print(f"[Época {epoch}] Train Loss: {train_l:.6f} - Valid Loss: {valid_l:.6f}")
         
@@ -139,20 +140,29 @@ def main():
             no_improvement_count = 0  
             torch.save({
                 'epoca': epoch,
-                'model_state_dict': model_S.state_dict(),
+                'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': valid_l,
                 'best_valid_loss': best_valid_loss 
-            }, 'best_model_conv_v1_SBP.pt')
+            }, 'best_model_time32_picos.pt')
             print(f"Nuevo mejor modelo guardado (valid_loss = {valid_l:.6f})")
+
+            
+            if improvement > min_delta:
+                no_significant_improvement_count = 0
+            else:
+                no_significant_improvement_count += 1
         else:
             no_improvement_count += 1
             no_significant_improvement_count += 1
 
+        
         if no_improvement_count >= patience:
             print(f"Early stopping por falta de mejoras (últimas {patience} épocas).")
             break
-
+        if no_significant_improvement_count >= patience_significativa:
+            print(f"Early stopping por falta de mejoras > {min_delta:.4f} (últimas {patience_significativa} épocas).")
+            break
 
     fig, ax = plt.subplots(figsize=(7, 4), tight_layout=True)
     ax.plot(running_loss[:epoch, 0], label='Entrenamiento')

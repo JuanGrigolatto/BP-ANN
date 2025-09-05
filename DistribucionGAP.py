@@ -72,6 +72,40 @@ def intrapatient_pca(patient_id, signals, patients, n_samples=500):
     X_pca = pca_2d.fit_transform(X)
 
     return X_pca
+
+def intrapatient_tsne(patient_id, signals, patients, n_samples=500):
+    idx = patients == patient_id
+    patient_signals = signals[idx]
+
+    if len(patient_signals) > n_samples:
+        subset_idx = np.random.choice(len(patient_signals), size=n_samples, replace=False)
+        patient_signals = patient_signals[subset_idx]
+
+    X = patient_signals.reshape(patient_signals.shape[0], -1)
+
+    # --- PCA completo para calcular varianza acumulada ---
+    pca_full = PCA()
+    pca_full.fit(X)
+    cumulative_var = np.cumsum(pca_full.explained_variance_ratio_)
+    n_components_95 = np.argmax(cumulative_var >= 0.95) + 1
+    print(f"Paciente {patient_id}: se necesitan {n_components_95} componentes para el 95% de la varianza")
+
+    # --- PCA previo (ej: min(50, n_components_95)) ---
+    n_pca_pre = min(50, n_components_95)
+    X_reduced = PCA(n_components=n_pca_pre).fit_transform(X)
+
+    # --- t-SNE a 2D ---
+    tsne = TSNE(
+        n_components=2,
+        perplexity=30,       # podés ajustar según n_samples
+        learning_rate='auto',
+        max_iter=1000,       # sklearn >= 1.5
+        init='pca',
+        random_state=42
+    )
+    X_tsne = tsne.fit_transform(X_reduced)
+
+    return X_tsne
     
 
 def calculate_cv(sbp_std, dbp_std, sbp_mean, dbp_mean):
@@ -167,7 +201,7 @@ plt.legend()
 plt.grid(True)
 plt.show()
 """
-
+"""
 pca_150 = PCA(n_components=50)
 n_components_95 = get_95_component_variance(subset_signals)
 
@@ -187,8 +221,9 @@ plt.title("Distribución interpaciente (t-SNE de señales - 5000 muestras aleato
 plt.xlabel("t-SNE 1")
 plt.ylabel("t-SNE 2")
 plt.show()
+"""
 
-
+"""
 # Calcular el promedio de señales por paciente
 patient_means = []
 patient_ids = []
@@ -207,7 +242,8 @@ patient_means = np.array(patient_means)
 patient_ids = np.array(patient_ids)
 
 # Reducir dimensionalidad del promedio por paciente
-""""
+"""
+"""
 n_components_95 = get_95_component_variance(patient_means)
 pca = PCA(n_components=n_components_95)
 pca_result = pca.fit_transform(patient_means.reshape(len(patient_means), -1))
@@ -220,6 +256,7 @@ plt.title("Distribución de PACIENTES (PCA de promedios de señales)")
 plt.xlabel("PC1")
 plt.ylabel("PC2")
 plt.show()
+"""
 """
 
 pca_50 = PCA(n_components=50)
@@ -240,7 +277,7 @@ plt.xlabel("t-SNE 1")
 plt.ylabel("t-SNE 2")
 plt.show()
 
-"""
+
 SBP_MEAN = 134.02
 DBP_MEAN = 63.47
 SBP_STD = 22.75
@@ -282,10 +319,12 @@ plt.ylabel("STD DBP")
 plt.title("Comparación de variabilidad intra-paciente (SBP vs DBP)")
 plt.grid(True)
 plt.show()
+"""
 
 num_patient = random.choice(merged_data['patient_ids'].numpy())
-intrapatient_pca = intrapatient_pca(num_patient, merged_data['data'].numpy(), merged_data['patient_ids'].numpy(), n_samples=500)
-
+#intrapatient_pca = intrapatient_pca(num_patient, merged_data['data'].numpy(), merged_data['patient_ids'].numpy(), n_samples=500)
+intrapatient_tsne = intrapatient_tsne(num_patient, merged_data['data'].numpy(), merged_data['patient_ids'].numpy(), n_samples=500)
+"""
 plt.figure(figsize=(6,6))
 plt.scatter(intrapatient_pca[:,0], intrapatient_pca[:,1], alpha=0.6, s=20)
 plt.xlabel("PC1")
@@ -293,7 +332,17 @@ plt.ylabel("PC2")
 plt.title(f"Distribución de señales (PCA 2D) - Paciente {num_patient}")
 plt.grid(True)
 plt.show()
+"""
 
+plt.figure(figsize=(6,6))
+plt.scatter(intrapatient_tsne[:,0], intrapatient_tsne[:,1], alpha=0.7)
+plt.title(f"Distribución de señales (t-SNE 2D) - Paciente {num_patient}")
+plt.xlabel("t-SNE 1")
+plt.ylabel("t-SNE 2")
+plt.grid(True)
+plt.show()
+
+"""
 sbp_cv, dbp_cv = calculate_cv(sbp_std, dbp_std, sbp_mean, dbp_mean)
 
 # === Histogramas de CV ===

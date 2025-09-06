@@ -100,7 +100,7 @@ def main():
     print(os.path.exists('data_UCI/test_set_por_picos/test_meta.pt"'))
     dataset = UCIDataset(['data_UCI/test_set_por_picos/test_meta.pt'])
     
-    subset = torch.utils.data.Subset(dataset, indices=list(range(5000)))
+    subset = torch.utils.data.Subset(dataset, indices=list(range(10000)))
     dataloader = torch.utils.data.DataLoader(subset, **parameters)
 
     all_labels = []

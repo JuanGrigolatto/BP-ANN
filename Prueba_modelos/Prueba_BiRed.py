@@ -94,6 +94,8 @@ def main():
         'pin_memory': False
     }
 
+    
+    
     print(os.path.exists('data/processed/data_UCI/test_set_por_picos/test_meta.pt"'))
     dataset = UCIDataset(['data/processed/data_UCI/test_set_por_picos/test_meta.pt'])
     
@@ -114,7 +116,7 @@ def main():
     print("Hay NaNs:", torch.isnan(labels).any().item())
     print("Hay Infs:", torch.isinf(labels).any().item())
     
-    path_model = 'models/best_models/best_model_time32_picos.pt'
+    path_model = 'models/best_models/best_model_conv_v1_DBP.pt'
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = Modelo_ConvolucionalV1(in_channels=2,out_channels=1, long_signal=500)
@@ -126,10 +128,10 @@ def main():
 
     bar = tqdm(dataloader)
     accmse, accrmse, accmae, accr2 = [], [], [], []
-    acc_mean_error_sbp = []
-    acc_std_error_sbp = []
-    #acc_mean_error_dbp = []
-    #acc_std_error_dbp = []
+    #acc_mean_error_sbp = []
+    #acc_std_error_sbp = []
+    acc_mean_error_dbp = []
+    acc_std_error_dbp = []
     all_preds = []
     all_labels = []
     
@@ -145,7 +147,7 @@ def main():
         for batch in bar:
             data, labels, ID_paciente, indice_muestra = batch
             
-            labels = labels[:,0].unsqueeze(1) 
+            labels = labels[:,1].unsqueeze(1) 
 
             data, labels = data.to(device), labels.to(device)
             
@@ -179,18 +181,18 @@ def main():
             mae = mean_absolute_error(true, pred)
             r2 = r2_score(true, pred)
 
-            mean_error_SBP, std_error_SBP = aami_metrics(true, pred)
-            #mean_error_DBP, std_error_DBP = aami_metrics(true_DBP, pred_DBP)        
+            #mean_error_SBP, std_error_SBP = aami_metrics(true, pred)
+            mean_error_DBP, std_error_DBP = aami_metrics(true, pred)        
 
             accmse.append(mse)
             accrmse.append(rmse)
             accmae.append(mae)
             accr2.append(r2)
 
-            acc_mean_error_sbp.append(mean_error_SBP)
-            acc_std_error_sbp.append(std_error_SBP)
-            #acc_mean_error_dbp.append(mean_error_DBP)
-            #acc_std_error_dbp.append(std_error_DBP)
+            #acc_mean_error_sbp.append(mean_error_SBP)
+            #acc_std_error_sbp.append(std_error_SBP)
+            acc_mean_error_dbp.append(mean_error_DBP)
+            acc_std_error_dbp.append(std_error_DBP)
 
             all_preds.append(pred)
             all_labels.append(true)
@@ -305,10 +307,10 @@ def main():
     print(f"  MAE: {np.mean(accmae):.4f}")
     print(f"   R2: {np.mean(accr2):.4f}")
     print(f"\nPromedio de métricas AAMI (valores desnormalizados en mmHg):")
-    print(f"SBP - Mean Error: {np.mean(acc_mean_error_sbp):.2f}")
-    print(f"SBP - Std Error:  {np.mean(acc_std_error_sbp):.2f}")
-    #print(f"DBP - Mean Error: {np.mean(acc_mean_error_dbp):.2f}")
-    #print(f"DBP - Std Error:  {np.mean(acc_std_error_dbp):.2f}")
+    #print(f"SBP - Mean Error: {np.mean(acc_mean_error_sbp):.2f}")
+    #print(f"SBP - Std Error:  {np.mean(acc_std_error_sbp):.2f}")
+    print(f"DBP - Mean Error: {np.mean(acc_mean_error_dbp):.2f}")
+    print(f"DBP - Std Error:  {np.mean(acc_std_error_dbp):.2f}")
 
     # Gráfico real vs predicho
     plt.figure(figsize=(8, 5))
@@ -340,7 +342,7 @@ def main():
     plt.show()
 
     #Gráfico Bland Altman
-    bland_altman_graf(all_preds, all_labels, title="Modelo Conv V1 S - Picos")
+    bland_altman_graf(all_preds, all_labels, title="Modelo Conv V1 D - Picos")
 
 if __name__ == '__main__':
     main()

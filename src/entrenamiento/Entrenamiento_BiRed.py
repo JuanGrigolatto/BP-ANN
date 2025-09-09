@@ -9,7 +9,7 @@ from tqdm.auto import tqdm
 import matplotlib.pyplot as plt
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import random
-import Entrenamiento
+from . import Entrenamiento
 
 
 def train_one_step(batch, optimizer, model, criterion, device):
@@ -61,14 +61,14 @@ def main():
         'pin_memory': False
     }
     Entrenamiento.set_seed(42)
-
+    
     archivos = [
     'data/processed/data_UCI/dataset_parte_1_por_picos.pt',
     'data/processed/data_UCI/dataset_parte_2_por_picos.pt',
     'data/processed/data_UCI/dataset_parte_3_por_picos.pt',
     'data/processed/data_UCI/dataset_parte_4_por_picos.pt',
     ]
-
+    
     dataset_completo = UCIDataset(archivos)
 
     total = len(dataset_completo)
@@ -112,7 +112,7 @@ def main():
     patients=test_patients, # (N,)
     indexs=test_indexs      # (N,)
     )
-    print("data/processed/data_UCI/test_set.pt guardado")
+    print("data/processed/data_UCI/test_set_por_picos guardado")
 
     model = Modelo_ConvolucionalV1(in_channels=2,out_channels=1, long_signal=500)
     
@@ -170,7 +170,7 @@ def main():
     ax.set_xlabel('Epoch')
     ax.set_ylabel('Loss')
     ax.legend()
-    plt.savefig('loss_curve.png')
+    plt.savefig('graficas/loss_curve.png')
     plt.show()
 
 if __name__ == '__main__':

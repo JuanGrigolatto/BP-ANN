@@ -120,7 +120,7 @@ for i in range(20):
 """
 #%% Guardado de indice final de paciente
 
-index = Tools.save_partial_file(ppg_norm, ecg_norm, presiones_sistolicas_norm, presiones_diastolicas_norm, 8984, 2922776, 'dataset_parte_4_por_picos')
+index = Tools.save_partial_file(ppg_norm, ecg_norm, presiones_sistolicas_norm, presiones_diastolicas_norm, 8975, 2922776, 'dataset_parte_4_por_picos')
 
 num_pacientesIDs = Tools.get_num_patientsIDs(ppg_norm)
 

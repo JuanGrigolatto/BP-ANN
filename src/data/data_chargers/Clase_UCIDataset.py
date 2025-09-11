@@ -52,24 +52,23 @@ class UCIDataset(data.Dataset):
         self.datasets = []
         self.index_map = []
         
-        # Obtener la ruta absoluta a la raíz del proyecto (BP-ANN-clean).
+        # Esta es la línea corregida. Subes 3 niveles para llegar a la raíz.
         ruta_base = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 
         for file_idx, file_path in enumerate(file_list):
             
-            # La ruta completa al archivo .pt
+            # Esto construye la ruta completa al archivo .pt.
             ruta_completa_pt = os.path.join(ruta_base, file_path)
             
             meta = torch.load(ruta_completa_pt, map_location="cpu")
             
-            # Las rutas guardadas en los metadatos ya son relativas a la raíz del proyecto.
-            # Por lo tanto, no agregamos 'data/processed' de nuevo.
+            # Las rutas guardadas en los metadatos ya son relativas a la raíz.
+            # Solo se unen a la ruta base.
             data_path = os.path.join(ruta_base, meta['data_path'])
             labels_path = os.path.join(ruta_base, meta['labels_path'])
             patients_path = os.path.join(ruta_base, meta['patients_path'])
             indexs_path = os.path.join(ruta_base, meta['indexs_path'])
 
-            # El resto del código es el mismo para cargar los memmaps
             data_mmap = np.memmap(data_path, dtype='float32', mode='r',
                                   shape=(meta['num_samples'], 2, meta['segment_length']))
             labels_mmap = np.memmap(labels_path, dtype='float32', mode='r',

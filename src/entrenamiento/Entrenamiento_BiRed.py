@@ -16,7 +16,7 @@ def train_one_step(batch, optimizer, model, criterion, device):
     optimizer.zero_grad() # Reinicia los gradientes
     data, labels, _, _ = batch # Obtiene los datos y etiquetas
     
-    labels = labels[:,1].unsqueeze(1) # Usar solo la primera columna de etiquetas (SBP)
+    labels = labels[:,0].unsqueeze(1) # Usar solo la primera columna de etiquetas (SBP)
 
     data, labels = data.to(device), labels.to(device) # Mueve los datos y etiquetas a la GPU
     preds = model.forward(data) # Realiza la predicción
@@ -29,7 +29,7 @@ def evaluate_one_step(batch, model, criterion, device):
     with torch.no_grad():
         data, labels, _, _ = batch
 
-        labels = labels[:,1].unsqueeze(1) # Usar solo la primera columna de etiquetas (SBP)
+        labels = labels[:,0].unsqueeze(1) # Usar solo la primera columna de etiquetas (SBP)
 
         data, labels = data.to(device), labels.to(device)
         preds = model.forward(data)
@@ -124,9 +124,9 @@ def main():
     max_epochs = 100
     best_valid_loss = float('inf') 
     running_loss = np.zeros(shape=(max_epochs, 2))
-    min_delta = 0.002  # mejora mínima requerida
+    min_delta = 0.000001  # mejora mínima requerida
     patience = 10
-    patience_significativa = 5
+    patience_significativa = 10
   
     for epoch in tqdm(range(max_epochs)):
         train_l, valid_l = train_one_epoch(model, training_generator=training_generator, validation_generator=validation_generator, optimizer=optimizer, criterion=criterion, device=device)
@@ -144,7 +144,7 @@ def main():
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': valid_l,
                 'best_valid_loss': best_valid_loss 
-            }, 'models/best_models/best_model_conv_v1_DBP.pt')
+            }, 'models/best_models/best_model_conv_v1_SBP.pt')
             print(f"Nuevo mejor modelo guardado (valid_loss = {valid_l:.6f})")
 
             

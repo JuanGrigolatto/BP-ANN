@@ -12,6 +12,9 @@ import matplotlib.pyplot as plt
 
 def max_min_pressures(sbp,dbp):
     
+    sbp = np.array([val for sublist in sbp for val in sublist])
+    dbp = np.array([val for sublist in dbp for val in sublist])
+
     SBP_MIN = np.min(sbp)
     SBP_MAX = np.max(sbp)
     DBP_MIN = np.min(dbp)

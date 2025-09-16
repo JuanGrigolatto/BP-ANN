@@ -116,7 +116,7 @@ def main():
     print("Hay NaNs:", torch.isnan(labels).any().item())
     print("Hay Infs:", torch.isinf(labels).any().item())
     
-    path_model = 'models/best_models/best_model_conv_v1_DBP.pt'
+    path_model = 'models/best_models/best_model_conv_v1_SBP.pt'
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = Modelo_ConvolucionalV1(in_channels=2,out_channels=1, long_signal=500)
@@ -147,7 +147,7 @@ def main():
         for batch in bar:
             data, labels, ID_paciente, indice_muestra = batch
             
-            labels = labels[:,1].unsqueeze(1) 
+            labels = labels[:,0].unsqueeze(1) 
 
             data, labels = data.to(device), labels.to(device)
             
@@ -342,7 +342,7 @@ def main():
     plt.show()
 
     #Gráfico Bland Altman
-    bland_altman_graf(all_preds, all_labels, title="Modelo Conv V1 D - Picos")
+    bland_altman_graf(all_preds, all_labels, title="Modelo Conv V1 S - Picos")
 
 if __name__ == '__main__':
     main()

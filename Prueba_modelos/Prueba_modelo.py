@@ -118,11 +118,11 @@ def main():
     
     #dataloader = torch.utils.data.DataLoader(dataset, **parameters)
 
-    path_model = 'models/best_models/best_model_time32_picos.pt'
+    path_model = 'models/best_models/best_model_conv_v1_picos.pt'
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32)
-    #model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=500)
+    #model = InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32)
+    model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=500)
     
     checkpoint = torch.load(path_model, map_location=device)
     model.load_state_dict(checkpoint['model_state_dict'])
@@ -301,7 +301,7 @@ def main():
     print(f"SBP - Std Error:  {np.mean(acc_std_error_sbp):.2f}")
     print(f"DBP - Mean Error: {np.mean(acc_mean_error_dbp):.2f}")
     print(f"DBP - Std Error:  {np.mean(acc_std_error_dbp):.2f}")
-
+    """
     # Gráfico real vs predicho
     plt.figure(figsize=(8, 5))
     plt.scatter(all_labels, all_preds, alpha=0.5)
@@ -333,6 +333,50 @@ def main():
 
     #Gráfico Bland Altman
     bland_altman_graf(all_preds, all_labels, title="Modelo time32 - Picos")
+    """
+        # Gráfico real vs predicho (SBP y DBP con distinto color)
+    plt.figure(figsize=(8, 5))
+    plt.scatter(all_labels[:, 0], all_preds[:, 0], alpha=0.5, label="SBP", color="blue")
+    plt.scatter(all_labels[:, 1], all_preds[:, 1], alpha=0.5, label="DBP", color="orange")
+    plt.plot([all_labels.min(), all_labels.max()],
+             [all_labels.min(), all_labels.max()], 'r--')
+    plt.xlabel("Valor verdadero (mmHg)")
+    plt.ylabel("Predicción (mmHg)")
+    plt.title(f"R² SBP={r2_score(all_labels[:,0], all_preds[:,0]):.2f} | "
+              f"DBP={r2_score(all_labels[:,1], all_preds[:,1]):.2f}")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+    # Gráfico de residuos (SBP y DBP en distinto color)
+    residuals_sbp = all_preds[:, 0] - all_labels[:, 0]
+    residuals_dbp = all_preds[:, 1] - all_labels[:, 1]
+
+    plt.figure(figsize=(8, 4))
+    plt.scatter(all_labels[:, 0], residuals_sbp, alpha=0.5, label="SBP", color="blue")
+    plt.scatter(all_labels[:, 1], residuals_dbp, alpha=0.5, label="DBP", color="orange")
+    plt.axhline(0, color='red', linestyle='--')
+    plt.xlabel("Valor verdadero (mmHg)")
+    plt.ylabel("Error (Pred - Real) (mmHg)")
+    plt.title("Errores de predicción (residuos)")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+    # Histograma de errores (SBP y DBP separados)
+    plt.figure(figsize=(8, 5))
+    plt.hist(residuals_sbp, bins=50, alpha=0.6, label="SBP", color="blue", edgecolor="black")
+    plt.hist(residuals_dbp, bins=50, alpha=0.6, label="DBP", color="orange", edgecolor="black")
+    plt.title("Distribución de errores")
+    plt.xlabel("Error (mmHg)")
+    plt.ylabel("Frecuencia")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+    # Gráfico Bland-Altman para SBP y DBP
+    bland_altman_graf(all_preds[:,0], all_labels[:,0], title="SBP")
+    bland_altman_graf(all_preds[:,1], all_labels[:,1], title="DBP")
 
 if __name__ == '__main__':
     main()

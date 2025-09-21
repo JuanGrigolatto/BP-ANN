@@ -116,7 +116,7 @@ def main():
     print("Hay NaNs:", torch.isnan(labels).any().item())
     print("Hay Infs:", torch.isinf(labels).any().item())
     
-    path_model = 'models/best_models/best_model_conv_v1_SBP.pt'
+    path_model = 'models/best_models/best_model_conv_v1_SBP_from_DBP.pt'
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = Modelo_ConvolucionalV1(in_channels=2,out_channels=1, long_signal=500)
@@ -211,7 +211,7 @@ def main():
                 
                 valores_errores.append(error_x)
                 indices_errores.append(indice_muestra[j].item())
-                if error_x >= 10: 
+                if error_x >= 20: 
                     indices_error_alto.append(j)
                 else:
                     indices_error_bajo.append(j)
@@ -342,7 +342,7 @@ def main():
     plt.show()
 
     #Gráfico Bland Altman
-    bland_altman_graf(all_preds, all_labels, title="Modelo Conv V1 S - Picos")
+    bland_altman_graf(all_preds, all_labels, title="Modelo Conv V1 S from D - Picos")
 
 if __name__ == '__main__':
     main()

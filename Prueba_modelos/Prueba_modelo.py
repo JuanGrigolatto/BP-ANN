@@ -118,7 +118,7 @@ def main():
     
     #dataloader = torch.utils.data.DataLoader(dataset, **parameters)
 
-    path_model = 'models/best_models/best_model_conv_v1_picos.pt'
+    path_model = 'models/best_models/best_model_conv_v1_pam.pt'
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     #model = InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32)

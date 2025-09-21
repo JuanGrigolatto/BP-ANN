@@ -25,6 +25,8 @@ def max_min_pressures(sbp,dbp):
     
     return SBP_MIN, SBP_MAX, DBP_MIN, DBP_MAX 
 
+
+
 #Normalización
 
 def min_max_normalization(signal, max, min):
@@ -117,6 +119,25 @@ def signal_normalization(ppg_signals, abp_signals, ecg_signals):
 
     return ppg_normalized, abp_normalized, ecg_normalized
 
+#Presión arterial media (PAM)
+
+def calcular_pam(sbp: torch.Tensor, dbp: torch.Tensor) -> torch.Tensor:
+    return (sbp + (2*dbp)) / 3
+
+def get_pam_labels(matriz_presiones_sistolicas, matriz_presiones_diastolicas):
+    matriz_presiones_media = []
+    for i in range(len(matriz_presiones_sistolicas)):
+        presiones_media = []
+        for j in range(len(matriz_presiones_sistolicas[i])):
+            sbp = matriz_presiones_sistolicas[i][j]
+            dbp = matriz_presiones_diastolicas[i][j]
+            if not np.isnan(sbp) and not np.isnan(dbp):
+                pam = calcular_pam(sbp, dbp)
+                presiones_media.append(pam)
+            else:
+                presiones_media.append(np.nan)
+        matriz_presiones_media.append(presiones_media)
+    return matriz_presiones_media
 #Filtrado
 
 def filtrar_ppg(senial_ppg):
@@ -228,7 +249,6 @@ def detectar_picos_abp(abp, fs=125):
     peaks, _ = find_peaks(abp, height=height_sbp, prominence=prominence, distance=distancia_min)
 
     return peaks
-
 
 # Ventaneo
 def recortar_por_ventanas_cuadradas(signal, fs, t_window, overlap):

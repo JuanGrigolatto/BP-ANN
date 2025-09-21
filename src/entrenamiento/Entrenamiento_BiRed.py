@@ -10,13 +10,20 @@ import matplotlib.pyplot as plt
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import random
 from . import Entrenamiento
-
+import src.utils.Tools.Tools as Tools
 
 def train_one_step(batch, optimizer, model, criterion, device):
     optimizer.zero_grad() # Reinicia los gradientes
     data, labels, _, _ = batch # Obtiene los datos y etiquetas
     
-    labels = labels[:,0].unsqueeze(1) # Usar solo la primera columna de etiquetas (SBP)
+    #labels = labels[:,0].unsqueeze(1) # Usar solo la primera columna de etiquetas (SBP)
+
+    labels_sbp = labels[:,0].unsqueeze(1) # Usar solo la primera columna de etiquetas (SBP)
+    labels_dbp = labels[:,1].unsqueeze(1) # Usar solo la segunda columna de etiquetas (DBP)
+
+    labels_pam = Tools.calcular_pam(labels_sbp, labels_dbp)
+
+    labels = labels_pam
 
     data, labels = data.to(device), labels.to(device) # Mueve los datos y etiquetas a la GPU
     preds = model.forward(data) # Realiza la predicción
@@ -29,7 +36,14 @@ def evaluate_one_step(batch, model, criterion, device):
     with torch.no_grad():
         data, labels, _, _ = batch
 
-        labels = labels[:,0].unsqueeze(1) # Usar solo la primera columna de etiquetas (SBP)
+        #labels = labels[:,0].unsqueeze(1) # Usar solo la primera columna de etiquetas (SBP)
+        
+        labels_sbp = labels[:,0].unsqueeze(1) # Usar solo la primera columna de etiquetas (SBP)
+        labels_dbp = labels[:,1].unsqueeze(1) # Usar solo la segunda columna de etiquetas (DBP)
+
+        labels_pam = Tools.calcular_pam(labels_sbp, labels_dbp)
+
+        labels = labels_pam
 
         data, labels = data.to(device), labels.to(device)
         preds = model.forward(data)
@@ -121,6 +135,20 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay= 1e-4)
     criterion = torch.nn.MSELoss()  # MSELoss para regresión
 
+    #retomar entrenamiento 
+    start_epoch = 0
+    checkpoint_path = "models/best_models/best_model_conv_v1_pam.pt"
+    if os.path.exists(checkpoint_path):
+        checkpoint = torch.load(checkpoint_path, map_location=device)
+        model.load_state_dict(checkpoint["model_state_dict"])
+        #optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        #start_epoch = checkpoint.get("epoca", 0) + 1
+        best_valid_loss = checkpoint.get("best_valid_loss", float('inf')) 
+        print(f" Modelo cargado desde {checkpoint_path}, continuando en epoch {start_epoch}, best_valid_loss={best_valid_loss:.6f}")
+    else:
+        print(" No se encontró un checkpoint, se comienza entrenamiento desde cero.")
+
+
     max_epochs = 100
     best_valid_loss = float('inf') 
     running_loss = np.zeros(shape=(max_epochs, 2))
@@ -144,7 +172,7 @@ def main():
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': valid_l,
                 'best_valid_loss': best_valid_loss 
-            }, 'models/best_models/best_model_conv_v1_SBP.pt')
+            }, 'models/best_models/best_model_conv_v1_pam.pt')
             print(f"Nuevo mejor modelo guardado (valid_loss = {valid_l:.6f})")
 
             

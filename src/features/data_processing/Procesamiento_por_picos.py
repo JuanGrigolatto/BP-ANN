@@ -84,6 +84,8 @@ presiones_sistolicas, presiones_diastolicas, indices_sistolicos, indices_diastol
 
 ppg_dep, abp_dep, ecg_dep, sbp_dep, dbp_dep, sistolicos_dep, diastolicos_dep = Tools.delete_signals_no_peaks(all_segments_ppg, all_segments_abp, all_segments_ecg, presiones_sistolicas, presiones_diastolicas, indices_sistolicos, indices_diastolicos)
 
+#presiones_medias = Tools.get_pam_labels(sbp_dep, dbp_dep)
+
 sbp_min, sbp_max, dbp_min, dbp_max = Tools.max_min_pressures(sbp_dep, dbp_dep)
 
 print(f"Presión sistólica mínima: {sbp_min}, máxima: {sbp_max}")

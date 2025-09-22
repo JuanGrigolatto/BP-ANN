@@ -6,6 +6,7 @@ from tqdm.auto import tqdm
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import numpy as np
 import matplotlib.pyplot as plt
+import src.utils.Tools.Tools as Tools
 
 # Valores reales de Min y Max que usaste al normalizar SBP y DBP
 
@@ -116,7 +117,7 @@ def main():
     print("Hay NaNs:", torch.isnan(labels).any().item())
     print("Hay Infs:", torch.isinf(labels).any().item())
     
-    path_model = 'models/best_models/best_model_conv_v1_SBP_from_DBP.pt'
+    path_model = 'models/best_models/best_model_conv_v1_pam.pt'
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = Modelo_ConvolucionalV1(in_channels=2,out_channels=1, long_signal=500)
@@ -147,7 +148,13 @@ def main():
         for batch in bar:
             data, labels, ID_paciente, indice_muestra = batch
             
-            labels = labels[:,0].unsqueeze(1) 
+           #labels = labels[:,0].unsqueeze(1) 
+            labels_sbp = labels[:,0].unsqueeze(1)
+            labels_dbp = labels[:,1].unsqueeze(1)
+            
+            labels_pam = Tools.calcular_pam(labels_sbp, labels_dbp)
+
+            labels = labels_pam
 
             data, labels = data.to(device), labels.to(device)
             
@@ -309,8 +316,8 @@ def main():
     print(f"\nPromedio de métricas AAMI (valores desnormalizados en mmHg):")
     #print(f"SBP - Mean Error: {np.mean(acc_mean_error_sbp):.2f}")
     #print(f"SBP - Std Error:  {np.mean(acc_std_error_sbp):.2f}")
-    print(f"DBP - Mean Error: {np.mean(acc_mean_error_dbp):.2f}")
-    print(f"DBP - Std Error:  {np.mean(acc_std_error_dbp):.2f}")
+    print(f"PAM - Mean Error: {np.mean(acc_mean_error_dbp):.2f}")
+    print(f"PAM - Std Error:  {np.mean(acc_std_error_dbp):.2f}")
 
     # Gráfico real vs predicho
     plt.figure(figsize=(8, 5))
@@ -342,7 +349,7 @@ def main():
     plt.show()
 
     #Gráfico Bland Altman
-    bland_altman_graf(all_preds, all_labels, title="Modelo Conv V1 S from D - Picos")
+    bland_altman_graf(all_preds, all_labels, title="Modelo Conv V1 PAM - Picos")
 
 if __name__ == '__main__':
     main()

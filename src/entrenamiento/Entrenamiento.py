@@ -4,7 +4,7 @@ import os
 from torch.utils import data
 from torch.utils.data import TensorDataset, random_split
 import numpy as np
-from src.models.InceptionTime import InceptionTime
+#from src.models.InceptionTime import InceptionTime
 #from src.models.Modelo_conv import Modelo_Convolucional
 from src.models.ConvolucionalV1 import Modelo_ConvolucionalV1
 #from src.models.ConvolucionalV2 import Modelo_ConvolucionalV2
@@ -12,6 +12,7 @@ from tqdm.auto import tqdm
 import matplotlib.pyplot as plt
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import random
+import src.utils.Tools.Tools as Tools
 
 def set_seed(seed=42):
     random.seed(seed)
@@ -179,9 +180,9 @@ def main():
 
     # Crear el modelo
 
-    model=InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32)
+    #model=InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32)
     #model=Modelo_Convolucional(in_channels=2,out_channels=2, long_signal=250)
-    #model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=500)
+    model=Modelo_ConvolucionalV1(in_channels=2,out_channels=3, long_signal=500)
     #model=Modelo_ConvolucionalV2(in_channels=2,out_channels=2, long_signal=1250)
     # Añade esto después de crear el modelo
 
@@ -202,7 +203,7 @@ def main():
 
     #retomar entrenamiento 
     start_epoch = 0
-    checkpoint_path = "best_model_time32_picos.pt"
+    checkpoint_path = "models/best_models/best_model_conv_v1_con_PAM.pt"
     if os.path.exists(checkpoint_path):
         checkpoint = torch.load(checkpoint_path, map_location=device)
         model.load_state_dict(checkpoint["model_state_dict"])
@@ -217,6 +218,13 @@ def main():
     def train_one_step(batch):
         optimizer.zero_grad() # Reinicia los gradientes
         data, labels, _, _ = batch # Obtiene los datos y etiquetas
+
+        labels_sbp= labels[:,0].unsqueeze(1)
+        labels_dbp= labels[:,1].unsqueeze(1)
+        labels_pam = Tools.calcular_pam(labels_sbp, labels_dbp)
+
+        labels = torch.cat((labels_sbp, labels_dbp, labels_pam), dim=1)
+
         data, labels = data.to(device), labels.to(device) # Mueve los datos y etiquetas a la GPU
         
         #print("Rango de datos:", torch.min(data).item(), torch.max(data).item())
@@ -244,6 +252,12 @@ def main():
     def evaluate_one_step(batch):
         with torch.no_grad():
             data, labels, _, _ = batch
+
+            labels_sbp= labels[:,0].unsqueeze(1)
+            labels_dbp= labels[:,1].unsqueeze(1)
+            labels_pam = Tools.calcular_pam(labels_sbp, labels_dbp)
+            labels = torch.cat((labels_sbp, labels_dbp, labels_pam), dim=1)
+
             data, labels = data.to(device), labels.to(device)
             preds = model.forward(data)
             loss = criterion(preds, labels)
@@ -269,8 +283,8 @@ def main():
     best_valid_loss = float('inf') 
     running_loss = np.zeros(shape=(max_epochs, 2))
     min_delta = 0.00002  # mejora mínima requerida
-    patience = 5
-    patience_significativa = 5
+    patience = 12
+    patience_significativa = 12
   
     for epoch in tqdm(range(start_epoch, max_epochs)):
         train_l, valid_l = train_one_epoch()
@@ -288,7 +302,7 @@ def main():
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': valid_l,
                 'best_valid_loss': best_valid_loss 
-            }, 'best_model_time32_picos.pt')
+            }, 'models/best_models/best_model_conv_v1_con_PAM.pt')
             print(f"Nuevo mejor modelo guardado (valid_loss = {valid_l:.6f})")
 
             

@@ -4,9 +4,9 @@ import os
 from torch.utils import data
 from torch.utils.data import TensorDataset, random_split
 import numpy as np
-#from src.models.InceptionTime import InceptionTime
+from src.models.InceptionTime import InceptionTime
 #from src.models.Modelo_conv import Modelo_Convolucional
-from src.models.ConvolucionalV1 import Modelo_ConvolucionalV1
+#from src.models.ConvolucionalV1 import Modelo_ConvolucionalV1
 #from src.models.ConvolucionalV2 import Modelo_ConvolucionalV2
 from tqdm.auto import tqdm 
 import matplotlib.pyplot as plt
@@ -78,7 +78,7 @@ def save_test_dataset(save_dir, prefix, data, labels, patients, indexs):
 def main():
     # Configuración del dispositivo
     parameters = {
-        'batch_size': 256,
+        'batch_size': 64,
         'shuffle': True,
         'num_workers': 0,
         'pin_memory': False
@@ -180,9 +180,9 @@ def main():
 
     # Crear el modelo
 
-    #model=InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32)
+    model=InceptionTime(c_in=2, c_out=3, seq_len=None, n_filters=32)
     #model=Modelo_Convolucional(in_channels=2,out_channels=2, long_signal=250)
-    model=Modelo_ConvolucionalV1(in_channels=2,out_channels=3, long_signal=500)
+    #model=Modelo_ConvolucionalV1(in_channels=2,out_channels=3, long_signal=500)
     #model=Modelo_ConvolucionalV2(in_channels=2,out_channels=2, long_signal=1250)
     # Añade esto después de crear el modelo
 
@@ -203,7 +203,7 @@ def main():
 
     #retomar entrenamiento 
     start_epoch = 0
-    checkpoint_path = "models/best_models/best_model_conv_v1_con_PAM.pt"
+    checkpoint_path = "models/best_models/best_model_time32_con_PAM.pt"
     if os.path.exists(checkpoint_path):
         checkpoint = torch.load(checkpoint_path, map_location=device)
         model.load_state_dict(checkpoint["model_state_dict"])
@@ -302,7 +302,7 @@ def main():
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': valid_l,
                 'best_valid_loss': best_valid_loss 
-            }, 'models/best_models/best_model_conv_v1_con_PAM.pt')
+            }, 'models/best_models/best_model_time32_con_PAM.pt')
             print(f"Nuevo mejor modelo guardado (valid_loss = {valid_l:.6f})")
 
             
@@ -330,7 +330,7 @@ def main():
     ax.set_xlabel('Epoch')
     ax.set_ylabel('Loss')
     ax.legend()
-    plt.savefig('loss_curve.png')
+    plt.savefig('graficas/loss_curve.png')
     plt.show()
 
 if __name__ == '__main__':

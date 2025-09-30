@@ -4,35 +4,27 @@ import numpy as np
 from collections import defaultdict
 
 class TaskDataset(data.Dataset):
-    def __init__(self, list_IDs, data_dir=None, data_dict=None, num_shots=5):
+    def __init__(self, list_IDs, base_dataset=None, num_shots=5):
         self.num_shots = num_shots
         self.total_samples = 2 * num_shots
         self.list_IDs = list_IDs
         
-        if data_dict is not None:
-            data = data_dict
-        elif data_dir is not None:
-            data = torch.load(data_dir)
-        else:
-            raise ValueError("Debes proporcionar 'data_dir' o 'data_dict'")
+        if base_dataset is None:
+            raise ValueError("Se debe proporcionar un dataset base como UCIDataset")
         
-        all_signals= data['data']  # (2, L)
-        all_labels = data['labels']   # (2,)
-        self.ID_patients = data['patient_ids']  # (N,)
-        print(f"Datos cargados correctamente. Muestras: {len(all_signals)}")  
-
-        self.patient_to_signals = defaultdict(list)
-        self.patient_to_labels = defaultdict(list)
-
+        self.base_dataset = base_dataset
         
-        for i in range(len(self.ID_patients)):
-            pid = int(self.ID_patients[i])
-            self.patient_to_signals[pid].append(all_signals[i])
-            self.patient_to_labels[pid].append(all_labels[i])
+        self.patient_to_indices = defaultdict(list)
+        
+        for i in range(len(base_dataset)):
+            _, _, pid, _ = base_dataset[i]
+            pid = int(pid)
+            if pid in self.list_IDs:
+                self.patient_to_indices[pid].append(i)
 
-        print(f"Señales agrupadas. Total pacientes únicos: {len(self.patient_to_signals)}")
+        print(f"Señales agrupadas. Total pacientes únicos: {len(self.patient_to_indices)}")
         # Uso pacientes con cantidad suficiente de señales para 2* self.num_shots
-        self.valid_IDs = [pid for pid in self.list_IDs if len(self.patient_to_signals[pid]) >= self.total_samples]
+        self.valid_IDs = [pid for pid in self.list_IDs if len(self.patient_to_indices[pid]) >= self.total_samples]
         print(f"{len(self.valid_IDs)} pacientes tienen al menos {self.total_samples} señales")
 
 
@@ -43,16 +35,9 @@ class TaskDataset(data.Dataset):
     def __getitem__(self, index):
         pid = self.valid_IDs[index]
 
-        signals = self.patient_to_signals[pid]
-        labels = self.patient_to_labels[pid]
-        
-        if len(signals) < self.total_samples:
-            raise ValueError(f"Paciente {pid} tiene solo {len(signals)} señales (< {self.total_samples})")
+        indices = np.random.choice(self.patient_to_indices[pid], self.total_samples, replace=False)
 
-    
-        indices = np.random.choice(len(signals), self.total_samples, replace=False)
-
-        xs = torch.stack([signals[i] for i in indices])  # (2*num_shots, 2, 250)
-        ys = torch.stack([labels[i] for i in indices])   # (2*num_shots, 2)
+        xs = torch.stack([self.base_dataset[i][0] for i in indices])    # (2*num_shots, 2, 500)
+        ys = torch.stack([self.base_dataset[i][1] for i in indices])   # (2*num_shots, 2)
 
         return xs, ys

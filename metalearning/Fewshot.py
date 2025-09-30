@@ -18,7 +18,7 @@ def desnormalizar_zscore(norm_array, media, std):
 def desnormalizar_minmax(norm_array, min_val, max_val):
     return norm_array * (max_val - min_val) + min_val
 
-def main(n_shots=10, num_tasks= 10000):
+def main(n_shots=5, num_tasks= 10000):
     SBP_MEAN = 134.02
     DBP_MEAN = 63.47
     SBP_STD = 22.75
@@ -33,10 +33,10 @@ def main(n_shots=10, num_tasks= 10000):
     """
     
     data_paths = [
-        'data/processed/data_UCI/dataset_parte_1.pt',
-        'data/processed/data_UCI/dataset_parte_2.pt',
-        'data/processed/data_UCI/dataset_parte_3.pt',
-        'data/processed/data_UCI/dataset_parte_4.pt'
+        'data/processed/data_UCI/dataset_parte_1_por_picos.pt',
+        'data/processed/data_UCI/dataset_parte_2_por_picos.pt',
+        'data/processed/data_UCI/dataset_parte_3_por_picos.pt',
+        'data/processed/data_UCI/dataset_parte_4_por_picos.pt'
     ]
 
     all_data = []
@@ -80,8 +80,8 @@ def main(n_shots=10, num_tasks= 10000):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     #Carga de modelo metaentrenado 
-    model=Modelo_Convolucional(in_channels=2,out_channels=2, long_signal=250)
-    path_model='models/best_meta_models/best_meta_model.pt'
+    model=Modelo_Convolucional(in_channels=2,out_channels=2, long_signal=500)
+    path_model='models/best_meta_models/best_meta_model_v1.pt'
     checkpoint = torch.load(path_model, map_location=torch.device('cpu'))
     model.load_state_dict(checkpoint['model_state_dict'])
     
@@ -114,7 +114,7 @@ def main(n_shots=10, num_tasks= 10000):
     ax.set_xlabel('number of sample')
     ax.set_ylabel('Loss')
     ax.legend()
-    plt.savefig('loss_pre_fine_tuning.png')
+    plt.savefig('metalearning/loss_pre_fine_tuning.png')
     plt.show()
 
     #Fine tunning N-way K-shot    
@@ -145,7 +145,7 @@ def main(n_shots=10, num_tasks= 10000):
     ax.set_xlabel('number of shot')
     ax.set_ylabel('Loss')
     ax.legend()
-    plt.savefig('loss_curve_fine_tuning.png')
+    plt.savefig('metalearning/loss_curve_fine_tuning.png')
     plt.show()
 
     
@@ -172,7 +172,7 @@ def main(n_shots=10, num_tasks= 10000):
     ax.set_xlabel('number of sample')
     ax.set_ylabel('Loss')
     ax.legend()
-    plt.savefig('loss_post_fine_tuning.png')
+    plt.savefig('metalearning/loss_post_fine_tuning.png')
     plt.show()
 
     # --- 1. Real vs Predicho ---

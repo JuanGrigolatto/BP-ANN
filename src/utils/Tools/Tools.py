@@ -26,7 +26,6 @@ def max_min_pressures(sbp,dbp):
     return SBP_MIN, SBP_MAX, DBP_MIN, DBP_MAX 
 
 
-
 #Normalización
 
 def min_max_normalization(signal, max, min):
@@ -159,7 +158,20 @@ def filtrar_ppg(senial_ppg):
 
     # Señal sin línea de base
     ppg_filtrada = ppg_filtrada - baseline 
-    
+    """
+    # Ploteo de la magnitud del filtro 
+    w, h = signal.freqz(b, a, worN=2048, fs=125)
+    plt.figure(figsize=(7, 4))
+    plt.plot(w, 20 * np.log10(abs(h)))
+    plt.title("Magnitud del Filtro Pasabanda para PPG")
+    plt.xlabel("Frecuencia [Hz]")
+    plt.ylabel("Magnitud [dB]")
+    plt.grid(which='both', axis='both')
+    plt.axvline(frec_inf, color='red', linestyle='--', label=f"{frec_inf} Hz")
+    plt.axvline(frec_sup, color='red', linestyle='--', label=f"{frec_sup} Hz")
+    plt.legend()
+    plt.show()
+    """
     return ppg_filtrada
 
 def filtrar_ecg(senial_ecg):
@@ -180,7 +192,20 @@ def filtrar_ecg(senial_ecg):
 
     # Señal sin línea de base
     ecg_filtrada = ecg_filtrada - baseline
-
+    """
+     # Ploteo de la magnitud del filtro 
+    w, h = signal.freqz(b, a, worN=2048, fs=125)
+    plt.figure(figsize=(7, 4))
+    plt.plot(w, 20 * np.log10(abs(h)))
+    plt.title("Magnitud del Filtro Pasabanda para ECG")
+    plt.xlabel("Frecuencia [Hz]")
+    plt.ylabel("Magnitud [dB]")
+    plt.grid(which='both', axis='both')
+    plt.axvline(frec_inf, color='red', linestyle='--', label=f"{frec_inf} Hz")
+    plt.axvline(frec_sup, color='red', linestyle='--', label=f"{frec_sup} Hz")
+    plt.legend()
+    plt.show()
+    """
     return ecg_filtrada
 
 def filtrado_para_deteccion_Q(senial_ecg):
@@ -192,7 +217,20 @@ def filtrado_para_deteccion_Q(senial_ecg):
     b, a = signal.butter(orden, frecs_corte, 'bandpass', fs = 125)
 
     ecg_filtrada = signal.filtfilt(b,a, senial_ecg)
-    
+    """
+    # Ploteo de la magnitud del filtro 
+    w, h = signal.freqz(b, a, worN=2048, fs=125)
+    plt.figure(figsize=(7, 4))
+    plt.plot(w, 20 * np.log10(abs(h)))
+    plt.title("Magnitud del Filtro Pasabanda para detección de QRS")
+    plt.xlabel("Frecuencia [Hz]")
+    plt.ylabel("Magnitud [dB]")
+    plt.grid(which='both', axis='both')
+    plt.axvline(frec_inf, color='red', linestyle='--', label=f"{frec_inf} Hz")
+    plt.axvline(frec_sup, color='red', linestyle='--', label=f"{frec_sup} Hz")
+    plt.legend()
+    plt.show()
+    """
     return ecg_filtrada
 
 def filtrar_abp(senial_abp):
@@ -203,7 +241,19 @@ def filtrar_abp(senial_abp):
     b, a = signal.butter(orden, frec_corte, 'lowpass', fs = 125)
 
     ecg_filtrada = signal.filtfilt(b,a, senial_abp)
-
+    """
+        # Ploteo de la magnitud del filtro 
+    w, h = signal.freqz(b, a, worN=2048, fs=125)
+    plt.figure(figsize=(7, 4))
+    plt.plot(w, 20 * np.log10(abs(h)))
+    plt.title("Magnitud del Filtro Pasabajos para ABP")
+    plt.xlabel("Frecuencia [Hz]")
+    plt.ylabel("Magnitud [dB]")
+    plt.grid(which='both', axis='both')
+    plt.axvline(frec_corte, color='red', linestyle='--', label=f"{frec_corte} Hz")
+    plt.legend()
+    plt.show()
+    """
     return ecg_filtrada
 
 # Detección de picos en PPG y ECG

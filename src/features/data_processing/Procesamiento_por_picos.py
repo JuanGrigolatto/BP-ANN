@@ -22,6 +22,7 @@ for i in range(len(ppg_signal)):
 for j in range(len(ecg_signal_filtrada)):
     ecg_signal_filtrada_Q.append(Tools.filtrado_para_deteccion_Q(ecg_signal_filtrada[j]))
 
+Tools.plot_bode()
 
 #%% Detección de picos
 

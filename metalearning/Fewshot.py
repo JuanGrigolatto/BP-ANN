@@ -2,6 +2,7 @@ import torch.utils
 from src.data.data_chargers.Clase_UCIDataset import UCIDataset
 from src.data.data_chargers.MetaDataset import TaskDataset
 from src.models.Modelo_conv import Modelo_Convolucional
+from src.models.ConvolucionalV1 import Modelo_ConvolucionalV1
 import numpy as np
 from torch import nn, optim
 import matplotlib.pyplot as plt
@@ -17,6 +18,24 @@ def desnormalizar_zscore(norm_array, media, std):
 
 def desnormalizar_minmax(norm_array, min_val, max_val):
     return norm_array * (max_val - min_val) + min_val
+
+def tuning(sample, optimizer, model, criterion, device):
+        optimizer.zero_grad() # Reinicia los gradientes
+        data, labels , _ = sample # Obtiene los datos y etiquetas
+        data, labels = data.to(device), labels.to(device) # Mueve los datos y etiquetas a la GPU
+        preds = model.forward(data) # Realiza la predicción
+        loss = criterion(preds, labels) # Calcula la pérdida
+        loss.backward() # Calcula los gradientes mediante backpropagation
+        optimizer.step() # Actualiza los parámetros del modelo
+        return loss.item() # Devuelve la pérdida
+
+def evaluation(batch, model, criterion, device):
+    with torch.no_grad():
+        data, labels, _ = batch
+        data, labels = data.to(device), labels.to(device)
+        preds = model.forward(data)
+        loss = criterion(preds, labels)
+    return preds, loss
 
 def main(n_shots=5, num_tasks= 10000):
     SBP_MEAN = 134.02
@@ -38,7 +57,7 @@ def main(n_shots=5, num_tasks= 10000):
         'data/processed/data_UCI/dataset_parte_3_por_picos.pt',
         'data/processed/data_UCI/dataset_parte_4_por_picos.pt'
     ]
-
+    """
     all_data = []
     all_labels = []
     all_patient_ids = []
@@ -54,7 +73,8 @@ def main(n_shots=5, num_tasks= 10000):
         'labels': torch.cat(all_labels, dim=0),
         'patient_ids': torch.cat(all_patient_ids, dim=0)
     }
-
+    """
+    dataset_completo = UCIDataset(data_paths)
     """
     unique_patients = merged_data['patient_ids'].unique().tolist()
 
@@ -65,7 +85,7 @@ def main(n_shots=5, num_tasks= 10000):
     """
 
    
-    taskset = TaskDataset(list_IDs=test_patient_ids, data_dict=merged_data, num_shots=n_shots)
+    taskset = TaskDataset(list_IDs=test_patient_ids, base_dataset=dataset_completo, num_shots=n_shots)
     #taskset = TaskDataset(list_IDs=list_IDs, data_dict=merged_data, num_shots=n_shots)
     id_patient_for_tuning =  random.choice(test_patient_ids)
     #id_patient_for_tuning =  random.choice(list_IDs)
@@ -74,14 +94,15 @@ def main(n_shots=5, num_tasks= 10000):
 
     print(f"ID paciente para fine tuning: {id_patient_for_tuning}")
 
-    tuning_dataloader_TRAIN=torch.utils.data.DataLoader(tuningset_for_train, batch_size=1, shuffle=False)
-    tuning_dataloader_VALID=torch.utils.data.DataLoader(tuningset_for_valid, batch_size=1, shuffle=False)
+    tuning_dataloader_TRAIN=torch.utils.data.DataLoader(tuningset_for_train, batch_size=n_shots, shuffle=False)
+    tuning_dataloader_VALID=torch.utils.data.DataLoader(tuningset_for_valid, batch_size=n_shots, shuffle=False)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     #Carga de modelo metaentrenado 
-    model=Modelo_Convolucional(in_channels=2,out_channels=2, long_signal=500)
-    path_model='models/best_meta_models/best_meta_model_v1.pt'
+    #model=Modelo_Convolucional(in_channels=2,out_channels=2, long_signal=500)
+    model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=500)
+    path_model='models/best_meta_models/best_meta_model_v1_100_epoch.pt'
     checkpoint = torch.load(path_model, map_location=torch.device('cpu'))
     model.load_state_dict(checkpoint['model_state_dict'])
     
@@ -91,21 +112,50 @@ def main(n_shots=5, num_tasks= 10000):
     #Evaluación modelo previo a fine tuning
     model = model.to(device)  # Mueve el modelo a la GPU
 
-    def evaluation(batch):
-        with torch.no_grad():
-            data, labels = batch
-            data, labels = data.to(device), labels.to(device)
-            preds = model.forward(data)
-            loss = criterion(preds, labels)
-        return preds.squeeze().cpu().numpy(), loss.item()
-        
-   
-    loss_pre_fine_tuning = np.zeros(shape=len(tuning_dataloader_VALID))
-    preds_pre_fine_tuning = np.zeros(shape=(len(tuning_dataloader_VALID), 2))
+    #Estrategia de evaluación previa al fine tuning
+
+    # 1) Fine-tuning completo
+    #for param in model.parameters():
+    #    param.requires_grad = True
+
+    # 2) Solo dense layers (Congelar capas de convolución)
+    """
+    for param in model.parameters():
+        param.requires_grad = False
+    for param in model.dense1.parameters():
+        param.requires_grad = True
+    for param in model.dense2.parameters():
+        param.requires_grad = True
+    """
+
+    # 3) Congelar BatchNorm (Error con batch size = 1 si no se congela)
+    """
+    for m in model.modules():
+        if isinstance(m, torch.nn.BatchNorm1d):
+            m.eval()
+            for param in m.parameters():
+                param.requires_grad = False
+    """
+    #Fine tunning N-way K-shot    
+    #optimizer = torch.optim.Adam(model.parameters(), lr=1e-3) 
+    # Definicón del optimizador SOLO con los parámetros entrenables
+    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-4)
+    
+    #preds_pre_fine_tuning = np.zeros((len(tuning_dataloader_VALID), n_shots, 2))
+    #loss_pre_fine_tuning = np.zeros(len(tuning_dataloader_VALID))
     model.eval()    
-    for k, batch in enumerate(tuning_dataloader_VALID):
-        preds_pre_fine_tuning[k] ,loss_pre_fine_tuning[k] = evaluation(batch)
-        
+    
+    preds_pre_fine_tuning = []
+    loss_pre_fine_tuning = []
+
+    for k, batch in tuning_dataloader_VALID:
+    #    preds_pre_fine_tuning[k] ,loss_pre_fine_tuning[k] = evaluation(batch, model, criterion, device)
+        preds, loss = evaluation(batch, model, criterion, device)
+        preds_pre_fine_tuning.extend(preds.detach().cpu().numpy())  
+        loss_pre_fine_tuning.extend([loss.item()]*len(preds))
+
+    preds_pre_fine_tuning = np.array(preds_pre_fine_tuning)
+    loss_pre_fine_tuning = np.array(loss_pre_fine_tuning)
     
     labels = np.array([l.squeeze().cpu().numpy() for l in tuning_dataloader_VALID.dataset.labels])
 
@@ -117,23 +167,10 @@ def main(n_shots=5, num_tasks= 10000):
     plt.savefig('metalearning/loss_pre_fine_tuning.png')
     plt.show()
 
-    #Fine tunning N-way K-shot    
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)  
-    def tuning(sample):
-        optimizer.zero_grad(sample) # Reinicia los gradientes
-        data, labels = sample # Obtiene los datos y etiquetas
-        data, labels = data.to(device), labels.to(device) # Mueve los datos y etiquetas a la GPU
-        preds = model.forward(data) # Realiza la predicción
-        loss = criterion(preds, labels) # Calcula la pérdida
-        loss.backward() # Calcula los gradientes mediante backpropagation
-        optimizer.step() # Actualiza los parámetros del modelo
-        return loss.item() # Devuelve la pérdida
-    
-
     model.train()
     tuning_loss = np.zeros(shape=n_shots)
     for i, sample in enumerate(tuning_dataloader_TRAIN):
-        tuning_loss[i] = tuning(sample)
+        tuning_loss[i] = tuning(sample,optimizer, model, criterion, device)
     
     torch.save({'model_state_dict': model.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict(),
@@ -151,13 +188,23 @@ def main(n_shots=5, num_tasks= 10000):
     
     #Evaluación de modelo posterior al fine tuning
 
-    loss_post_fine_tuning = np.zeros(shape=len(tuning_dataloader_VALID))
-    preds_post_fine_tuning = np.zeros(shape=(len(tuning_dataloader_VALID),2))
-    model.eval()    
-    for j, batch in enumerate(tuning_dataloader_VALID):
-        preds_post_fine_tuning[j], loss_post_fine_tuning[j] = evaluation(batch)
+    #preds_post_fine_tuning = np.zeros((len(tuning_dataloader_VALID), n_shots, 2))
+    #loss_post_fine_tuning = np.zeros(len(tuning_dataloader_VALID))
 
+    preds_post_fine_tuning = []
+    loss_post_fine_tuning = []
+
+    model.eval()    
+    for j, batch in tuning_dataloader_VALID:
+        #preds_post_fine_tuning[j], loss_post_fine_tuning[j] = evaluation(batch, model, criterion, device)
+        preds, loss = evaluation(batch, model, criterion, device)
+        preds_post_fine_tuning.extend(preds.detach().cpu().numpy())
+        loss_post_fine_tuning.extend([loss.item()]*len(preds))
+
+    preds_post_fine_tuning = np.array(preds_post_fine_tuning)
+    loss_post_fine_tuning = np.array(loss_post_fine_tuning)
     #Desnormalización
+    """
     pred_pre_SBP_norm = desnormalizar_zscore(preds_pre_fine_tuning[:, 0], SBP_MEAN, SBP_STD)
     pred_pre_DBP_norm = desnormalizar_zscore(preds_pre_fine_tuning[:, 1], DBP_MEAN, DBP_STD)
     
@@ -166,6 +213,17 @@ def main(n_shots=5, num_tasks= 10000):
 
     true_SBP_norm = desnormalizar_zscore(labels[:, 0], SBP_MEAN, SBP_STD)
     true_DBP_norm = desnormalizar_zscore(labels[:, 1], DBP_MEAN, DBP_STD)
+    """
+    pred_pre_flat = preds_pre_fine_tuning.reshape(-1, 2)
+    pred_post_flat = preds_post_fine_tuning.reshape(-1, 2)
+    labels_flat = np.array([l.squeeze().cpu().numpy() for l in tuning_dataloader_VALID.dataset.labels]).reshape(-1, 2)
+
+    pred_pre_SBP_norm = desnormalizar_zscore(pred_pre_flat[:,0], SBP_MEAN, SBP_STD)
+    pred_pre_DBP_norm = desnormalizar_zscore(pred_pre_flat[:,1], DBP_MEAN, DBP_STD)
+    pred_post_SBP_norm = desnormalizar_zscore(pred_post_flat[:,0], SBP_MEAN, SBP_STD)
+    pred_post_DBP_norm = desnormalizar_zscore(pred_post_flat[:,1], DBP_MEAN, DBP_STD)
+    true_SBP_norm = desnormalizar_zscore(labels_flat[:,0], SBP_MEAN, SBP_STD)
+    true_DBP_norm = desnormalizar_zscore(labels_flat[:,1], DBP_MEAN, DBP_STD)
 
     fig, ax = plt.subplots(figsize=(7, 4), tight_layout=True)
     ax.plot(loss_post_fine_tuning, label='Loss post fine tuning')

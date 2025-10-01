@@ -6,15 +6,15 @@ class TuningNDataset(data.Dataset):
     #Antes no estaba el import de TaskDataset y ponía 'TaskDataset' entre comillas
     def __init__(self, task_dataset: TaskDataset, patient_id: int, n_shots=5, validation=False):
         
+
+        indices = task_dataset.patient_to_indices[patient_id][:n_shots]
+        self.signals = [task_dataset.base_dataset[idx][0] for idx in indices]
+        self.labels  = [task_dataset.base_dataset[idx][1] for idx in indices]
+
         if validation:
             # For validation, we use all signals from the patient
-            self.signals = task_dataset.patient_to_signals[patient_id]
-            self.labels = task_dataset.patient_to_labels[patient_id]
             n_shots = len(self.signals)
-        else:
-            self.signals = task_dataset.patient_to_signals[patient_id][:n_shots]
-            self.labels = task_dataset.patient_to_labels[patient_id][:n_shots]
-
+      
         self.total_samples = len(self.signals)
     
     def __len__(self):

@@ -17,7 +17,7 @@ def main(shots=5, num_tasks=10000 ,tasks_per_batch=4, adapt_lr=0.001, meta_lr=0.
     """
     data_dir = 'data_UCI/dataset_completo.pt'
     all_IDs = np.arange(0, num_tasks)    # IDs de pacientes, suponiendo que hay 3000 pacientes   
-        
+         
     # Crear el dataset y dataloader
     tasksets = TaskDataset(all_IDs,data_dir=data_dir, num_shots=shots)
     dataloader = data.DataLoader(tasksets, batch_size=tasks_per_batch, shuffle=True, drop_last=True)

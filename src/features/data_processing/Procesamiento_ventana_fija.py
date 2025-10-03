@@ -144,10 +144,10 @@ DBP_STD = 23.69
 presiones_sistolicas_norm, presiones_diastolicas_norm= Tools.labels_normalization(sbp_depurada, dbp_depurada, SBP_MEAN, SBP_STD, DBP_MEAN, DBP_STD)
 
 #Guardado de indice final de paciente 
-index = Tools.save_partial_file(ppg_depurada, ecg_depurada, presiones_sistolicas_norm, presiones_diastolicas_norm, 8994,  1635159, 'dataset_parte_4_hanning')
+#index = Tools.save_partial_file(ppg_depurada, ecg_depurada, presiones_sistolicas_norm, presiones_diastolicas_norm, 8994,  1635159, 'dataset_parte_4_hanning')
 
-num_pacientesIDs = Tools.get_num_patientsIDs(ppg_depurada)
+#num_pacientesIDs = Tools.get_num_patientsIDs(ppg_depurada)
 
-print((f"indice final del archivo : {index}")) 
-print(f"Número de pacientes para archivo : {num_pacientesIDs}")
+#print((f"indice final del archivo : {index}")) 
+#print(f"Número de pacientes para archivo : {num_pacientesIDs}")
 # %%

@@ -3,7 +3,7 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import signal
-import heartpy as hp
+#import heartpy as hp
 
 
 #%% Extracción de datos desde archivo HDF5
@@ -146,14 +146,13 @@ for i in range(len(ppg_signal)):
     picos_ppg.append(picos)
 inicio=60
 plt.figure(figsize=(12, 6))    
-for i in range(10):
-    # Filtrar picos que estén dentro de las primeras 3000 muestras
+for i in range(5):
+    # Filtrar picos que estén dentro de las primeras 500 muestras
     
-    picos_filtrados = [p for p in picos_ppg[i+inicio] if p < 3000]
-    plt.subplot(10, 1, i + 1)
-    plt.plot(ppg_signal[i+inicio][:3000], label='Señal de PPG', color='blue')
-    plt.plot(picos_filtrados, ppg_signal[i+inicio][:3000][picos_filtrados], 'ro', label='Picos Detectados')
-    plt.title(f'Señal de PPG {i + 1}')
+    picos_filtrados = [p for p in picos_ppg[i+inicio] if p < 500]
+    plt.subplot(5, 1, i + 1)
+    plt.plot(ppg_signal[i+inicio][:500], color='blue')
+    plt.plot(picos_filtrados, ppg_signal[i+inicio][:500][picos_filtrados], 'ro')
     plt.xlabel('muestras')
     plt.ylabel('Amplitud')
     plt.legend()
@@ -167,19 +166,18 @@ inicio=80
 
 
 plt.figure(figsize=(12, 6))
-for i in range(10):
-    # Filtrar picos que estén dentro de las primeras 3000 muestras
+for i in range(5):
+    # Filtrar picos que estén dentro de las primeras 500 muestras
     picos_filtrados = [p for p in picos_ecg[i+inicio] if p < 500]
-    plt.subplot(10, 1, i + 1)
-    plt.plot(ecg_signal[i+inicio][:500], label='Señal de ECG', color='blue')
-    plt.plot(picos_filtrados, ecg_signal[i+inicio][:500][picos_filtrados], 'ro', label='Picos Detectados')
-    plt.title(f'Señal de ECG {i + 1}')
+    plt.subplot(5, 1, i + 1)
+    plt.plot(ecg_signal[i+inicio][:500], color='blue')
+    plt.plot(picos_filtrados, ecg_signal[i+inicio][:500][picos_filtrados], 'ro')
     plt.xlabel('muestras')
     plt.ylabel('Amplitud')
     plt.legend()
 
 # %% Definición y graficación de ventanas
-t_duration = 2  # Duración en segundos de cada segmento
+t_duration = 4  # Duración en segundos de cada segmento
 fs = 125  # Frecuencia de muestreo
 window_width = t_duration * fs  # Ancho fijo por muestra
 
@@ -189,6 +187,7 @@ hanning_window = signal.windows.hann(window_width)
 blackman_window = signal.windows.blackman(window_width)
 rectangular_window = np.ones(window_width)
 
+plt.figure(figsize=(12, 6))
 plt.plot(hamming_window, label="Hamming")
 plt.plot(hanning_window, label="Hanning")
 plt.plot(blackman_window, label="Blackman")
@@ -199,7 +198,7 @@ plt.show()
 
 # %% Recorte de pulsos PPG y ECG a longitud fija
 
-def recortar_por_ventanas_fijas(senial, fs = 125, window ='Hamming', t_duration = 10, overlap = 0.7):
+def recortar_por_ventanas_fijas(senial, fs = 125, window ='Hamming', t_duration = 4, overlap = 0.7):
     window_width = t_duration * fs
     
     if window == 'Hamming':
@@ -221,10 +220,10 @@ def recortar_por_ventanas_fijas(senial, fs = 125, window ='Hamming', t_duration 
 
     return segments
 
-ppg_signal_hamming = recortar_por_ventanas_fijas(ppg_signal[0], window='Hamming', t_duration=2, overlap=0.7)
-ppg_signal_hanning = recortar_por_ventanas_fijas(ppg_signal[0], window='Hanning', t_duration=2, overlap=0.7)
-ppg_signal_blackman = recortar_por_ventanas_fijas(ppg_signal[0], window='Blackman', t_duration=2, overlap=0.7)
-ppg_signal_rectangular = recortar_por_ventanas_fijas(ppg_signal[0], window='Rectangular', t_duration=2, overlap=0.7)
+ppg_signal_hamming = recortar_por_ventanas_fijas(ppg_signal[0], window='Hamming', t_duration=4, overlap=0.7)
+ppg_signal_hanning = recortar_por_ventanas_fijas(ppg_signal[0], window='Hanning', t_duration=4, overlap=0.7)
+ppg_signal_blackman = recortar_por_ventanas_fijas(ppg_signal[0], window='Blackman', t_duration=4, overlap=0.7)
+ppg_signal_rectangular = recortar_por_ventanas_fijas(ppg_signal[0], window='Rectangular', t_duration=4, overlap=0.7)
 
 plt.figure(figsize=(12, 6))
 plt.subplot(4, 1, 1)
@@ -245,10 +244,10 @@ plt.legend()
 plt.tight_layout()
 plt.show()
 
-ecg_signal_hamming = recortar_por_ventanas_fijas(ecg_signal[0], window='Hamming', t_duration=10, overlap=0.7)
-ecg_signal_hanning = recortar_por_ventanas_fijas(ecg_signal[0], window='Hanning', t_duration=10, overlap=0.7)
-ecg_signal_blackman = recortar_por_ventanas_fijas(ecg_signal[0], window='Blackman', t_duration=10, overlap=0.7)
-ecg_signal_rectangular = recortar_por_ventanas_fijas(ecg_signal[0], window='Rectangular', t_duration=10, overlap=0.7)
+ecg_signal_hamming = recortar_por_ventanas_fijas(ecg_signal[0], window='Hamming', t_duration=4, overlap=0.7)
+ecg_signal_hanning = recortar_por_ventanas_fijas(ecg_signal[0], window='Hanning', t_duration=4, overlap=0.7)
+ecg_signal_blackman = recortar_por_ventanas_fijas(ecg_signal[0], window='Blackman', t_duration=4, overlap=0.7)
+ecg_signal_rectangular = recortar_por_ventanas_fijas(ecg_signal[0], window='Rectangular', t_duration=4, overlap=0.7)
 
 plt.figure(figsize=(12, 6))
 plt.subplot(4, 1, 1)
@@ -311,10 +310,10 @@ ecg_signal_segmented, starts_ecg, stops_ecg = recortar_por_picos(ecg_signal, pic
 #%% Graficación de recortes
 
 plt.figure(figsize=(12, 6))
-for k in range(10):
-    plt.subplot(10, 1, k + 1)
+for k in range(5):
+    plt.subplot(5, 1, k + 1)
     plt.plot(ecg_signal_segmented[1740][k], label='Señal de ECG', color='blue')
-    plt.title(f'Señal de ECG segmentada {k + 1}')
+    plt.title(f'Señal de ECG segmentada por picos {k + 1}')
     plt.xlabel('muestras')
     plt.ylabel('Amplitud')
     plt.legend()

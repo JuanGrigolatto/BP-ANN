@@ -22,7 +22,7 @@ for i in range(len(ppg_signal)):
 for j in range(len(ecg_signal_filtrada)):
     ecg_signal_filtrada_Q.append(Tools.filtrado_para_deteccion_Q(ecg_signal_filtrada[j]))
 
-Tools.plot_bode()
+#Tools.plot_bode()
 
 #%% Detección de picos
 
@@ -70,11 +70,11 @@ for h in range(len(ecg_signal_filtrada)):
 """
 inicio=0
 plt.figure(figsize=(12, 6))    
-for i in range(20):
+for i in range(5):
     # Filtrar picos que estén dentro de las primeras 3000 muestras
     plt.subplot(20, 1, i + 1)
-    plt.plot(all_segments_abp[1041][i+inicio], label='Señal de PPG', color='blue')
-    plt.title(f'Señal de PPG {i + 1}')
+    plt.plot(all_segments_abp[1000][i+inicio], label='Señal de PPG', color='blue')
+    #plt.title(f'Señal de PPG {i + 1}')
     plt.xlabel('muestras')
     plt.ylabel('Amplitud')
     plt.legend()
@@ -83,14 +83,14 @@ for i in range(20):
 
 presiones_sistolicas, presiones_diastolicas, indices_sistolicos, indices_diastolicos = Tools.get_abp_labels(all_segments_abp, fs=125)
 
-ppg_dep, abp_dep, ecg_dep, sbp_dep, dbp_dep, sistolicos_dep, diastolicos_dep = Tools.delete_signals_no_peaks(all_segments_ppg, all_segments_abp, all_segments_ecg, presiones_sistolicas, presiones_diastolicas, indices_sistolicos, indices_diastolicos)
+#ppg_dep, abp_dep, ecg_dep, sbp_dep, dbp_dep, sistolicos_dep, diastolicos_dep = Tools.delete_signals_no_peaks(all_segments_ppg, all_segments_abp, all_segments_ecg, presiones_sistolicas, presiones_diastolicas, indices_sistolicos, indices_diastolicos)
 
 #presiones_medias = Tools.get_pam_labels(sbp_dep, dbp_dep)
 
-sbp_min, sbp_max, dbp_min, dbp_max = Tools.max_min_pressures(sbp_dep, dbp_dep)
+#sbp_min, sbp_max, dbp_min, dbp_max = Tools.max_min_pressures(sbp_dep, dbp_dep)
 
-print(f"Presión sistólica mínima: {sbp_min}, máxima: {sbp_max}")
-print(f"Presión diastólica mínima: {dbp_min}, máxima: {dbp_max}")
+#print(f"Presión sistólica mínima: {sbp_min}, máxima: {sbp_max}")
+#print(f"Presión diastólica mínima: {dbp_min}, máxima: {dbp_max}")
 #%% Normalización
 """
 for k in range(len(ppg_signal_filtrada)):
@@ -104,9 +104,9 @@ DBP_MEAN = 63.47
 SBP_STD = 22.75
 DBP_STD = 23.69
 
-ppg_norm, abp_norm, ecg_norm = Tools.signal_normalization(ppg_dep, abp_dep, ecg_dep)
+#ppg_norm, abp_norm, ecg_norm = Tools.signal_normalization(ppg_dep, abp_dep, ecg_dep)
 
-presiones_sistolicas_norm, presiones_diastolicas_norm= Tools.labels_normalization(sbp_dep, dbp_dep, SBP_MEAN, SBP_STD, DBP_MEAN, DBP_STD)
+#presiones_sistolicas_norm, presiones_diastolicas_norm= Tools.labels_normalization(sbp_dep, dbp_dep, SBP_MEAN, SBP_STD, DBP_MEAN, DBP_STD)
 
 #%% 
 """
@@ -121,11 +121,33 @@ for i in range(20):
     plt.ylabel('Amplitud')
     plt.legend()
 """
+
+inicio = 0
+plt.figure(figsize=(12, 10))
+
+for i in range(5):
+    senial = all_segments_abp[1000][i+inicio]
+    
+    # índices de los picos en este segmento
+    peaks_sis = indices_sistolicos[1000][i+inicio]
+    peaks_dia = indices_diastolicos[1000][i+inicio]
+
+    plt.subplot(5, 1, i+1)
+    plt.plot(senial, label="Señal ABP", color="blue")
+    plt.plot(peaks_sis, senial[peaks_sis], "ro", label="Picos sistólicos (SBP)")
+    plt.plot(peaks_dia, senial[peaks_dia], "go", label="Picos diastólicos (DBP)")
+    plt.ylabel("mmHg")
+    plt.xlabel("Muestras")
+    plt.legend(loc="upper right")
+    plt.title(f"Segmento ABP {i+1}")
+
+plt.tight_layout()
+plt.show()
 #%% Guardado de indice final de paciente
 
-index = Tools.save_partial_file(ppg_norm, ecg_norm, presiones_sistolicas_norm, presiones_diastolicas_norm, 8975, 2922776, 'dataset_parte_4_por_picos')
+#index = Tools.save_partial_file(ppg_norm, ecg_norm, presiones_sistolicas_norm, presiones_diastolicas_norm, 8975, 2922776, 'dataset_parte_4_por_picos')
 
-num_pacientesIDs = Tools.get_num_patientsIDs(ppg_norm)
+#num_pacientesIDs = Tools.get_num_patientsIDs(ppg_norm)
 
-print((f"indice final del archivo : {index}")) 
-print(f"Número de pacientes para archivo : {num_pacientesIDs}")
+#print((f"indice final del archivo : {index}")) 
+#print(f"Número de pacientes para archivo : {num_pacientesIDs}")

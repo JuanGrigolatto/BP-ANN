@@ -4,9 +4,9 @@ import os
 from torch.utils import data
 from torch.utils.data import TensorDataset, random_split
 import numpy as np
-from src.models.InceptionTime import InceptionTime
+#from src.models.InceptionTime import InceptionTime
 #from src.models.Modelo_conv import Modelo_Convolucional
-#from src.models.ConvolucionalV1 import Modelo_ConvolucionalV1
+from src.models.ConvolucionalV1 import Modelo_ConvolucionalV1
 #from src.models.ConvolucionalV2 import Modelo_ConvolucionalV2
 from tqdm.auto import tqdm 
 import matplotlib.pyplot as plt
@@ -180,9 +180,9 @@ def main():
 
     # Crear el modelo
 
-    model=InceptionTime(c_in=2, c_out=3, seq_len=None, n_filters=32)
+    #odel=InceptionTime(c_in=2, c_out=3, seq_len=None, n_filters=32)
     #model=Modelo_Convolucional(in_channels=2,out_channels=2, long_signal=250)
-    #model=Modelo_ConvolucionalV1(in_channels=2,out_channels=3, long_signal=500)
+    model=Modelo_ConvolucionalV1(in_channels=2,out_channels=3, long_signal=500)
     #model=Modelo_ConvolucionalV2(in_channels=2,out_channels=2, long_signal=1250)
     # Añade esto después de crear el modelo
 
@@ -203,7 +203,7 @@ def main():
 
     #retomar entrenamiento 
     start_epoch = 0
-    checkpoint_path = "models/best_models/best_model_time32_con_PAM.pt"
+    checkpoint_path = "models/best_models/best_model_conv_v1_con_PAM_100_layerout.pt"
     if os.path.exists(checkpoint_path):
         checkpoint = torch.load(checkpoint_path, map_location=device)
         model.load_state_dict(checkpoint["model_state_dict"])
@@ -283,8 +283,8 @@ def main():
     best_valid_loss = float('inf') 
     running_loss = np.zeros(shape=(max_epochs, 2))
     min_delta = 0.00002  # mejora mínima requerida
-    patience = 12
-    patience_significativa = 12
+    patience = 15
+    patience_significativa = 15
   
     for epoch in tqdm(range(start_epoch, max_epochs)):
         train_l, valid_l = train_one_epoch()
@@ -302,7 +302,7 @@ def main():
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': valid_l,
                 'best_valid_loss': best_valid_loss 
-            }, 'models/best_models/best_model_time32_con_PAM.pt')
+            }, 'models/best_models/best_model_conv_v1_con_PAM_100_layerout.pt')
             print(f"Nuevo mejor modelo guardado (valid_loss = {valid_l:.6f})")
 
             

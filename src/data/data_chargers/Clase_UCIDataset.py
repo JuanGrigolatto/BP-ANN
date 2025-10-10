@@ -52,17 +52,15 @@ class UCIDataset(data.Dataset):
         self.datasets = []
         self.index_map = []
         
-        # Esta es la línea corregida. Subes 3 niveles para llegar a la raíz.
+        
         ruta_base = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 
         for file_idx, file_path in enumerate(file_list):
-            
-            # Esto construye la ruta completa al archivo .pt.
+           
             ruta_completa_pt = os.path.join(ruta_base, file_path)
             
             meta = torch.load(ruta_completa_pt, map_location="cpu")
             
-            # Las rutas guardadas en los metadatos ya son relativas a la raíz.
             # Solo se unen a la ruta base.
             data_path = os.path.join(ruta_base, meta['data_path'])
             labels_path = os.path.join(ruta_base, meta['labels_path'])

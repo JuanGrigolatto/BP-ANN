@@ -21,7 +21,8 @@ class TuningNDataset(data.Dataset):
         return self.total_samples
     
     def __getitem__(self, index):
-        x = self.signals[index]
-        y = self.labels[index]
-        return x, y
+        signals = self.signals[index]
+        labels = self.labels[index]
+
+        return signals, labels
     

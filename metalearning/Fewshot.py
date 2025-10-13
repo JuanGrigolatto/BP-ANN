@@ -21,7 +21,19 @@ def desnormalizar_minmax(norm_array, min_val, max_val):
 
 def tuning(sample, optimizer, model, criterion, device):
         optimizer.zero_grad() # Reinicia los gradientes
-        data, labels , _ = sample # Obtiene los datos y etiquetas
+        data, labels, *_ = sample # Obtiene los datos y etiquetas
+        # Si vienen como listas (por batch_size=1), convertirlos a tensores
+        if isinstance(data, list):
+            data = data[0]
+        if isinstance(labels, list):
+            labels = labels[0]
+            # Congelar todas las capas BatchNorm
+        for layer in model.modules():
+            if isinstance(layer, torch.nn.BatchNorm1d):
+                layer.eval()
+                layer.weight.requires_grad = False
+                layer.bias.requires_grad = False
+
         data, labels = data.to(device), labels.to(device) # Mueve los datos y etiquetas a la GPU
         preds = model.forward(data) # Realiza la predicción
         loss = criterion(preds, labels) # Calcula la pérdida
@@ -31,7 +43,12 @@ def tuning(sample, optimizer, model, criterion, device):
 
 def evaluation(batch, model, criterion, device):
     with torch.no_grad():
-        data, labels, _ = batch
+        data, labels, *_ = batch
+        # Si vienen como listas (por batch_size=1), convertirlos a tensores
+        if isinstance(data, list):
+            data = data[0]
+        if isinstance(labels, list):
+            labels = labels[0]
         data, labels = data.to(device), labels.to(device)
         preds = model.forward(data)
         loss = criterion(preds, labels)
@@ -94,8 +111,8 @@ def main(n_shots=5, num_tasks= 10000):
 
     print(f"ID paciente para fine tuning: {id_patient_for_tuning}")
 
-    tuning_dataloader_TRAIN=torch.utils.data.DataLoader(tuningset_for_train, batch_size=n_shots, shuffle=False)
-    tuning_dataloader_VALID=torch.utils.data.DataLoader(tuningset_for_valid, batch_size=n_shots, shuffle=False)
+    tuning_dataloader_TRAIN=torch.utils.data.DataLoader(tuningset_for_train, batch_size=1, shuffle=False)
+    tuning_dataloader_VALID=torch.utils.data.DataLoader(tuningset_for_valid, batch_size=1, shuffle=False)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -139,8 +156,8 @@ def main(n_shots=5, num_tasks= 10000):
     #Fine tunning N-way K-shot    
     #optimizer = torch.optim.Adam(model.parameters(), lr=1e-3) 
     # Definicón del optimizador SOLO con los parámetros entrenables
-    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-4)
-    
+    #optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     #preds_pre_fine_tuning = np.zeros((len(tuning_dataloader_VALID), n_shots, 2))
     #loss_pre_fine_tuning = np.zeros(len(tuning_dataloader_VALID))
     model.eval()    
@@ -148,7 +165,7 @@ def main(n_shots=5, num_tasks= 10000):
     preds_pre_fine_tuning = []
     loss_pre_fine_tuning = []
 
-    for k, batch in tuning_dataloader_VALID:
+    for batch in tuning_dataloader_VALID:
     #    preds_pre_fine_tuning[k] ,loss_pre_fine_tuning[k] = evaluation(batch, model, criterion, device)
         preds, loss = evaluation(batch, model, criterion, device)
         preds_pre_fine_tuning.extend(preds.detach().cpu().numpy())  
@@ -195,7 +212,7 @@ def main(n_shots=5, num_tasks= 10000):
     loss_post_fine_tuning = []
 
     model.eval()    
-    for j, batch in tuning_dataloader_VALID:
+    for batch in tuning_dataloader_VALID:
         #preds_post_fine_tuning[j], loss_post_fine_tuning[j] = evaluation(batch, model, criterion, device)
         preds, loss = evaluation(batch, model, criterion, device)
         preds_post_fine_tuning.extend(preds.detach().cpu().numpy())

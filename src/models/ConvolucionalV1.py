@@ -45,8 +45,8 @@ class Modelo_ConvolucionalV1(nn.Module):
         self.bn6 = nn.BatchNorm1d(50)
         #self.dense3= nn.Linear(50, 20)
         #self.dense4= nn.Linear(20, out_channels)
-        self.dense3= nn.Linear(50, 100)
-        self.dense4= nn.Linear(100, out_channels)
+        self.dense3= nn.Linear(50, 20)
+        self.dense4= nn.Linear(20, out_channels)
 
 
     def forward(self, x):

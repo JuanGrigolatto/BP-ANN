@@ -13,7 +13,7 @@ import torch
 import random
 from src.data.data_chargers.Clase_UCIDataset import UCIDataset
 
-def main(shots=5, num_tasks=10000 ,tasks_per_batch=1, adapt_lr=0.01, meta_lr=0.001, adapt_steps=5, seed=42, num_epochs=100):
+def main(shots=5, num_tasks=10000 ,tasks_per_batch=4, adapt_lr=0.01, meta_lr=0.001, adapt_steps=5, seed=42, num_epochs=1000):
     """
     data_dir = 'data_UCI/dataset_completo.pt'
     all_IDs = np.arange(0, num_tasks)    # IDs de pacientes, suponiendo que hay 3000 pacientes   
@@ -132,7 +132,7 @@ def main(shots=5, num_tasks=10000 ,tasks_per_batch=1, adapt_lr=0.01, meta_lr=0.0
                         'model_state_dict': model.state_dict(),
                         'optimizer_state_dict': opt.state_dict(),
                         'meta_loss': meta_train_loss}, 
-                    'models/best_meta_models/best_meta_model_v1_prueba_4.pt')
+                    'models/best_meta_models/best_meta_model_v1_prueba_1000_epocas.pt')
             
             running_meta_loss.append(meta_train_loss.item())
 

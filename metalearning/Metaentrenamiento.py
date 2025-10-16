@@ -155,6 +155,7 @@ def main(shots=5, num_tasks=10000 ,tasks_per_batch=4, adapt_lr=0.01, meta_lr=0.0
         print(f"Epoch {epoch+1}: Loss promedio = {epoch_avg_loss:.4f}")
 
     #Graficar la pérdida de metaentrenamiento promedio por época    
+    
     fig, ax = plt.subplots(figsize=(7, 4), tight_layout=True)
     ax.plot(epoch_losses, marker='o', label='Meta entrenamiento (promedio por época)')
     ax.set_xlabel('Época')

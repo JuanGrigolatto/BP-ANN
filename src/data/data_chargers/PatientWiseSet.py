@@ -5,7 +5,7 @@ from collections import defaultdict
 import random
 
 class PatientWiseDataset(data.Dataset):
-    def __init__(self, list_IDs, base_dataset=None, N_patients=6, p_support = 10, q_query= 20):
+    def __init__(self, list_IDs, base_dataset=None, N_patients=20, p_support = 5, q_query= 10):
         self.p_support = p_support
         self.q_query = q_query
         self.N = N_patients

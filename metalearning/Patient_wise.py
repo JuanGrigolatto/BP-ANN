@@ -14,38 +14,83 @@ import torch
 import random
 from src.data.data_chargers.Clase_UCIDataset import UCIDataset
 
-def main(shots=5, num_tasks=10000 ,tasks_per_batch=8, adapt_lr=0.01, meta_lr=0.001, k_adapt_steps=5, seed=42, num_epochs=100, N_patient_group = 6, p_support = 10, q_query= 20):
+def main(num_tasks=200 ,tasks_per_batch=4, adapt_lr=0.01, meta_lr=0.001, k_adapt_steps=5, seed=42, num_epochs=100, N_patient_group = 20, p_support = 5, q_query= 10, base_dataset=None, selected_patients=None):
 
-    data_paths = [
-        'data/processed/data_UCI/dataset_parte_1_por_picos.pt',
-        'data/processed/data_UCI/dataset_parte_2_por_picos.pt',
-        'data/processed/data_UCI/dataset_parte_3_por_picos.pt',
-        'data/processed/data_UCI/dataset_parte_4_por_picos.pt',
-    ]
-
-    dataset_completo = UCIDataset(data_paths)
+    if base_dataset is None:
+        data_paths = [
+            'data/processed/data_UCI/dataset_parte_1_por_picos.pt',
+            'data/processed/data_UCI/dataset_parte_2_por_picos.pt',
+            'data/processed/data_UCI/dataset_parte_3_por_picos.pt',
+            'data/processed/data_UCI/dataset_parte_4_por_picos.pt',
+        ]
+        dataset_completo = UCIDataset(data_paths)
+    else:
+        dataset_completo = base_dataset
     
+        
     random.seed(seed)
+    torch.manual_seed(seed)
+    np.random.seed(seed)
 
+    all_pids = [dataset_completo[i][2].item() for i in range(len(dataset_completo))]
+    all_patients = list(set(all_pids))
+    # Seleccionar 200 pacientes una sola vez 
+    if selected_patients is None:
+        if len(all_patients) < num_tasks:
+            patient_ids = all_patients
+        else:
+            patient_ids = random.sample(all_patients, num_tasks)
+        print(f"Usando {len(patient_ids)} pacientes para entrenamiento.")
+    else:
+        patient_ids = selected_patients
+        print(f"Usando pacientes precargados: {len(patient_ids)}")
+
+
+    """
     all_pids = torch.tensor([dataset_completo[i][2] for i in range(len(dataset_completo))])
     unique_patients = all_pids.unique().tolist()
     random.shuffle(unique_patients)
-    
-    test_patients = unique_patients[:100]       # 100 pacientes para few-shot
-    train_patients = unique_patients[100:]      # Resto para metaentrenamiento
 
+    # Contar cuántas muestras tiene cada paciente
+    patient_to_indices = {pid: [] for pid in unique_patients}
+    for i in range(len(dataset_completo)):
+        _, _, pid, _ = dataset_completo[i]
+        patient_to_indices[int(pid)].append(i)
+
+    # Filtrar pacientes con suficientes muestras
+    min_samples = p_support + q_query
+    valid_IDs_global = [pid for pid, idxs in patient_to_indices.items() if len(idxs) >= min_samples]
+
+    print(f"Pacientes totales: {len(unique_patients)}")
+    print(f"Pacientes válidos (>= {min_samples} muestras): {len(valid_IDs_global)}")
+    
+    num_patients = len(unique_patients)
+    num_valid = int(0.1 * num_patients)
+    valid_patients = unique_patients[:num_valid]
+    train_patients = unique_patients[num_valid:]
+
+    print(f"Pacientes totales: {num_patients}")
+    print(f"Entrenamiento: {len(train_patients)}  |  Validación: {len(valid_patients)}")
     # Guardar lista de pacientes para evaluación few-shot
-    torch.save({'test_patient_ids': test_patients}, 'data/processed/data_UCI/few_shot_patient_data.pt')
+    torch.save({'test_patient_ids': valid_patients}, 'data/processed/data_UCI/few_shot_patient_data.pt')
 
-    if len(unique_patients) >= num_tasks:
+    #list_IDs = train_patients  # Usar todos los pacientes de entrenamiento
+
+    # Limitar el número de tareas (pacientes) de entrenamiento
+    if len(train_patients) > num_tasks:
         list_IDs = random.sample(train_patients, num_tasks)
+        print(f"Usando solo {num_tasks} pacientes para entrenamiento.")
     else:
-        raise ValueError(f"Solo hay {len(train_patients)} pacientes únicos, se solicita {num_tasks}")
-    
+        list_IDs = train_patients
+        print(f"Advertencia: solo {len(train_patients)} pacientes disponibles (menos que num_tasks={num_tasks})")    
+
     tasksets = PatientWiseDataset(list_IDs=list_IDs, base_dataset=dataset_completo, N_patients = N_patient_group, p_support=p_support, q_query=q_query)
+    """
+    tasksets = PatientWiseDataset(list_IDs=patient_ids, base_dataset=dataset_completo, N_patients = N_patient_group, p_support=p_support, q_query=q_query)
     dataloader = data.DataLoader(tasksets, batch_size=tasks_per_batch, shuffle=True, drop_last=True)
 
-    model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=500)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=500).to(device)
     maml = l2l.algorithms.MAML(model, lr=adapt_lr, first_order=True, allow_unused=True)
     opt = optim.Adam(maml.parameters(), meta_lr)
     lossfn = nn.MSELoss(reduction='mean')
@@ -61,7 +106,7 @@ def main(shots=5, num_tasks=10000 ,tasks_per_batch=8, adapt_lr=0.01, meta_lr=0.0
         # Outer loop: iteraciones sobre lotes de tareas
         for iter, batch in enumerate(tqdm(dataloader)):
             meta_train_loss = 0.0
-            x_support, y_support, x_query, y_query = batch
+            x_support, y_support, x_query, y_query = [t.to(device) for t in batch]
 
             effective_batch_size = x_support.size(0)  # cantidad de tareas (pacientes)
 
@@ -112,7 +157,8 @@ def main(shots=5, num_tasks=10000 ,tasks_per_batch=8, adapt_lr=0.01, meta_lr=0.0
         epoch_losses.append(epoch_avg_loss)
         print(f"Época {epoch+1}: Pérdida promedio = {epoch_avg_loss:.4f}")
 
-        #Graficar la pérdida de metaentrenamiento promedio por época    
+        #Graficar la pérdida de metaentrenamiento promedio por época   
+    """
     fig, ax = plt.subplots(figsize=(7, 4), tight_layout=True)
     ax.plot(epoch_losses, marker='o', label='Meta entrenamiento (promedio por época)')
     ax.set_xlabel('Época')
@@ -120,5 +166,6 @@ def main(shots=5, num_tasks=10000 ,tasks_per_batch=8, adapt_lr=0.01, meta_lr=0.0
     ax.legend()
     plt.savefig('metalearning/meta_loss_curve.png')
     plt.show()
+    """
 if __name__ == '__main__':
     main()        

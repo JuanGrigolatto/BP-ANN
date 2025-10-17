@@ -1,0 +1,9 @@
+ Mejor configuración encontrada:
+  adapt_lr: 0.01
+  meta_lr: 0.005
+  k_adapt_steps: 10
+  N_patient_group: 4
+  query_set: 10
+  suport_set: 5
+  loss: 0.31397244334220886
+  elapsed_time_min: 4.42

@@ -119,7 +119,7 @@ def main(n_shots=5, num_tasks= 10000):
     #Carga de modelo metaentrenado 
     #model=Modelo_Convolucional(in_channels=2,out_channels=2, long_signal=500)
     model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=500)
-    path_model='models/best_meta_models/best_meta_model_v1_100_epoch.pt'
+    path_model='models/best_meta_models/best_meta_model_patientwise_2000_epoch.pt'
     checkpoint = torch.load(path_model, map_location=torch.device('cpu'))
     model.load_state_dict(checkpoint['model_state_dict'])
     

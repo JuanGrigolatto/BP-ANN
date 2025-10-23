@@ -14,7 +14,7 @@ import torch
 import random
 from src.data.data_chargers.Clase_UCIDataset import UCIDataset
 
-def main(num_tasks=200 ,tasks_per_batch=4, adapt_lr=0.01, meta_lr=0.001, k_adapt_steps=5, seed=42, num_epochs=100, N_patient_group = 20, p_support = 5, q_query= 10, base_dataset=None, selected_patients=None):
+def main(num_tasks=10000 ,tasks_per_batch=4, adapt_lr=0.01, meta_lr=0.005, k_adapt_steps=10, seed=42, num_epochs=2000, N_patient_group = 4, p_support = 5, q_query= 10, base_dataset=None, selected_patients=None):
 
     if base_dataset is None:
         data_paths = [
@@ -31,7 +31,7 @@ def main(num_tasks=200 ,tasks_per_batch=4, adapt_lr=0.01, meta_lr=0.001, k_adapt
     random.seed(seed)
     torch.manual_seed(seed)
     np.random.seed(seed)
-
+    """
     all_pids = [dataset_completo[i][2].item() for i in range(len(dataset_completo))]
     all_patients = list(set(all_pids))
     # Seleccionar 200 pacientes una sola vez 
@@ -45,8 +45,8 @@ def main(num_tasks=200 ,tasks_per_batch=4, adapt_lr=0.01, meta_lr=0.001, k_adapt
         patient_ids = selected_patients
         print(f"Usando pacientes precargados: {len(patient_ids)}")
 
-
     """
+    
     all_pids = torch.tensor([dataset_completo[i][2] for i in range(len(dataset_completo))])
     unique_patients = all_pids.unique().tolist()
     random.shuffle(unique_patients)
@@ -75,7 +75,7 @@ def main(num_tasks=200 ,tasks_per_batch=4, adapt_lr=0.01, meta_lr=0.001, k_adapt
     torch.save({'test_patient_ids': valid_patients}, 'data/processed/data_UCI/few_shot_patient_data.pt')
 
     #list_IDs = train_patients  # Usar todos los pacientes de entrenamiento
-
+    """
     # Limitar el número de tareas (pacientes) de entrenamiento
     if len(train_patients) > num_tasks:
         list_IDs = random.sample(train_patients, num_tasks)
@@ -83,10 +83,12 @@ def main(num_tasks=200 ,tasks_per_batch=4, adapt_lr=0.01, meta_lr=0.001, k_adapt
     else:
         list_IDs = train_patients
         print(f"Advertencia: solo {len(train_patients)} pacientes disponibles (menos que num_tasks={num_tasks})")    
-
-    tasksets = PatientWiseDataset(list_IDs=list_IDs, base_dataset=dataset_completo, N_patients = N_patient_group, p_support=p_support, q_query=q_query)
     """
-    tasksets = PatientWiseDataset(list_IDs=patient_ids, base_dataset=dataset_completo, N_patients = N_patient_group, p_support=p_support, q_query=q_query)
+    list_IDs = train_patients
+    print(f"Usando todos los {len(list_IDs)} pacientes disponibles para metaentrenamiento.")
+    tasksets = PatientWiseDataset(list_IDs=list_IDs, base_dataset=dataset_completo, N_patients = N_patient_group, p_support=p_support, q_query=q_query)
+    
+    #tasksets = PatientWiseDataset(list_IDs=patient_ids, base_dataset=dataset_completo, N_patients = N_patient_group, p_support=p_support, q_query=q_query)
     dataloader = data.DataLoader(tasksets, batch_size=tasks_per_batch, shuffle=True, drop_last=True)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -140,7 +142,7 @@ def main(num_tasks=200 ,tasks_per_batch=4, adapt_lr=0.01, meta_lr=0.001, k_adapt
                     'model_state_dict': model.state_dict(),
                     'optimizer_state_dict': opt.state_dict(),
                     'meta_loss': meta_train_loss
-                }, 'models/best_meta_models/best_meta_model_patientwise.pt')
+                }, 'models/best_meta_models/best_meta_model_patientwise_2000_epoch.pt')
 
             running_meta_loss.append(meta_train_loss.item())
 

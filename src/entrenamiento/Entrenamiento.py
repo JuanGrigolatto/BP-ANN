@@ -203,7 +203,7 @@ def main():
 
     #retomar entrenamiento 
     start_epoch = 0
-    checkpoint_path = "models/best_models/best_model_conv_v1_con_PAM_100_layerout.pt"
+    checkpoint_path = "models/best_models/best_model_conv_v1_con_PAM_global_norm.pt"
     if os.path.exists(checkpoint_path):
         checkpoint = torch.load(checkpoint_path, map_location=device)
         model.load_state_dict(checkpoint["model_state_dict"])
@@ -302,7 +302,7 @@ def main():
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': valid_l,
                 'best_valid_loss': best_valid_loss 
-            }, 'models/best_models/best_model_conv_v1_con_PAM_100_layerout.pt')
+            }, 'models/best_models/best_model_conv_v1_con_PAM_global_norm.pt')
             print(f"Nuevo mejor modelo guardado (valid_loss = {valid_l:.6f})")
 
             

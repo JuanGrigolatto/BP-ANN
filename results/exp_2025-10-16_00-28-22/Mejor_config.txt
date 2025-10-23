@@ -7,3 +7,11 @@
   suport_set: 5
   loss: 0.31397244334220886
   elapsed_time_min: 4.42
+
+barrido de parámetros:
+    adapt_lrs = [0.001, 0.005, 0.01, 0.02]
+    meta_lrs = [0.0001,0.0005, 0.001, 0.005]
+    k_steps = [1, 3, 5, 10]
+    N_patient_groups = [4, 6, 10, 20]
+    query_sets = [10]
+    suport_sets = [5]

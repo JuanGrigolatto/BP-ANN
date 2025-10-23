@@ -118,6 +118,88 @@ def signal_normalization(ppg_signals, abp_signals, ecg_signals):
 
     return ppg_normalized, abp_normalized, ecg_normalized
 
+def signal_normalization_global(ppg_signals, abp_signals, ecg_signals):
+    """
+    Normaliza todas las señales PPG, ABP y ECG usando media y desviación globales
+    (calculadas dentro del archivo actual).
+    """
+
+    ppg_normalized = []
+    ecg_normalized = []
+    abp_normalized = []
+
+    total_ventanas = 0
+    ventanas_eliminadas = 0
+
+    ppg_all = []
+    ecg_all = []
+    abp_all = []
+
+    for i in range(len(ppg_signals)):
+        for j in range(len(ppg_signals[i])):
+            ppg = ppg_signals[i][j]
+            ecg = ecg_signals[i][j]
+            abp = abp_signals[i][j]
+
+            if (np.isnan(ppg).any() or np.isnan(ecg).any() or np.isnan(abp).any() or
+                np.isinf(ppg).any() or np.isinf(ecg).any() or np.isinf(abp).any()):
+                continue
+
+            ppg_all.append(ppg)
+            ecg_all.append(ecg)
+            abp_all.append(abp)
+
+    ppg_all = np.concatenate(ppg_all)
+    ecg_all = np.concatenate(ecg_all)
+    abp_all = np.concatenate(abp_all)
+
+    ppg_mean, ppg_std = np.mean(ppg_all), np.std(ppg_all)
+    ecg_mean, ecg_std = np.mean(ecg_all), np.std(ecg_all)
+    abp_mean, abp_std = np.mean(abp_all), np.std(abp_all)
+
+    print(f"[NORMALIZACIÓN GLOBAL - Archivo actual]")
+    print(f"Medias:  PPG={ppg_mean:.4f}, ECG={ecg_mean:.4f}, ABP={abp_mean:.4f}")
+    print(f"Desvíos: PPG={ppg_std:.4f}, ECG={ecg_std:.4f}, ABP={abp_std:.4f}")
+
+    for i in range(len(ppg_signals)):
+        ppg_paciente = []
+        ecg_paciente = []
+        abp_paciente = []
+
+        for j in range(len(ppg_signals[i])):
+            total_ventanas += 1
+            ppg = ppg_signals[i][j]
+            ecg = ecg_signals[i][j]
+            abp = abp_signals[i][j]
+
+            if (np.isnan(ppg).any() or np.isnan(ecg).any() or np.isnan(abp).any() or
+                np.isinf(ppg).any() or np.isinf(ecg).any() or np.isinf(abp).any()):
+                ventanas_eliminadas += 1
+                continue
+
+            # Aplicar z-score global
+            ppg_n = (ppg - ppg_mean) / ppg_std
+            ecg_n = (ecg - ecg_mean) / ecg_std
+            abp_n = (abp - abp_mean) / abp_std
+
+            if (np.isnan(ppg_n).any() or np.isnan(ecg_n).any() or np.isnan(abp_n).any()):
+                ventanas_eliminadas += 1
+                continue
+
+            ppg_paciente.append(ppg_n)
+            ecg_paciente.append(ecg_n)
+            abp_paciente.append(abp_n)
+
+        if ppg_paciente:
+            ppg_normalized.append(ppg_paciente)
+            ecg_normalized.append(ecg_paciente)
+            abp_normalized.append(abp_paciente)
+
+    print(f"Ventanas eliminadas por NaN/inf: {ventanas_eliminadas}/{total_ventanas}")
+
+    # Devuelve las señales normalizadas y los parámetros usados 
+    return ppg_normalized, abp_normalized, ecg_normalized, (ppg_mean, ppg_std, ecg_mean, ecg_std, abp_mean, abp_std)
+
 #Presión arterial media (PAM)
 
 def calcular_pam(sbp: torch.Tensor, dbp: torch.Tensor) -> torch.Tensor:

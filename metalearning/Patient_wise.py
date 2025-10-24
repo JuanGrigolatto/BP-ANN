@@ -27,7 +27,6 @@ def main(num_tasks=10000 ,tasks_per_batch=4, adapt_lr=0.01, meta_lr=0.005, k_ada
     else:
         dataset_completo = base_dataset
     
-        
     random.seed(seed)
     torch.manual_seed(seed)
     np.random.seed(seed)

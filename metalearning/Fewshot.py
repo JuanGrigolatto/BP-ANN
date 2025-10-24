@@ -65,52 +65,31 @@ def evaluation(batch, model, criterion, device):
         loss = criterion(preds, labels)
     return preds, loss
 
-def main(n_shots=5, num_tasks= 10000):
+def main(n_shots=5, base_lr = 1e-6, base_dataset=None, test_patient_ids=None):
     SBP_MEAN = 134.02
     DBP_MEAN = 63.47
     SBP_STD = 22.75
     DBP_STD = 23.69
-    
-    test_data = torch.load('data/processed/data_UCI/few_shot_patient_data.pt')
-    test_patient_ids = test_data['test_patient_ids']
-    
-    """
-    data_dir = 'data_UCI/dataset_completo_prueba.pt'
-    all_IDs = np.arange(0, num_tasks)
-    """
-    
-    data_paths = [
+    if base_dataset is None:
+
+        data_paths = [
         'data/processed/data_UCI/dataset_parte_1_por_picos.pt',
         'data/processed/data_UCI/dataset_parte_2_por_picos.pt',
         'data/processed/data_UCI/dataset_parte_3_por_picos.pt',
         'data/processed/data_UCI/dataset_parte_4_por_picos.pt'
-    ]
-    """
-    all_data = []
-    all_labels = []
-    all_patient_ids = []
-
-    for path in data_paths:
-        dataset = torch.load(path)
-        all_data.append(dataset['data'])
-        all_labels.append(dataset['labels'])
-        all_patient_ids.append(dataset['patient_ids'])
-
-    merged_data = {
-        'data': torch.cat(all_data, dim=0),
-        'labels': torch.cat(all_labels, dim=0),
-        'patient_ids': torch.cat(all_patient_ids, dim=0)
-    }
-    """
-    dataset_completo = UCIDataset(data_paths)
-    """
-    unique_patients = merged_data['patient_ids'].unique().tolist()
-
-    if len(unique_patients) >= num_tasks:
-        list_IDs = random.sample(unique_patients, num_tasks)
+        ]
+ 
+        dataset_completo = UCIDataset(data_paths)
     else:
-        raise ValueError(f"Solo hay {len(unique_patients)} pacientes únicos, se solicita {num_tasks}")
-    """
+        dataset_completo = base_dataset
+
+    if test_patient_ids is None:
+        test_data = torch.load('data/processed/data_UCI/few_shot_patient_data.pt')
+        test_patient_ids = test_data['test_patient_ids']
+    
+    else: 
+        test_patient_ids = test_patient_ids
+
     #Carga de modelo metaentrenado 
     #model=Modelo_Convolucional(in_channels=2,out_channels=2, long_signal=500)
     model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=500)
@@ -126,10 +105,11 @@ def main(n_shots=5, num_tasks= 10000):
     #Evaluación modelo previo a fine tuning
     model = model.to(device)  # Mueve el modelo a la GPU
 
+    
     #optimizer = torch.optim.Adam(model.parameters(), lr=1e-3) 
     # Definicón del optimizador SOLO con los parámetros entrenables
     #optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-4)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    #optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
     taskset = TaskDataset(list_IDs=test_patient_ids, base_dataset=dataset_completo, num_shots=n_shots)
     #id_patient_for_tuning =  random.choice(test_patient_ids)
@@ -139,8 +119,15 @@ def main(n_shots=5, num_tasks= 10000):
     global_metrics_pre_SBP, global_metrics_post_SBP = [], []
     global_metrics_pre_DBP, global_metrics_post_DBP = [], []
 
-    for i in range(len(taskset.list_IDs)):
+    mejoraron_sbp = 0
+    empeoraron_sbp = 0
+    mejoraron_dbp = 0
+    empeoraron_dbp = 0
 
+    resultados_por_paciente = []
+
+    for i in range(len(taskset.list_IDs)):
+        id_paciente = taskset.list_IDs[i]
         preds_post_fine_tuning = []
         loss_post_fine_tuning = []
 
@@ -148,6 +135,8 @@ def main(n_shots=5, num_tasks= 10000):
         loss_pre_fine_tuning = []
         
         model.load_state_dict(base_weights)  # Reinicia los pesos del modelo antes de cada fine-tuning
+
+        optimizer = torch.optim.Adam(model.parameters(), lr=base_lr)
         id_patient_for_tuning =  taskset.list_IDs[i]
 
   
@@ -211,8 +200,10 @@ def main(n_shots=5, num_tasks= 10000):
         """
         model.train()
         tuning_loss = np.zeros(shape=n_shots)
-        for i, sample in enumerate(tuning_dataloader_TRAIN):
-            tuning_loss[i] = tuning(sample,optimizer, model, criterion, device)
+
+        for shot_idx, sample in enumerate(tuning_dataloader_TRAIN):
+            
+            tuning_loss[shot_idx] = tuning(sample, optimizer, model, criterion, device)
     
         torch.save({'model_state_dict': model.state_dict(),
                         'optimizer_state_dict': optimizer.state_dict(),
@@ -388,6 +379,30 @@ def main(n_shots=5, num_tasks= 10000):
         global_metrics_pre_DBP.append(metrics_pre_DBP)
         global_metrics_post_DBP.append(metrics_post_DBP)
 
+        mae_pre_sbp = metrics_pre_SBP[0]
+        mae_post_sbp = metrics_post_SBP[0]
+        mae_pre_dbp = metrics_pre_DBP[0]
+        mae_post_dbp = metrics_post_DBP[0]
+
+        if mae_post_sbp < mae_pre_sbp:
+            mejoraron_sbp += 1
+        else:
+            empeoraron_sbp += 1
+
+        if mae_post_dbp < mae_pre_dbp:
+            mejoraron_dbp += 1
+        else:
+            empeoraron_dbp += 1
+
+        resultados_por_paciente.append({
+            "paciente": id_paciente,
+            'patient_id': int(id_patient_for_tuning),
+            'mae_pre_sbp': float(mae_pre_sbp),
+            'mae_post_sbp': float(mae_post_sbp),
+            'mae_pre_dbp': float(mae_pre_dbp),
+            'mae_post_dbp': float(mae_post_dbp)
+        })
+
         print(f"\n=== Paciente {id_patient_for_tuning} ===")
         print("SBP → Antes / Después")
         print(f"MAE: {metrics_pre_SBP[0]:.2f} → {metrics_post_SBP[0]:.2f}")
@@ -397,7 +412,7 @@ def main(n_shots=5, num_tasks= 10000):
         print(f"MAE: {metrics_pre_DBP[0]:.2f} → {metrics_post_DBP[0]:.2f}")
         print(f"RMSE: {metrics_pre_DBP[1]:.2f} → {metrics_post_DBP[1]:.2f}")
         print(f"R²: {metrics_pre_DBP[3]:.3f} → {metrics_post_DBP[3]:.3f}")
-
+        """
         if i == len(taskset.list_IDs) - 1:
             residuals_pre = pred_pre_SBP - true_SBP
             residuals_post = pred_post_SBP - true_SBP
@@ -410,7 +425,7 @@ def main(n_shots=5, num_tasks= 10000):
             plt.ylabel("Error (Pred - Real)")
             plt.legend()
             plt.show()
-
+        """
 
     avg_pre_SBP = promedio_metricas(global_metrics_pre_SBP)
     avg_post_SBP = promedio_metricas(global_metrics_post_SBP)
@@ -430,6 +445,55 @@ def main(n_shots=5, num_tasks= 10000):
     print("\n=== Mejora global Few-Shot (%) ===")
     print(f"SBP → MAE: {mejora_global_SBP[0]:.2f}%, RMSE: {mejora_global_SBP[1]:.2f}%, R²: {mejora_global_SBP[3]:.2f}%")
     print(f"DBP → MAE: {mejora_global_DBP[0]:.2f}%, RMSE: {mejora_global_DBP[1]:.2f}%, R²: {mejora_global_DBP[3]:.2f}%")
+
+    total_pacientes = len(taskset.list_IDs)
+    tasa_mejora_sbp = (mejoraron_sbp / total_pacientes) * 100
+    tasa_mejora_dbp = (mejoraron_dbp / total_pacientes) * 100
+
+    print("\n=== Pacientes: mejora (MAE) ===")
+    print(f"Evaluados: {total_pacientes}")
+    print(f"SBP -> Mejoraron: {mejoraron_sbp}, Empeoraron: {empeoraron_sbp}, Tasa mejora: {tasa_mejora_sbp:.2f}%")
+    print(f"DBP -> Mejoraron: {mejoraron_dbp}, Empeoraron: {empeoraron_dbp}, Tasa mejora: {tasa_mejora_dbp:.2f}%")
+
+    mejoras_mae_sbp = [r['mae_pre_sbp'] - r['mae_post_sbp'] for r in resultados_por_paciente]
+    mejoras_mae_dbp = [r['mae_pre_dbp'] - r['mae_post_dbp'] for r in resultados_por_paciente]
+    print(f"\nMejora MAE promedio SBP por paciente: {np.mean(mejoras_mae_sbp):.3f} mmHg")
+    print(f"Mejora MAE promedio DBP por paciente: {np.mean(mejoras_mae_dbp):.3f} mmHg")
+
+    print("\n=== Pacientes que NO mejoraron con Few-Shot (MAE) ===")
+
+    # Pacientes que empeoraron o no cambiaron (SBP)
+    no_mejoran_sbp = [r for r in resultados_por_paciente if r['mae_post_sbp'] >= r['mae_pre_sbp']]
+    # Pacientes que empeoraron o no cambiaron (DBP)
+    no_mejoran_dbp = [r for r in resultados_por_paciente if r['mae_post_dbp'] >= r['mae_pre_dbp']]
+
+    if len(no_mejoran_sbp) == 0 and len(no_mejoran_dbp) == 0:
+        print("Todos los pacientes mejoraron en SBP y DBP.")
+    else:
+        if len(no_mejoran_sbp) > 0:
+            print(f"\nSBP (Pacientes: {len(no_mejoran_sbp)})")
+            for r in no_mejoran_sbp:
+                diff = r['mae_post_sbp'] - r['mae_pre_sbp']
+                print(f" - Paciente {r['paciente']}: MAE_pre={r['mae_pre_sbp']:.2f}, MAE_post={r['mae_post_sbp']:.2f}, Δ={diff:+.2f}")
+        if len(no_mejoran_dbp) > 0:
+            print(f"\nDBP (Pacientes: {len(no_mejoran_dbp)})")
+            for r in no_mejoran_dbp:
+                diff = r['mae_post_dbp'] - r['mae_pre_dbp']
+                print(f" - Paciente {r['paciente']}: MAE_pre={r['mae_pre_dbp']:.2f}, MAE_post={r['mae_post_dbp']:.2f}, Δ={diff:+.2f}")
+    resultados = {
+        "mae_pre_sbp": float(avg_pre_SBP[0]),
+        "mae_post_sbp": float(avg_post_SBP[0]),
+        "mae_pre_dbp": float(avg_pre_DBP[0]),
+        "mae_post_dbp": float(avg_post_DBP[0]),
+        "mejoraron sbp": mejoraron_sbp,
+        "mejoraron dbp": mejoraron_dbp,
+        "empeoraron sbp": empeoraron_sbp,
+        "empeoraron dbp": empeoraron_dbp,
+        "tasa_mejora_sbp": tasa_mejora_sbp,
+        "tasa_mejora_dbp": tasa_mejora_dbp,
+        "resultados_por_paciente": resultados_por_paciente
+    }
+    return resultados
 
 if __name__ == '__main__':
     main()

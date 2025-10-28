@@ -98,10 +98,10 @@ def main():
     validation_generator = torch.utils.data.DataLoader(validation_set, **parameters)
     """
     archivos = [
-    'data/processed/data_UCI/dataset_parte_1_por_picos.pt',
-    'data/processed/data_UCI/dataset_parte_2_por_picos.pt',
-    'data/processed/data_UCI/dataset_parte_3_por_picos.pt',
-    'data/processed/data_UCI/dataset_parte_4_por_picos.pt',
+    'data/processed/data_UCI/dataset_parte_1_por_picos_global_norm.pt',
+    'data/processed/data_UCI/dataset_parte_2_por_picos_global_norm.pt',
+    'data/processed/data_UCI/dataset_parte_3_por_picos_global_norm.pt',
+    'data/processed/data_UCI/dataset_parte_4_por_picos_global_norm.pt',
     ]
 
     dataset_completo = UCIDataset(archivos)
@@ -197,13 +197,14 @@ def main():
     """   
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)  # Mueve el modelo a la GPU
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay= 1e-4)
+    #optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay= 1e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, min_lr=1e-6, verbose=True)    
     criterion = torch.nn.MSELoss()  # MSELoss para regresión
 
     #retomar entrenamiento 
     start_epoch = 0
-    checkpoint_path = "models/best_models/best_model_conv_v1_con_PAM_global_norm.pt"
+    checkpoint_path = "models/best_models/best_model_conv_v1_con_PAM_global_norm_L1.pt"
     if os.path.exists(checkpoint_path):
         checkpoint = torch.load(checkpoint_path, map_location=device)
         model.load_state_dict(checkpoint["model_state_dict"])
@@ -212,10 +213,10 @@ def main():
         best_valid_loss = checkpoint.get("best_valid_loss", float('inf')) 
         print(f" Modelo cargado desde {checkpoint_path}, continuando en epoch {start_epoch}, best_valid_loss={best_valid_loss:.6f}")
     else:
-        print("⚠ No se encontró un checkpoint, se comienza entrenamiento desde cero.")
+        print("No se encontró un checkpoint, se comienza entrenamiento desde cero.")
 
     # ENTRENAMIENTO
-    def train_one_step(batch):
+    def train_one_step(batch, l1_lambda=1e-5):
         optimizer.zero_grad() # Reinicia los gradientes
         data, labels, _, _ = batch # Obtiene los datos y etiquetas
 
@@ -243,6 +244,10 @@ def main():
             print("Labels:", labels[0])
             exit()
         """
+        # Regularización L1 manual
+        l1_norm = sum(p.abs().sum() for p in model.parameters())
+        loss = loss + l1_lambda * l1_norm
+
         loss.backward() # Calcula los gradientes mediante backpropagation
         # Añade gradient clipping (busca evitar explosión de gradiente)
         #torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
@@ -302,7 +307,7 @@ def main():
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': valid_l,
                 'best_valid_loss': best_valid_loss 
-            }, 'models/best_models/best_model_conv_v1_con_PAM_global_norm.pt')
+            }, 'models/best_models/best_model_conv_v1_con_PAM_global_norm_L1.pt')
             print(f"Nuevo mejor modelo guardado (valid_loss = {valid_l:.6f})")
 
             

@@ -369,6 +369,7 @@ def main(n_shots=5, base_lr = 1e-6, base_dataset=None, test_patient_ids=None):
         plt.show()
         """
 
+        
         metrics_pre_SBP = calcular_metricas(true_SBP, pred_pre_SBP)
         metrics_post_SBP = calcular_metricas(true_SBP, pred_post_SBP)
         metrics_pre_DBP = calcular_metricas(true_DBP, pred_pre_DBP)

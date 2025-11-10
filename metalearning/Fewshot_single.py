@@ -33,16 +33,18 @@ def desnormalizar_minmax(norm_array, min_val, max_val):
 def tuning(sample, optimizer, model, criterion, device, tipo_presion="SBP"):
         optimizer.zero_grad() # Reinicia los gradientes
         data, labels, *_ = sample # Obtiene los datos y etiquetas
-        if tipo_presion == "SBP":
-            etiqueta = sample[:, 0].unsqueeze(1)
-        else:
-            etiqueta = sample[:, 1].unsqueeze(1)        
 
-        # Si vienen como listas (por batch_size=1), convertirlos a tensores
         if isinstance(data, list):
-            data = data[0]
-        if isinstance(etiqueta, list):
-            labels = etiqueta[0]
+            data = torch.stack(data)
+        if isinstance(labels, list):
+            labels = torch.stack(labels)
+
+        # Selección de etiqueta según tipo de presión
+        if tipo_presion == "SBP":
+            etiqueta = labels[:, 0].unsqueeze(1)
+        else:
+            etiqueta = labels[:, 1].unsqueeze(1)   
+
             # Congelar todas las capas BatchNorm
         for layer in model.modules():
             if isinstance(layer, torch.nn.BatchNorm1d):
@@ -50,9 +52,9 @@ def tuning(sample, optimizer, model, criterion, device, tipo_presion="SBP"):
                 layer.weight.requires_grad = False
                 layer.bias.requires_grad = False
 
-        data, labels = data.to(device), labels.to(device) # Mueve los datos y etiquetas a la GPU
+        data, etiqueta = data.to(device), etiqueta.to(device) # Mueve los datos y etiquetas a la GPU
         preds = model.forward(data) # Realiza la predicción
-        loss = criterion(preds, labels) # Calcula la pérdida
+        loss = criterion(preds, etiqueta) # Calcula la pérdida
         loss.backward() # Calcula los gradientes mediante backpropagation
         optimizer.step() # Actualiza los parámetros del modelo
         return loss.item() # Devuelve la pérdida
@@ -60,26 +62,32 @@ def tuning(sample, optimizer, model, criterion, device, tipo_presion="SBP"):
 def evaluation(batch, model, criterion, device, tipo_presion="SBP"):  
     with torch.no_grad():
         data, labels, *_ = batch
+
+        if isinstance(data, list):
+            data = torch.stack(data)
+        if isinstance(labels, list):
+            labels = torch.stack(labels)
+
+        # Selección de etiqueta según tipo de presión
         if tipo_presion == "SBP":
             etiqueta = labels[:, 0].unsqueeze(1)
         else:
-            etiqueta = labels[:, 1].unsqueeze(1)
+            etiqueta = labels[:, 1].unsqueeze(1) 
 
-        # Si vienen como listas (por batch_size=1), convertirlos a tensores
-        if isinstance(data, list):
-            data = data[0]
-        if isinstance(etiqueta, list):
-            labels = etiqueta[0]
-        data, labels = data.to(device), labels.to(device)
+        data, etiqueta = data.to(device), etiqueta.to(device)
         preds = model.forward(data)
-        loss = criterion(preds, labels)
+        loss = criterion(preds, etiqueta)
     return preds, loss
 
-def main(n_shots=5, base_lr = 1e-6, base_dataset=None, test_patient_ids=None, tipo_presion="SBP"):
-    SBP_MEAN = 134.02
-    DBP_MEAN = 63.47
-    SBP_STD = 22.75
-    DBP_STD = 23.69
+def main(n_shots=5, base_lr = 1e-6, base_dataset=None, test_patient_ids=None, tipo_presion="DBP"):
+    
+    if tipo_presion == "SBP":
+        MEAN = 134.02
+        STD = 22.75
+    else:
+        MEAN = 63.47
+        STD = 23.69
+    
     if base_dataset is None:
 
         data_paths = [
@@ -103,7 +111,7 @@ def main(n_shots=5, base_lr = 1e-6, base_dataset=None, test_patient_ids=None, ti
     #Carga de modelo metaentrenado 
     #model=Modelo_Convolucional(in_channels=2,out_channels=2, long_signal=500)
     model=Modelo_ConvolucionalV1(in_channels=2,out_channels=1, long_signal=500)
-    path_model='models/best_meta_models/best_meta_model_sbp_patientwise.pt'
+    path_model='models/best_meta_models/best_meta_model_dbp_patientwise.pt'
     checkpoint = torch.load(path_model, map_location=torch.device('cpu'))
     model.load_state_dict(checkpoint['model_state_dict'])
 
@@ -194,6 +202,11 @@ def main(n_shots=5, base_lr = 1e-6, base_dataset=None, test_patient_ids=None, ti
         loss_pre_fine_tuning = np.array(loss_pre_fine_tuning)
     
         labels = np.array([l.squeeze().cpu().numpy() for l in tuning_dataloader_VALID.dataset.labels])
+
+        if tipo_presion == "SBP":
+            labels = labels[:, 0] 
+        else:
+            labels = labels[:, 1]  
         """
         fig, ax = plt.subplots(figsize=(7, 4), tight_layout=True)
         ax.plot(loss_pre_fine_tuning, label='Loss pre fine tuning')
@@ -250,9 +263,9 @@ def main(n_shots=5, base_lr = 1e-6, base_dataset=None, test_patient_ids=None, ti
         true_SBP_norm = desnormalizar_zscore(labels[:, 0], SBP_MEAN, SBP_STD)
         true_DBP_norm = desnormalizar_zscore(labels[:, 1], DBP_MEAN, DBP_STD)
         """
-        pred_pre = desnormalizar_zscore(preds_pre_fine_tuning.reshape(-1), SBP_MEAN, SBP_STD)
-        pred_post = desnormalizar_zscore(preds_post_fine_tuning.reshape(-1), SBP_MEAN, SBP_STD)
-        true_vals = desnormalizar_zscore(labels, SBP_MEAN, SBP_STD)
+        pred_pre = desnormalizar_zscore(preds_pre_fine_tuning.reshape(-1), MEAN, STD)
+        pred_post = desnormalizar_zscore(preds_post_fine_tuning.reshape(-1), MEAN, STD)
+        true_vals = desnormalizar_zscore(labels, MEAN, STD)
 
     
         """
@@ -368,6 +381,8 @@ def main(n_shots=5, base_lr = 1e-6, base_dataset=None, test_patient_ids=None, ti
         plt.tight_layout()
         plt.show()
         """
+        #print("Len true_vals:", len(true_vals))
+        #print("Len pred_pre:", len(pred_pre))
 
         metrics_pre = calcular_metricas(true_vals, pred_pre)
         metrics_post = calcular_metricas(true_vals, pred_post)
@@ -394,7 +409,7 @@ def main(n_shots=5, base_lr = 1e-6, base_dataset=None, test_patient_ids=None, ti
         print(" Antes / Después")
         print(f"MAE: {metrics_pre[0]:.2f} → {metrics_post[0]:.2f}")
         print(f"RMSE: {metrics_pre[1]:.2f} → {metrics_post[1]:.2f}")
-        print(f"R²: {metrics_pre[3]:.3f} → {metrics_post[3]:.3f}")
+        #print(f"R²: {metrics_pre[3]:.3f} → {metrics_post[3]:.3f}")
         """
         if i == len(taskset.list_IDs) - 1:
             residuals_pre = pred_pre_SBP - true_SBP
@@ -416,7 +431,7 @@ def main(n_shots=5, base_lr = 1e-6, base_dataset=None, test_patient_ids=None, ti
     print("\n===============================")
     print("=== MÉTRICAS GLOBALES (PROMEDIO ENTRE PACIENTES) ===")
     print("===============================")
-    print(f" MAE: {avg_pre[0]:.2f} → {avg_post[0]:.2f}  | RMSE: {avg_pre[1]:.2f} → {avg_post[1]:.2f}  | R²: {avg_pre[3]:.3f} → {avg_post[3]:.3f}")
+    print(f" MAE: {avg_pre[0]:.2f} → {avg_post[0]:.2f}  | RMSE: {avg_pre[1]:.2f} → {avg_post[1]:.2f}")
     
 
     # Estimación global de mejora porcentual
@@ -424,7 +439,7 @@ def main(n_shots=5, base_lr = 1e-6, base_dataset=None, test_patient_ids=None, ti
    
 
     print("\n=== Mejora global Few-Shot (%) ===")
-    print(f"MAE: {mejora_global[0]:.2f}%, RMSE: {mejora_global[1]:.2f}%, R²: {mejora_global[3]:.2f}%")
+    print(f"MAE: {mejora_global[0]:.2f}%, RMSE: {mejora_global[1]:.2f}%")
     
 
     total_pacientes = len(taskset.list_IDs)
@@ -450,7 +465,7 @@ def main(n_shots=5, base_lr = 1e-6, base_dataset=None, test_patient_ids=None, ti
         print("Todos los pacientes mejoraron")
     else:
         if len(no_mejoran) > 0:
-            print(f"\nSBP (Pacientes: {len(no_mejoran)})")
+            print(f"\n (Pacientes: {len(no_mejoran)})")
             for r in no_mejoran:
                 diff = r['mae_post'] - r['mae_pre']
                 print(f" - Paciente {r['paciente']}: MAE_pre={r['mae_pre']:.2f}, MAE_post={r['mae_post']:.2f}, Δ={diff:+.2f}")

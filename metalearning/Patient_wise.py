@@ -14,7 +14,7 @@ import torch
 import random
 from src.data.data_chargers.Clase_UCIDataset import UCIDataset
 
-def main(num_tasks=10000 ,tasks_per_batch=4, adapt_lr=0.01, meta_lr=0.005, k_adapt_steps=10, seed=42, num_epochs=2000, N_patient_group = 4, p_support = 5, q_query= 10, base_dataset=None, selected_patients=None):
+def main(num_tasks=10000 ,tasks_per_batch=4, adapt_lr=0.01, meta_lr=0.005, k_adapt_steps=10, seed=42, num_epochs=100, N_patient_group = 4, p_support = 5, q_query= 10, base_dataset=None, selected_patients=None):
 
     if base_dataset is None:
         data_paths = [
@@ -63,10 +63,10 @@ def main(num_tasks=10000 ,tasks_per_batch=4, adapt_lr=0.01, meta_lr=0.005, k_ada
     print(f"Pacientes totales: {len(unique_patients)}")
     print(f"Pacientes válidos (>= {min_samples} muestras): {len(valid_IDs_global)}")
     
-    num_patients = len(unique_patients)
+    num_patients = len(valid_IDs_global)
     num_valid = int(0.1 * num_patients)
-    valid_patients = unique_patients[:num_valid]
-    train_patients = unique_patients[num_valid:]
+    valid_patients = valid_IDs_global[:num_valid]
+    train_patients = valid_IDs_global[num_valid:]
 
     print(f"Pacientes totales: {num_patients}")
     print(f"Entrenamiento: {len(train_patients)}  |  Validación: {len(valid_patients)}")

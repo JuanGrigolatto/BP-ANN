@@ -33,7 +33,7 @@ def desnormalizar_minmax(norm_array, min_val, max_val):
 def tuning(sample, optimizer, model, criterion, device):
         optimizer.zero_grad() # Reinicia los gradientes
         data, labels, *_ = sample # Obtiene los datos y etiquetas
-        # Si vienen como listas (por batch_size=1), convertirlos a tensores
+        
         if isinstance(data, list):
             data = data[0]
         if isinstance(labels, list):

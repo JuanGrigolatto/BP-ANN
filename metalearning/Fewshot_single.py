@@ -1,10 +1,9 @@
-import torch.utils
+import torch
 from src.data.data_chargers.Clase_UCIDataset import UCIDataset
 from src.data.data_chargers.MetaDataset import TaskDataset
 from src.models.Modelo_conv import Modelo_Convolucional
 from src.models.ConvolucionalV1 import Modelo_ConvolucionalV1
 import numpy as np
-from torch import nn, optim
 import matplotlib.pyplot as plt
 #from src.models.InceptionTime import InceptionTime
 import torch.utils.data as data
@@ -32,8 +31,9 @@ def desnormalizar_minmax(norm_array, min_val, max_val):
 
 def tuning(sample, optimizer, model, criterion, device, tipo_presion="SBP"):
         optimizer.zero_grad() # Reinicia los gradientes
-        data, labels, *_ = sample # Obtiene los datos y etiquetas
+        #data, labels, *_ = sample # Obtiene los datos y etiquetas
 
+        data, labels = sample
         if isinstance(data, list):
             data = torch.stack(data)
         if isinstance(labels, list):
@@ -77,10 +77,17 @@ def evaluation(batch, model, criterion, device, tipo_presion="SBP"):
         data, etiqueta = data.to(device), etiqueta.to(device)
         preds = model.forward(data)
         loss = criterion(preds, etiqueta)
-    return preds, loss
+    return preds, loss, etiqueta
 
-def main(n_shots=5, base_lr = 1e-6, base_dataset=None, test_patient_ids=None, tipo_presion="DBP"):
+def main(n_shots=5, base_lr = 1e-6, n_epochs=5,  base_dataset=None, test_patient_ids=None, tipo_presion="SBP"):
     
+    SEED = 42
+    random.seed(SEED)
+    np.random.seed(SEED)
+    torch.manual_seed(SEED)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(SEED)
+
     if tipo_presion == "SBP":
         MEAN = 134.02
         STD = 22.75
@@ -111,7 +118,7 @@ def main(n_shots=5, base_lr = 1e-6, base_dataset=None, test_patient_ids=None, ti
     #Carga de modelo metaentrenado 
     #model=Modelo_Convolucional(in_channels=2,out_channels=2, long_signal=500)
     model=Modelo_ConvolucionalV1(in_channels=2,out_channels=1, long_signal=500)
-    path_model='models/best_meta_models/best_meta_model_dbp_patientwise.pt'
+    path_model='models/best_meta_models/best_meta_model_sbp_patientwise.pt'
     checkpoint = torch.load(path_model, map_location=torch.device('cpu'))
     model.load_state_dict(checkpoint['model_state_dict'])
 
@@ -132,8 +139,6 @@ def main(n_shots=5, base_lr = 1e-6, base_dataset=None, test_patient_ids=None, ti
     taskset = TaskDataset(list_IDs=test_patient_ids, base_dataset=dataset_completo, num_shots=n_shots)
     #id_patient_for_tuning =  random.choice(test_patient_ids)
     
-
-
     global_metrics_pre, global_metrics_post = [], []
 
     mejoraron = 0
@@ -145,9 +150,12 @@ def main(n_shots=5, base_lr = 1e-6, base_dataset=None, test_patient_ids=None, ti
         id_paciente = taskset.list_IDs[i]
         preds_post_fine_tuning = []
         loss_post_fine_tuning = []
+        true_labels_post = []
+
 
         preds_pre_fine_tuning = []
         loss_pre_fine_tuning = []
+        true_labels_pre = []
         
         model.load_state_dict(base_weights)  # Reinicia los pesos del modelo antes de cada fine-tuning
 
@@ -194,19 +202,22 @@ def main(n_shots=5, base_lr = 1e-6, base_dataset=None, test_patient_ids=None, ti
     
         for batch in tuning_dataloader_VALID:
         #    preds_pre_fine_tuning[k] ,loss_pre_fine_tuning[k] = evaluation(batch, model, criterion, device)
-            preds, loss = evaluation(batch, model, criterion, device, tipo_presion=tipo_presion)
+            preds, loss, etiqueta = evaluation(batch, model, criterion, device, tipo_presion=tipo_presion)
             preds_pre_fine_tuning.extend(preds.detach().cpu().numpy())  
             loss_pre_fine_tuning.extend([loss.item()]*len(preds))
+            true_labels_pre.extend(etiqueta.detach().cpu().numpy())
 
+        
         preds_pre_fine_tuning = np.array(preds_pre_fine_tuning)
         loss_pre_fine_tuning = np.array(loss_pre_fine_tuning)
-    
-        labels = np.array([l.squeeze().cpu().numpy() for l in tuning_dataloader_VALID.dataset.labels])
+        true_labels_pre = np.array(true_labels_pre)    
 
-        if tipo_presion == "SBP":
-            labels = labels[:, 0] 
-        else:
-            labels = labels[:, 1]  
+        #labels = np.array([l.squeeze().cpu().numpy() for l in tuning_dataloader_VALID.dataset.labels])
+
+        #if tipo_presion == "SBP":
+        #    labels = labels[:, 0] 
+        #else:
+        #    labels = labels[:, 1]  
         """
         fig, ax = plt.subplots(figsize=(7, 4), tight_layout=True)
         ax.plot(loss_pre_fine_tuning, label='Loss pre fine tuning')
@@ -217,16 +228,35 @@ def main(n_shots=5, base_lr = 1e-6, base_dataset=None, test_patient_ids=None, ti
         plt.show()
         """
         model.train()
-        tuning_loss = np.zeros(shape=n_shots)
+        #tuning_loss = np.zeros(shape=n_shots)
+        tuning_loss = []
 
-        for shot_idx, sample in enumerate(tuning_dataloader_TRAIN):
-            
-            tuning_loss[shot_idx] = tuning(sample, optimizer, model, criterion, device, tipo_presion=tipo_presion)
+        print(f"--- Fine-Tuning por {n_epochs} épocas con {n_shots} muestras ---")
+
+        for epoch in range(n_epochs):
+            epoch_losses = []
+
+            for signals, labels in tuning_dataloader_TRAIN:
+               
+                batch_loss = tuning((signals, labels), optimizer, model, criterion, device, tipo_presion=tipo_presion)
+                epoch_losses.append(batch_loss)
     
+            mean_loss = np.mean(epoch_losses)
+            tuning_loss.append(mean_loss)
+            print(f" Época {epoch+1}/{n_epochs} | Loss promedio: {mean_loss:.6f}")
+        """
         torch.save({'model_state_dict': model.state_dict(),
                         'optimizer_state_dict': optimizer.state_dict(),
                         'loss': tuning_loss[n_shots-1]}, 
                         'models/tuning_model.pt')
+        """
+
+        torch.save({'model_state_dict': model.state_dict(),
+                        'optimizer_state_dict': optimizer.state_dict(),
+                        'loss': tuning_loss[-1]}, 
+                        'models/tuning_model.pt')
+        
+
         """
         fig, ax = plt.subplots(figsize=(7, 4), tight_layout=True)
         ax.plot(tuning_loss, label='Fine Tuning for 5 shots')
@@ -245,13 +275,18 @@ def main(n_shots=5, base_lr = 1e-6, base_dataset=None, test_patient_ids=None, ti
         model.eval()    
         for batch in tuning_dataloader_VALID:
             #preds_post_fine_tuning[j], loss_post_fine_tuning[j] = evaluation(batch, model, criterion, device)
-            preds, loss = evaluation(batch, model, criterion, device, tipo_presion=tipo_presion)
+            preds, loss, etiqueta = evaluation(batch, model, criterion, device, tipo_presion=tipo_presion)
             preds_post_fine_tuning.extend(preds.detach().cpu().numpy())
             loss_post_fine_tuning.extend([loss.item()]*len(preds))
+            
+            true_labels_post.extend(etiqueta.detach().cpu().numpy())
 
         preds_post_fine_tuning = np.array(preds_post_fine_tuning)
         loss_post_fine_tuning = np.array(loss_post_fine_tuning)
-        labels = labels.reshape(-1)
+        true_labels_post = np.array(true_labels_post)
+
+
+        #labels = labels.reshape(-1)
         #Desnormalización
         """
         pred_pre_SBP_norm = desnormalizar_zscore(preds_pre_fine_tuning[:, 0], SBP_MEAN, SBP_STD)
@@ -265,7 +300,7 @@ def main(n_shots=5, base_lr = 1e-6, base_dataset=None, test_patient_ids=None, ti
         """
         pred_pre = desnormalizar_zscore(preds_pre_fine_tuning.reshape(-1), MEAN, STD)
         pred_post = desnormalizar_zscore(preds_post_fine_tuning.reshape(-1), MEAN, STD)
-        true_vals = desnormalizar_zscore(labels, MEAN, STD)
+        true_vals = desnormalizar_zscore(true_labels_pre.reshape(-1), MEAN, STD)
 
     
         """

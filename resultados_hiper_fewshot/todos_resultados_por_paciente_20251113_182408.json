@@ -1,0 +1,4244 @@
+[
+    {
+        "learning_rate": 1e-05,
+        "n_shots": 5,
+        "pacientes": [
+            {
+                "paciente": 2960,
+                "patient_id": 2960,
+                "mae_pre": 1.0625274181365967,
+                "mae_post": 0.9804137945175171
+            },
+            {
+                "paciente": 7215,
+                "patient_id": 7215,
+                "mae_pre": 6.446053981781006,
+                "mae_post": 6.141351222991943
+            },
+            {
+                "paciente": 3341,
+                "patient_id": 3341,
+                "mae_pre": 28.343364715576172,
+                "mae_post": 27.725793838500977
+            },
+            {
+                "paciente": 9387,
+                "patient_id": 9387,
+                "mae_pre": 14.220748901367188,
+                "mae_post": 13.919378280639648
+            },
+            {
+                "paciente": 5015,
+                "patient_id": 5015,
+                "mae_pre": 14.688501358032227,
+                "mae_post": 14.423507690429688
+            },
+            {
+                "paciente": 4031,
+                "patient_id": 4031,
+                "mae_pre": 19.831228256225586,
+                "mae_post": 19.548036575317383
+            },
+            {
+                "paciente": 4929,
+                "patient_id": 4929,
+                "mae_pre": 7.9347944259643555,
+                "mae_post": 7.642539978027344
+            },
+            {
+                "paciente": 4126,
+                "patient_id": 4126,
+                "mae_pre": 36.29231643676758,
+                "mae_post": 36.05972671508789
+            },
+            {
+                "paciente": 8405,
+                "patient_id": 8405,
+                "mae_pre": 5.754081726074219,
+                "mae_post": 5.5653977394104
+            },
+            {
+                "paciente": 7584,
+                "patient_id": 7584,
+                "mae_pre": 31.751211166381836,
+                "mae_post": 30.91269302368164
+            },
+            {
+                "paciente": 7952,
+                "patient_id": 7952,
+                "mae_pre": 25.871685028076172,
+                "mae_post": 25.667150497436523
+            },
+            {
+                "paciente": 5891,
+                "patient_id": 5891,
+                "mae_pre": 53.56695556640625,
+                "mae_post": 53.35357666015625
+            },
+            {
+                "paciente": 3208,
+                "patient_id": 3208,
+                "mae_pre": 51.62477493286133,
+                "mae_post": 51.16496276855469
+            },
+            {
+                "paciente": 1281,
+                "patient_id": 1281,
+                "mae_pre": 18.31180763244629,
+                "mae_post": 18.127334594726562
+            },
+            {
+                "paciente": 232,
+                "patient_id": 232,
+                "mae_pre": 26.240407943725586,
+                "mae_post": 25.548603057861328
+            },
+            {
+                "paciente": 8269,
+                "patient_id": 8269,
+                "mae_pre": 13.871526718139648,
+                "mae_post": 13.51451301574707
+            },
+            {
+                "paciente": 11533,
+                "patient_id": 11533,
+                "mae_pre": 30.40804672241211,
+                "mae_post": 29.276071548461914
+            },
+            {
+                "paciente": 5322,
+                "patient_id": 5322,
+                "mae_pre": 10.955757141113281,
+                "mae_post": 10.737704277038574
+            },
+            {
+                "paciente": 8091,
+                "patient_id": 8091,
+                "mae_pre": 17.523561477661133,
+                "mae_post": 17.166461944580078
+            },
+            {
+                "paciente": 2961,
+                "patient_id": 2961,
+                "mae_pre": 24.095348358154297,
+                "mae_post": 23.7789363861084
+            },
+            {
+                "paciente": 5469,
+                "patient_id": 5469,
+                "mae_pre": 25.585800170898438,
+                "mae_post": 25.24026107788086
+            },
+            {
+                "paciente": 6479,
+                "patient_id": 6479,
+                "mae_pre": 12.349395751953125,
+                "mae_post": 12.239789009094238
+            },
+            {
+                "paciente": 4174,
+                "patient_id": 4174,
+                "mae_pre": 22.46409034729004,
+                "mae_post": 22.164270401000977
+            },
+            {
+                "paciente": 209,
+                "patient_id": 209,
+                "mae_pre": 0.9210876226425171,
+                "mae_post": 0.881927490234375
+            },
+            {
+                "paciente": 538,
+                "patient_id": 538,
+                "mae_pre": 22.540241241455078,
+                "mae_post": 22.427417755126953
+            },
+            {
+                "paciente": 3402,
+                "patient_id": 3402,
+                "mae_pre": 2.3269684314727783,
+                "mae_post": 2.335528612136841
+            },
+            {
+                "paciente": 105,
+                "patient_id": 105,
+                "mae_pre": 8.30938720703125,
+                "mae_post": 7.665182590484619
+            },
+            {
+                "paciente": 4529,
+                "patient_id": 4529,
+                "mae_pre": 15.305074691772461,
+                "mae_post": 14.958142280578613
+            },
+            {
+                "paciente": 612,
+                "patient_id": 612,
+                "mae_pre": 10.690043449401855,
+                "mae_post": 10.644132614135742
+            },
+            {
+                "paciente": 1772,
+                "patient_id": 1772,
+                "mae_pre": 11.852071762084961,
+                "mae_post": 11.7108154296875
+            },
+            {
+                "paciente": 4862,
+                "patient_id": 4862,
+                "mae_pre": 9.844919204711914,
+                "mae_post": 9.563754081726074
+            },
+            {
+                "paciente": 1432,
+                "patient_id": 1432,
+                "mae_pre": 37.12356948852539,
+                "mae_post": 36.61829376220703
+            },
+            {
+                "paciente": 10141,
+                "patient_id": 10141,
+                "mae_pre": 28.693828582763672,
+                "mae_post": 28.343292236328125
+            },
+            {
+                "paciente": 5283,
+                "patient_id": 5283,
+                "mae_pre": 1.6128921508789062,
+                "mae_post": 1.56451416015625
+            },
+            {
+                "paciente": 10420,
+                "patient_id": 10420,
+                "mae_pre": 8.6919584274292,
+                "mae_post": 8.302789688110352
+            },
+            {
+                "paciente": 7364,
+                "patient_id": 7364,
+                "mae_pre": 20.326061248779297,
+                "mae_post": 19.641582489013672
+            },
+            {
+                "paciente": 578,
+                "patient_id": 578,
+                "mae_pre": 8.428570747375488,
+                "mae_post": 8.270952224731445
+            },
+            {
+                "paciente": 1960,
+                "patient_id": 1960,
+                "mae_pre": 25.635662078857422,
+                "mae_post": 25.42737579345703
+            },
+            {
+                "paciente": 714,
+                "patient_id": 714,
+                "mae_pre": 15.4991455078125,
+                "mae_post": 14.73474407196045
+            },
+            {
+                "paciente": 2605,
+                "patient_id": 2605,
+                "mae_pre": 26.123620986938477,
+                "mae_post": 25.67901039123535
+            },
+            {
+                "paciente": 1347,
+                "patient_id": 1347,
+                "mae_pre": 5.3612823486328125,
+                "mae_post": 5.241647243499756
+            },
+            {
+                "paciente": 11425,
+                "patient_id": 11425,
+                "mae_pre": 21.36166000366211,
+                "mae_post": 21.251251220703125
+            },
+            {
+                "paciente": 2366,
+                "patient_id": 2366,
+                "mae_pre": 6.303301811218262,
+                "mae_post": 6.147857666015625
+            },
+            {
+                "paciente": 11627,
+                "patient_id": 11627,
+                "mae_pre": 8.62311840057373,
+                "mae_post": 8.46466064453125
+            },
+            {
+                "paciente": 6103,
+                "patient_id": 6103,
+                "mae_pre": 15.376727104187012,
+                "mae_post": 15.25853157043457
+            },
+            {
+                "paciente": 3069,
+                "patient_id": 3069,
+                "mae_pre": 26.78476333618164,
+                "mae_post": 26.037328720092773
+            },
+            {
+                "paciente": 906,
+                "patient_id": 906,
+                "mae_pre": 10.449789047241211,
+                "mae_post": 10.257431030273438
+            },
+            {
+                "paciente": 6982,
+                "patient_id": 6982,
+                "mae_pre": 28.022014617919922,
+                "mae_post": 27.598302841186523
+            },
+            {
+                "paciente": 8530,
+                "patient_id": 8530,
+                "mae_pre": 7.426434516906738,
+                "mae_post": 7.031907558441162
+            },
+            {
+                "paciente": 5795,
+                "patient_id": 5795,
+                "mae_pre": 22.01698875427246,
+                "mae_post": 21.717145919799805
+            },
+            {
+                "paciente": 9544,
+                "patient_id": 9544,
+                "mae_pre": 21.941431045532227,
+                "mae_post": 21.826400756835938
+            },
+            {
+                "paciente": 6597,
+                "patient_id": 6597,
+                "mae_pre": 10.314489364624023,
+                "mae_post": 9.805618286132812
+            },
+            {
+                "paciente": 6327,
+                "patient_id": 6327,
+                "mae_pre": 4.666485786437988,
+                "mae_post": 4.253424167633057
+            },
+            {
+                "paciente": 1019,
+                "patient_id": 1019,
+                "mae_pre": 16.888992309570312,
+                "mae_post": 16.29326820373535
+            },
+            {
+                "paciente": 10772,
+                "patient_id": 10772,
+                "mae_pre": 28.10712242126465,
+                "mae_post": 27.689090728759766
+            },
+            {
+                "paciente": 6186,
+                "patient_id": 6186,
+                "mae_pre": 13.29149055480957,
+                "mae_post": 13.027440071105957
+            },
+            {
+                "paciente": 218,
+                "patient_id": 218,
+                "mae_pre": 27.328044891357422,
+                "mae_post": 26.2112979888916
+            },
+            {
+                "paciente": 8853,
+                "patient_id": 8853,
+                "mae_pre": 28.15253257751465,
+                "mae_post": 27.366174697875977
+            },
+            {
+                "paciente": 4544,
+                "patient_id": 4544,
+                "mae_pre": 2.5385756492614746,
+                "mae_post": 2.3943634033203125
+            },
+            {
+                "paciente": 2887,
+                "patient_id": 2887,
+                "mae_pre": 15.453811645507812,
+                "mae_post": 14.980929374694824
+            },
+            {
+                "paciente": 3086,
+                "patient_id": 3086,
+                "mae_pre": 27.648757934570312,
+                "mae_post": 27.284748077392578
+            },
+            {
+                "paciente": 5889,
+                "patient_id": 5889,
+                "mae_pre": 19.7542781829834,
+                "mae_post": 19.66122817993164
+            },
+            {
+                "paciente": 8475,
+                "patient_id": 8475,
+                "mae_pre": 12.891923904418945,
+                "mae_post": 12.593966484069824
+            },
+            {
+                "paciente": 1516,
+                "patient_id": 1516,
+                "mae_pre": 3.724273681640625,
+                "mae_post": 3.6770355701446533
+            },
+            {
+                "paciente": 7863,
+                "patient_id": 7863,
+                "mae_pre": 38.3731575012207,
+                "mae_post": 37.90062713623047
+            },
+            {
+                "paciente": 1788,
+                "patient_id": 1788,
+                "mae_pre": 7.1523637771606445,
+                "mae_post": 6.608573913574219
+            },
+            {
+                "paciente": 1760,
+                "patient_id": 1760,
+                "mae_pre": 8.618212699890137,
+                "mae_post": 8.06024169921875
+            },
+            {
+                "paciente": 10235,
+                "patient_id": 10235,
+                "mae_pre": 3.2110962867736816,
+                "mae_post": 3.0401031970977783
+            },
+            {
+                "paciente": 8344,
+                "patient_id": 8344,
+                "mae_pre": 4.745251655578613,
+                "mae_post": 4.582916259765625
+            },
+            {
+                "paciente": 8570,
+                "patient_id": 8570,
+                "mae_pre": 20.908517837524414,
+                "mae_post": 20.73661231994629
+            },
+            {
+                "paciente": 4270,
+                "patient_id": 4270,
+                "mae_pre": 37.08986282348633,
+                "mae_post": 36.63405227661133
+            },
+            {
+                "paciente": 8854,
+                "patient_id": 8854,
+                "mae_pre": 12.36439037322998,
+                "mae_post": 11.900169372558594
+            },
+            {
+                "paciente": 4217,
+                "patient_id": 4217,
+                "mae_pre": 12.988777160644531,
+                "mae_post": 12.616602897644043
+            },
+            {
+                "paciente": 479,
+                "patient_id": 479,
+                "mae_pre": 42.47024154663086,
+                "mae_post": 42.10552215576172
+            },
+            {
+                "paciente": 31,
+                "patient_id": 31,
+                "mae_pre": 12.588403701782227,
+                "mae_post": 12.400225639343262
+            },
+            {
+                "paciente": 11503,
+                "patient_id": 11503,
+                "mae_pre": 2.5001282691955566,
+                "mae_post": 2.2200775146484375
+            },
+            {
+                "paciente": 2080,
+                "patient_id": 2080,
+                "mae_pre": 20.302867889404297,
+                "mae_post": 19.757665634155273
+            },
+            {
+                "paciente": 11868,
+                "patient_id": 11868,
+                "mae_pre": 28.431644439697266,
+                "mae_post": 27.9791259765625
+            },
+            {
+                "paciente": 11593,
+                "patient_id": 11593,
+                "mae_pre": 32.57170867919922,
+                "mae_post": 32.381622314453125
+            },
+            {
+                "paciente": 3013,
+                "patient_id": 3013,
+                "mae_pre": 25.629989624023438,
+                "mae_post": 25.01241683959961
+            },
+            {
+                "paciente": 11817,
+                "patient_id": 11817,
+                "mae_pre": 21.132808685302734,
+                "mae_post": 20.92627716064453
+            },
+            {
+                "paciente": 9754,
+                "patient_id": 9754,
+                "mae_pre": 11.608078002929688,
+                "mae_post": 11.168802261352539
+            },
+            {
+                "paciente": 5748,
+                "patient_id": 5748,
+                "mae_pre": 11.626710891723633,
+                "mae_post": 11.137224197387695
+            },
+            {
+                "paciente": 6531,
+                "patient_id": 6531,
+                "mae_pre": 10.054173469543457,
+                "mae_post": 9.75135326385498
+            },
+            {
+                "paciente": 4748,
+                "patient_id": 4748,
+                "mae_pre": 13.056078910827637,
+                "mae_post": 12.521444320678711
+            },
+            {
+                "paciente": 1601,
+                "patient_id": 1601,
+                "mae_pre": 37.561553955078125,
+                "mae_post": 36.908390045166016
+            },
+            {
+                "paciente": 3805,
+                "patient_id": 3805,
+                "mae_pre": 21.165746688842773,
+                "mae_post": 20.575054168701172
+            },
+            {
+                "paciente": 2797,
+                "patient_id": 2797,
+                "mae_pre": 6.114968776702881,
+                "mae_post": 5.787051200866699
+            },
+            {
+                "paciente": 2998,
+                "patient_id": 2998,
+                "mae_pre": 15.303047180175781,
+                "mae_post": 14.930760383605957
+            },
+            {
+                "paciente": 3436,
+                "patient_id": 3436,
+                "mae_pre": 22.073284149169922,
+                "mae_post": 21.160818099975586
+            },
+            {
+                "paciente": 8328,
+                "patient_id": 8328,
+                "mae_pre": 23.897804260253906,
+                "mae_post": 23.648101806640625
+            },
+            {
+                "paciente": 5578,
+                "patient_id": 5578,
+                "mae_pre": 21.734153747558594,
+                "mae_post": 21.49961280822754
+            },
+            {
+                "paciente": 10252,
+                "patient_id": 10252,
+                "mae_pre": 13.558941841125488,
+                "mae_post": 13.094675064086914
+            },
+            {
+                "paciente": 10291,
+                "patient_id": 10291,
+                "mae_pre": 46.8371467590332,
+                "mae_post": 46.43764877319336
+            },
+            {
+                "paciente": 1804,
+                "patient_id": 1804,
+                "mae_pre": 38.122581481933594,
+                "mae_post": 37.74103927612305
+            },
+            {
+                "paciente": 2958,
+                "patient_id": 2958,
+                "mae_pre": 1.387298583984375,
+                "mae_post": 1.420745849609375
+            },
+            {
+                "paciente": 7181,
+                "patient_id": 7181,
+                "mae_pre": 5.844491481781006,
+                "mae_post": 5.140851020812988
+            },
+            {
+                "paciente": 11525,
+                "patient_id": 11525,
+                "mae_pre": 17.629047393798828,
+                "mae_post": 17.34671401977539
+            },
+            {
+                "paciente": 11909,
+                "patient_id": 11909,
+                "mae_pre": 32.27507019042969,
+                "mae_post": 31.79905128479004
+            },
+            {
+                "paciente": 6208,
+                "patient_id": 6208,
+                "mae_pre": 6.378758430480957,
+                "mae_post": 6.224745273590088
+            }
+        ]
+    },
+    {
+        "learning_rate": 0.0001,
+        "n_shots": 5,
+        "pacientes": [
+            {
+                "paciente": 2960,
+                "patient_id": 2960,
+                "mae_pre": 1.0625274181365967,
+                "mae_post": 1.0684585571289062
+            },
+            {
+                "paciente": 7215,
+                "patient_id": 7215,
+                "mae_pre": 5.730725288391113,
+                "mae_post": 3.4465973377227783
+            },
+            {
+                "paciente": 3341,
+                "patient_id": 3341,
+                "mae_pre": 32.47121810913086,
+                "mae_post": 26.218358993530273
+            },
+            {
+                "paciente": 9387,
+                "patient_id": 9387,
+                "mae_pre": 13.523797988891602,
+                "mae_post": 11.281158447265625
+            },
+            {
+                "paciente": 5015,
+                "patient_id": 5015,
+                "mae_pre": 16.653152465820312,
+                "mae_post": 14.101873397827148
+            },
+            {
+                "paciente": 4031,
+                "patient_id": 4031,
+                "mae_pre": 19.62604522705078,
+                "mae_post": 17.262187957763672
+            },
+            {
+                "paciente": 4929,
+                "patient_id": 4929,
+                "mae_pre": 9.212489128112793,
+                "mae_post": 6.734002590179443
+            },
+            {
+                "paciente": 4126,
+                "patient_id": 4126,
+                "mae_pre": 36.08470153808594,
+                "mae_post": 34.454986572265625
+            },
+            {
+                "paciente": 8405,
+                "patient_id": 8405,
+                "mae_pre": 2.9097931385040283,
+                "mae_post": 2.801417589187622
+            },
+            {
+                "paciente": 7584,
+                "patient_id": 7584,
+                "mae_pre": 35.332977294921875,
+                "mae_post": 27.988784790039062
+            },
+            {
+                "paciente": 7952,
+                "patient_id": 7952,
+                "mae_pre": 27.020092010498047,
+                "mae_post": 25.132755279541016
+            },
+            {
+                "paciente": 5891,
+                "patient_id": 5891,
+                "mae_pre": 53.106422424316406,
+                "mae_post": 51.368675231933594
+            },
+            {
+                "paciente": 3208,
+                "patient_id": 3208,
+                "mae_pre": 51.5342903137207,
+                "mae_post": 47.338539123535156
+            },
+            {
+                "paciente": 1281,
+                "patient_id": 1281,
+                "mae_pre": 18.714025497436523,
+                "mae_post": 17.215560913085938
+            },
+            {
+                "paciente": 232,
+                "patient_id": 232,
+                "mae_pre": 27.988107681274414,
+                "mae_post": 21.727493286132812
+            },
+            {
+                "paciente": 8269,
+                "patient_id": 8269,
+                "mae_pre": 10.674456596374512,
+                "mae_post": 7.323586940765381
+            },
+            {
+                "paciente": 11533,
+                "patient_id": 11533,
+                "mae_pre": 35.39850997924805,
+                "mae_post": 26.649738311767578
+            },
+            {
+                "paciente": 5322,
+                "patient_id": 5322,
+                "mae_pre": 12.743108749389648,
+                "mae_post": 11.368441581726074
+            },
+            {
+                "paciente": 8091,
+                "patient_id": 8091,
+                "mae_pre": 19.819507598876953,
+                "mae_post": 16.980560302734375
+            },
+            {
+                "paciente": 2961,
+                "patient_id": 2961,
+                "mae_pre": 23.161109924316406,
+                "mae_post": 19.50014877319336
+            },
+            {
+                "paciente": 5469,
+                "patient_id": 5469,
+                "mae_pre": 25.708492279052734,
+                "mae_post": 21.86884117126465
+            },
+            {
+                "paciente": 6479,
+                "patient_id": 6479,
+                "mae_pre": 13.211750984191895,
+                "mae_post": 12.009936332702637
+            },
+            {
+                "paciente": 4174,
+                "patient_id": 4174,
+                "mae_pre": 25.587871551513672,
+                "mae_post": 21.82427978515625
+            },
+            {
+                "paciente": 209,
+                "patient_id": 209,
+                "mae_pre": 1.6606109142303467,
+                "mae_post": 0.932720959186554
+            },
+            {
+                "paciente": 538,
+                "patient_id": 538,
+                "mae_pre": 23.254756927490234,
+                "mae_post": 22.30660057067871
+            },
+            {
+                "paciente": 3402,
+                "patient_id": 3402,
+                "mae_pre": 2.062957763671875,
+                "mae_post": 2.135241746902466
+            },
+            {
+                "paciente": 105,
+                "patient_id": 105,
+                "mae_pre": 9.174127578735352,
+                "mae_post": 4.832977294921875
+            },
+            {
+                "paciente": 4529,
+                "patient_id": 4529,
+                "mae_pre": 14.49096393585205,
+                "mae_post": 10.241943359375
+            },
+            {
+                "paciente": 612,
+                "patient_id": 612,
+                "mae_pre": 12.441984176635742,
+                "mae_post": 11.4351224899292
+            },
+            {
+                "paciente": 1772,
+                "patient_id": 1772,
+                "mae_pre": 12.254488945007324,
+                "mae_post": 10.662755966186523
+            },
+            {
+                "paciente": 4862,
+                "patient_id": 4862,
+                "mae_pre": 11.67383098602295,
+                "mae_post": 8.389264106750488
+            },
+            {
+                "paciente": 1432,
+                "patient_id": 1432,
+                "mae_pre": 35.86049270629883,
+                "mae_post": 31.17435073852539
+            },
+            {
+                "paciente": 10141,
+                "patient_id": 10141,
+                "mae_pre": 26.713741302490234,
+                "mae_post": 23.216989517211914
+            },
+            {
+                "paciente": 5283,
+                "patient_id": 5283,
+                "mae_pre": 3.2630813121795654,
+                "mae_post": 2.3137221336364746
+            },
+            {
+                "paciente": 10420,
+                "patient_id": 10420,
+                "mae_pre": 4.86871337890625,
+                "mae_post": 3.1412506103515625
+            },
+            {
+                "paciente": 7364,
+                "patient_id": 7364,
+                "mae_pre": 26.330394744873047,
+                "mae_post": 19.07553482055664
+            },
+            {
+                "paciente": 578,
+                "patient_id": 578,
+                "mae_pre": 8.293472290039062,
+                "mae_post": 6.5764479637146
+            },
+            {
+                "paciente": 1960,
+                "patient_id": 1960,
+                "mae_pre": 28.122314453125,
+                "mae_post": 25.737842559814453
+            },
+            {
+                "paciente": 714,
+                "patient_id": 714,
+                "mae_pre": 14.726133346557617,
+                "mae_post": 7.411282539367676
+            },
+            {
+                "paciente": 2605,
+                "patient_id": 2605,
+                "mae_pre": 27.981273651123047,
+                "mae_post": 23.700559616088867
+            },
+            {
+                "paciente": 1347,
+                "patient_id": 1347,
+                "mae_pre": 4.881716728210449,
+                "mae_post": 4.351312160491943
+            },
+            {
+                "paciente": 11425,
+                "patient_id": 11425,
+                "mae_pre": 22.569189071655273,
+                "mae_post": 21.369327545166016
+            },
+            {
+                "paciente": 2366,
+                "patient_id": 2366,
+                "mae_pre": 5.926849365234375,
+                "mae_post": 4.390948295593262
+            },
+            {
+                "paciente": 11627,
+                "patient_id": 11627,
+                "mae_pre": 9.140237808227539,
+                "mae_post": 7.453425407409668
+            },
+            {
+                "paciente": 6103,
+                "patient_id": 6103,
+                "mae_pre": 15.028602600097656,
+                "mae_post": 14.016157150268555
+            },
+            {
+                "paciente": 3069,
+                "patient_id": 3069,
+                "mae_pre": 28.905935287475586,
+                "mae_post": 20.965099334716797
+            },
+            {
+                "paciente": 906,
+                "patient_id": 906,
+                "mae_pre": 11.905126571655273,
+                "mae_post": 9.732400894165039
+            },
+            {
+                "paciente": 6982,
+                "patient_id": 6982,
+                "mae_pre": 27.18341636657715,
+                "mae_post": 22.809558868408203
+            },
+            {
+                "paciente": 8530,
+                "patient_id": 8530,
+                "mae_pre": 4.446938991546631,
+                "mae_post": 4.437742710113525
+            },
+            {
+                "paciente": 5795,
+                "patient_id": 5795,
+                "mae_pre": 26.576635360717773,
+                "mae_post": 23.66490936279297
+            },
+            {
+                "paciente": 9544,
+                "patient_id": 9544,
+                "mae_pre": 21.191701889038086,
+                "mae_post": 19.661657333374023
+            },
+            {
+                "paciente": 6597,
+                "patient_id": 6597,
+                "mae_pre": 5.235922336578369,
+                "mae_post": 2.956930637359619
+            },
+            {
+                "paciente": 6327,
+                "patient_id": 6327,
+                "mae_pre": 0.47004395723342896,
+                "mae_post": 0.8423827886581421
+            },
+            {
+                "paciente": 1019,
+                "patient_id": 1019,
+                "mae_pre": 8.315661430358887,
+                "mae_post": 4.278470039367676
+            },
+            {
+                "paciente": 10772,
+                "patient_id": 10772,
+                "mae_pre": 16.138721466064453,
+                "mae_post": 11.562337875366211
+            },
+            {
+                "paciente": 6186,
+                "patient_id": 6186,
+                "mae_pre": 22.731287002563477,
+                "mae_post": 19.373849868774414
+            },
+            {
+                "paciente": 218,
+                "patient_id": 218,
+                "mae_pre": 13.470663070678711,
+                "mae_post": 6.135378837585449
+            },
+            {
+                "paciente": 8853,
+                "patient_id": 8853,
+                "mae_pre": 45.82642364501953,
+                "mae_post": 35.5643310546875
+            },
+            {
+                "paciente": 4544,
+                "patient_id": 4544,
+                "mae_pre": 8.162280082702637,
+                "mae_post": 5.102288722991943
+            },
+            {
+                "paciente": 2887,
+                "patient_id": 2887,
+                "mae_pre": 20.486377716064453,
+                "mae_post": 14.554082870483398
+            },
+            {
+                "paciente": 3086,
+                "patient_id": 3086,
+                "mae_pre": 27.542667388916016,
+                "mae_post": 23.242990493774414
+            },
+            {
+                "paciente": 5889,
+                "patient_id": 5889,
+                "mae_pre": 17.077495574951172,
+                "mae_post": 15.045907974243164
+            },
+            {
+                "paciente": 8475,
+                "patient_id": 8475,
+                "mae_pre": 21.66998291015625,
+                "mae_post": 16.644079208374023
+            },
+            {
+                "paciente": 1516,
+                "patient_id": 1516,
+                "mae_pre": 4.386987209320068,
+                "mae_post": 3.828625440597534
+            },
+            {
+                "paciente": 7863,
+                "patient_id": 7863,
+                "mae_pre": 31.73495864868164,
+                "mae_post": 26.286121368408203
+            },
+            {
+                "paciente": 1788,
+                "patient_id": 1788,
+                "mae_pre": 14.479097366333008,
+                "mae_post": 8.369404792785645
+            },
+            {
+                "paciente": 1760,
+                "patient_id": 1760,
+                "mae_pre": 12.487894058227539,
+                "mae_post": 6.814150810241699
+            },
+            {
+                "paciente": 10235,
+                "patient_id": 10235,
+                "mae_pre": 3.291574001312256,
+                "mae_post": 2.5612335205078125
+            },
+            {
+                "paciente": 8344,
+                "patient_id": 8344,
+                "mae_pre": 5.57895040512085,
+                "mae_post": 3.8313231468200684
+            },
+            {
+                "paciente": 8570,
+                "patient_id": 8570,
+                "mae_pre": 22.490604400634766,
+                "mae_post": 20.295385360717773
+            },
+            {
+                "paciente": 4270,
+                "patient_id": 4270,
+                "mae_pre": 32.323726654052734,
+                "mae_post": 27.605600357055664
+            },
+            {
+                "paciente": 8854,
+                "patient_id": 8854,
+                "mae_pre": 12.568730354309082,
+                "mae_post": 8.550392150878906
+            },
+            {
+                "paciente": 4217,
+                "patient_id": 4217,
+                "mae_pre": 11.858238220214844,
+                "mae_post": 7.682950019836426
+            },
+            {
+                "paciente": 479,
+                "patient_id": 479,
+                "mae_pre": 46.356624603271484,
+                "mae_post": 42.64277648925781
+            },
+            {
+                "paciente": 31,
+                "patient_id": 31,
+                "mae_pre": 13.409756660461426,
+                "mae_post": 10.974108695983887
+            },
+            {
+                "paciente": 11503,
+                "patient_id": 11503,
+                "mae_pre": 5.783724784851074,
+                "mae_post": 3.756735324859619
+            },
+            {
+                "paciente": 2080,
+                "patient_id": 2080,
+                "mae_pre": 22.11844825744629,
+                "mae_post": 15.813552856445312
+            },
+            {
+                "paciente": 11868,
+                "patient_id": 11868,
+                "mae_pre": 28.100711822509766,
+                "mae_post": 19.845687866210938
+            },
+            {
+                "paciente": 11593,
+                "patient_id": 11593,
+                "mae_pre": 34.36284637451172,
+                "mae_post": 32.33364486694336
+            },
+            {
+                "paciente": 3013,
+                "patient_id": 3013,
+                "mae_pre": 25.600555419921875,
+                "mae_post": 17.427000045776367
+            },
+            {
+                "paciente": 11817,
+                "patient_id": 11817,
+                "mae_pre": 18.51239776611328,
+                "mae_post": 15.912599563598633
+            },
+            {
+                "paciente": 9754,
+                "patient_id": 9754,
+                "mae_pre": 14.545913696289062,
+                "mae_post": 9.436243057250977
+            },
+            {
+                "paciente": 5748,
+                "patient_id": 5748,
+                "mae_pre": 9.752954483032227,
+                "mae_post": 6.354846000671387
+            },
+            {
+                "paciente": 6531,
+                "patient_id": 6531,
+                "mae_pre": 5.381848335266113,
+                "mae_post": 2.7923293113708496
+            },
+            {
+                "paciente": 4748,
+                "patient_id": 4748,
+                "mae_pre": 19.657968521118164,
+                "mae_post": 13.2748384475708
+            },
+            {
+                "paciente": 1601,
+                "patient_id": 1601,
+                "mae_pre": 39.30976486206055,
+                "mae_post": 32.327423095703125
+            },
+            {
+                "paciente": 3805,
+                "patient_id": 3805,
+                "mae_pre": 11.650240898132324,
+                "mae_post": 5.767582893371582
+            },
+            {
+                "paciente": 2797,
+                "patient_id": 2797,
+                "mae_pre": 17.404390335083008,
+                "mae_post": 10.045208930969238
+            },
+            {
+                "paciente": 2998,
+                "patient_id": 2998,
+                "mae_pre": 11.296419143676758,
+                "mae_post": 8.439912796020508
+            },
+            {
+                "paciente": 3436,
+                "patient_id": 3436,
+                "mae_pre": 32.460899353027344,
+                "mae_post": 21.94192123413086
+            },
+            {
+                "paciente": 8328,
+                "patient_id": 8328,
+                "mae_pre": 28.995330810546875,
+                "mae_post": 25.11430549621582
+            },
+            {
+                "paciente": 5578,
+                "patient_id": 5578,
+                "mae_pre": 19.478626251220703,
+                "mae_post": 16.780864715576172
+            },
+            {
+                "paciente": 10252,
+                "patient_id": 10252,
+                "mae_pre": 17.506389617919922,
+                "mae_post": 11.065435409545898
+            },
+            {
+                "paciente": 10291,
+                "patient_id": 10291,
+                "mae_pre": 46.228729248046875,
+                "mae_post": 39.61164093017578
+            },
+            {
+                "paciente": 1804,
+                "patient_id": 1804,
+                "mae_pre": 34.95253372192383,
+                "mae_post": 30.98457908630371
+            },
+            {
+                "paciente": 2958,
+                "patient_id": 2958,
+                "mae_pre": 3.8025619983673096,
+                "mae_post": 3.784808397293091
+            },
+            {
+                "paciente": 7181,
+                "patient_id": 7181,
+                "mae_pre": 4.052615165710449,
+                "mae_post": 2.3342347145080566
+            },
+            {
+                "paciente": 11525,
+                "patient_id": 11525,
+                "mae_pre": 14.528721809387207,
+                "mae_post": 11.152521133422852
+            },
+            {
+                "paciente": 11909,
+                "patient_id": 11909,
+                "mae_pre": 36.558982849121094,
+                "mae_post": 29.450305938720703
+            },
+            {
+                "paciente": 6208,
+                "patient_id": 6208,
+                "mae_pre": 5.649889945983887,
+                "mae_post": 3.874502658843994
+            }
+        ]
+    },
+    {
+        "learning_rate": 0.0005,
+        "n_shots": 5,
+        "pacientes": [
+            {
+                "paciente": 2960,
+                "patient_id": 2960,
+                "mae_pre": 1.0625274181365967,
+                "mae_post": 2.5806593894958496
+            },
+            {
+                "paciente": 7215,
+                "patient_id": 7215,
+                "mae_pre": 4.280386447906494,
+                "mae_post": 3.2515501976013184
+            },
+            {
+                "paciente": 3341,
+                "patient_id": 3341,
+                "mae_pre": 31.61282730102539,
+                "mae_post": 13.230364799499512
+            },
+            {
+                "paciente": 9387,
+                "patient_id": 9387,
+                "mae_pre": 17.569133758544922,
+                "mae_post": 8.81291675567627
+            },
+            {
+                "paciente": 5015,
+                "patient_id": 5015,
+                "mae_pre": 18.126882553100586,
+                "mae_post": 7.179852485656738
+            },
+            {
+                "paciente": 4031,
+                "patient_id": 4031,
+                "mae_pre": 13.219451904296875,
+                "mae_post": 1.7301056385040283
+            },
+            {
+                "paciente": 4929,
+                "patient_id": 4929,
+                "mae_pre": 20.555896759033203,
+                "mae_post": 6.050018310546875
+            },
+            {
+                "paciente": 4126,
+                "patient_id": 4126,
+                "mae_pre": 34.45067596435547,
+                "mae_post": 25.361446380615234
+            },
+            {
+                "paciente": 8405,
+                "patient_id": 8405,
+                "mae_pre": 16.667560577392578,
+                "mae_post": 3.2509963512420654
+            },
+            {
+                "paciente": 7584,
+                "patient_id": 7584,
+                "mae_pre": 52.4490852355957,
+                "mae_post": 20.749256134033203
+            },
+            {
+                "paciente": 7952,
+                "patient_id": 7952,
+                "mae_pre": 29.742572784423828,
+                "mae_post": 21.880615234375
+            },
+            {
+                "paciente": 5891,
+                "patient_id": 5891,
+                "mae_pre": 50.70726013183594,
+                "mae_post": 42.490779876708984
+            },
+            {
+                "paciente": 3208,
+                "patient_id": 3208,
+                "mae_pre": 57.68205642700195,
+                "mae_post": 43.66647720336914
+            },
+            {
+                "paciente": 1281,
+                "patient_id": 1281,
+                "mae_pre": 17.359722137451172,
+                "mae_post": 10.510477066040039
+            },
+            {
+                "paciente": 232,
+                "patient_id": 232,
+                "mae_pre": 24.6790828704834,
+                "mae_post": 6.722393989562988
+            },
+            {
+                "paciente": 8269,
+                "patient_id": 8269,
+                "mae_pre": 4.6353044509887695,
+                "mae_post": 3.798138380050659
+            },
+            {
+                "paciente": 11533,
+                "patient_id": 11533,
+                "mae_pre": 43.449859619140625,
+                "mae_post": 3.791668653488159
+            },
+            {
+                "paciente": 5322,
+                "patient_id": 5322,
+                "mae_pre": 14.914817810058594,
+                "mae_post": 2.358966112136841
+            },
+            {
+                "paciente": 8091,
+                "patient_id": 8091,
+                "mae_pre": 13.219171524047852,
+                "mae_post": 1.6524200439453125
+            },
+            {
+                "paciente": 2961,
+                "patient_id": 2961,
+                "mae_pre": 15.979487419128418,
+                "mae_post": 4.121251106262207
+            },
+            {
+                "paciente": 5469,
+                "patient_id": 5469,
+                "mae_pre": 14.126849174499512,
+                "mae_post": 1.1143677234649658
+            },
+            {
+                "paciente": 6479,
+                "patient_id": 6479,
+                "mae_pre": 27.87543296813965,
+                "mae_post": 5.327795505523682
+            },
+            {
+                "paciente": 4174,
+                "patient_id": 4174,
+                "mae_pre": 35.23845672607422,
+                "mae_post": 11.052093505859375
+            },
+            {
+                "paciente": 209,
+                "patient_id": 209,
+                "mae_pre": 0.5952545404434204,
+                "mae_post": 2.1456634998321533
+            },
+            {
+                "paciente": 538,
+                "patient_id": 538,
+                "mae_pre": 31.773290634155273,
+                "mae_post": 22.348087310791016
+            },
+            {
+                "paciente": 3402,
+                "patient_id": 3402,
+                "mae_pre": 4.465798854827881,
+                "mae_post": 1.9342148303985596
+            },
+            {
+                "paciente": 105,
+                "patient_id": 105,
+                "mae_pre": 3.611044406890869,
+                "mae_post": 2.8612303733825684
+            },
+            {
+                "paciente": 4529,
+                "patient_id": 4529,
+                "mae_pre": 9.620367050170898,
+                "mae_post": 1.6425384283065796
+            },
+            {
+                "paciente": 612,
+                "patient_id": 612,
+                "mae_pre": 16.081926345825195,
+                "mae_post": 10.60869312286377
+            },
+            {
+                "paciente": 1772,
+                "patient_id": 1772,
+                "mae_pre": 14.1515531539917,
+                "mae_post": 1.4308868646621704
+            },
+            {
+                "paciente": 4862,
+                "patient_id": 4862,
+                "mae_pre": 10.998003959655762,
+                "mae_post": 1.6885910034179688
+            },
+            {
+                "paciente": 1432,
+                "patient_id": 1432,
+                "mae_pre": 41.925148010253906,
+                "mae_post": 13.021258354187012
+            },
+            {
+                "paciente": 10141,
+                "patient_id": 10141,
+                "mae_pre": 26.221664428710938,
+                "mae_post": 11.685708999633789
+            },
+            {
+                "paciente": 5283,
+                "patient_id": 5283,
+                "mae_pre": 21.314332962036133,
+                "mae_post": 3.586695909500122
+            },
+            {
+                "paciente": 10420,
+                "patient_id": 10420,
+                "mae_pre": 4.355090141296387,
+                "mae_post": 1.150976538658142
+            },
+            {
+                "paciente": 7364,
+                "patient_id": 7364,
+                "mae_pre": 29.639148712158203,
+                "mae_post": 7.540641784667969
+            },
+            {
+                "paciente": 578,
+                "patient_id": 578,
+                "mae_pre": 11.713872909545898,
+                "mae_post": 4.151003837585449
+            },
+            {
+                "paciente": 1960,
+                "patient_id": 1960,
+                "mae_pre": 33.297813415527344,
+                "mae_post": 10.584516525268555
+            },
+            {
+                "paciente": 714,
+                "patient_id": 714,
+                "mae_pre": 29.4935359954834,
+                "mae_post": 3.464068651199341
+            },
+            {
+                "paciente": 2605,
+                "patient_id": 2605,
+                "mae_pre": 26.324804306030273,
+                "mae_post": 2.616358995437622
+            },
+            {
+                "paciente": 1347,
+                "patient_id": 1347,
+                "mae_pre": 9.508199691772461,
+                "mae_post": 2.4999542236328125
+            },
+            {
+                "paciente": 11425,
+                "patient_id": 11425,
+                "mae_pre": 21.76115608215332,
+                "mae_post": 4.887385368347168
+            },
+            {
+                "paciente": 2366,
+                "patient_id": 2366,
+                "mae_pre": 1.394232153892517,
+                "mae_post": 2.027477979660034
+            },
+            {
+                "paciente": 11627,
+                "patient_id": 11627,
+                "mae_pre": 5.585343837738037,
+                "mae_post": 1.489985704421997
+            },
+            {
+                "paciente": 6103,
+                "patient_id": 6103,
+                "mae_pre": 17.429454803466797,
+                "mae_post": 11.991827011108398
+            },
+            {
+                "paciente": 3069,
+                "patient_id": 3069,
+                "mae_pre": 27.205142974853516,
+                "mae_post": 3.002728223800659
+            },
+            {
+                "paciente": 906,
+                "patient_id": 906,
+                "mae_pre": 13.253527641296387,
+                "mae_post": 8.045700073242188
+            },
+            {
+                "paciente": 6982,
+                "patient_id": 6982,
+                "mae_pre": 17.2414608001709,
+                "mae_post": 3.280966281890869
+            },
+            {
+                "paciente": 8530,
+                "patient_id": 8530,
+                "mae_pre": 10.21446704864502,
+                "mae_post": 1.642358422279358
+            },
+            {
+                "paciente": 5795,
+                "patient_id": 5795,
+                "mae_pre": 34.63787841796875,
+                "mae_post": 21.948698043823242
+            },
+            {
+                "paciente": 9544,
+                "patient_id": 9544,
+                "mae_pre": 20.4760684967041,
+                "mae_post": 5.190023899078369
+            },
+            {
+                "paciente": 6597,
+                "patient_id": 6597,
+                "mae_pre": 6.543008327484131,
+                "mae_post": 2.3046844005584717
+            },
+            {
+                "paciente": 6327,
+                "patient_id": 6327,
+                "mae_pre": 1.8513062000274658,
+                "mae_post": 1.2723602056503296
+            },
+            {
+                "paciente": 1019,
+                "patient_id": 1019,
+                "mae_pre": 5.0744171142578125,
+                "mae_post": 2.1070587635040283
+            },
+            {
+                "paciente": 10772,
+                "patient_id": 10772,
+                "mae_pre": 12.408740043640137,
+                "mae_post": 1.8542327880859375
+            },
+            {
+                "paciente": 6186,
+                "patient_id": 6186,
+                "mae_pre": 37.113040924072266,
+                "mae_post": 21.915658950805664
+            },
+            {
+                "paciente": 218,
+                "patient_id": 218,
+                "mae_pre": 7.343752861022949,
+                "mae_post": 1.628271460533142
+            },
+            {
+                "paciente": 8853,
+                "patient_id": 8853,
+                "mae_pre": 57.3250846862793,
+                "mae_post": 23.34282875061035
+            },
+            {
+                "paciente": 4544,
+                "patient_id": 4544,
+                "mae_pre": 5.927800178527832,
+                "mae_post": 2.2672119140625
+            },
+            {
+                "paciente": 2887,
+                "patient_id": 2887,
+                "mae_pre": 15.099245071411133,
+                "mae_post": 4.052008152008057
+            },
+            {
+                "paciente": 3086,
+                "patient_id": 3086,
+                "mae_pre": 45.95703887939453,
+                "mae_post": 16.179866790771484
+            },
+            {
+                "paciente": 5889,
+                "patient_id": 5889,
+                "mae_pre": 18.93487548828125,
+                "mae_post": 2.3094146251678467
+            },
+            {
+                "paciente": 8475,
+                "patient_id": 8475,
+                "mae_pre": 23.163379669189453,
+                "mae_post": 9.630338668823242
+            },
+            {
+                "paciente": 1516,
+                "patient_id": 1516,
+                "mae_pre": 2.6808228492736816,
+                "mae_post": 2.3613250255584717
+            },
+            {
+                "paciente": 7863,
+                "patient_id": 7863,
+                "mae_pre": 42.85542297363281,
+                "mae_post": 19.410608291625977
+            },
+            {
+                "paciente": 1788,
+                "patient_id": 1788,
+                "mae_pre": 15.06226921081543,
+                "mae_post": 1.4735702276229858
+            },
+            {
+                "paciente": 1760,
+                "patient_id": 1760,
+                "mae_pre": 4.621316432952881,
+                "mae_post": 0.8834991455078125
+            },
+            {
+                "paciente": 10235,
+                "patient_id": 10235,
+                "mae_pre": 6.82318115234375,
+                "mae_post": 1.115838646888733
+            },
+            {
+                "paciente": 8344,
+                "patient_id": 8344,
+                "mae_pre": 6.575950622558594,
+                "mae_post": 1.3620269298553467
+            },
+            {
+                "paciente": 8570,
+                "patient_id": 8570,
+                "mae_pre": 18.792587280273438,
+                "mae_post": 12.452815055847168
+            },
+            {
+                "paciente": 4270,
+                "patient_id": 4270,
+                "mae_pre": 48.17753982543945,
+                "mae_post": 25.257766723632812
+            },
+            {
+                "paciente": 8854,
+                "patient_id": 8854,
+                "mae_pre": 21.78339195251465,
+                "mae_post": 8.6677885055542
+            },
+            {
+                "paciente": 4217,
+                "patient_id": 4217,
+                "mae_pre": 13.039129257202148,
+                "mae_post": 2.856520175933838
+            },
+            {
+                "paciente": 479,
+                "patient_id": 479,
+                "mae_pre": 59.295066833496094,
+                "mae_post": 45.685386657714844
+            },
+            {
+                "paciente": 31,
+                "patient_id": 31,
+                "mae_pre": 16.932567596435547,
+                "mae_post": 4.059670925140381
+            },
+            {
+                "paciente": 11503,
+                "patient_id": 11503,
+                "mae_pre": 5.309988498687744,
+                "mae_post": 4.837011814117432
+            },
+            {
+                "paciente": 2080,
+                "patient_id": 2080,
+                "mae_pre": 36.39753341674805,
+                "mae_post": 12.277252197265625
+            },
+            {
+                "paciente": 11868,
+                "patient_id": 11868,
+                "mae_pre": 23.750186920166016,
+                "mae_post": 3.919281005859375
+            },
+            {
+                "paciente": 11593,
+                "patient_id": 11593,
+                "mae_pre": 43.25581741333008,
+                "mae_post": 34.82081604003906
+            },
+            {
+                "paciente": 3013,
+                "patient_id": 3013,
+                "mae_pre": 11.673624038696289,
+                "mae_post": 4.345983982086182
+            },
+            {
+                "paciente": 11817,
+                "patient_id": 11817,
+                "mae_pre": 17.716646194458008,
+                "mae_post": 3.3860886096954346
+            },
+            {
+                "paciente": 9754,
+                "patient_id": 9754,
+                "mae_pre": 32.91529083251953,
+                "mae_post": 6.284548759460449
+            },
+            {
+                "paciente": 5748,
+                "patient_id": 5748,
+                "mae_pre": 10.568803787231445,
+                "mae_post": 3.3118622303009033
+            },
+            {
+                "paciente": 6531,
+                "patient_id": 6531,
+                "mae_pre": 4.966949462890625,
+                "mae_post": 2.796286106109619
+            },
+            {
+                "paciente": 4748,
+                "patient_id": 4748,
+                "mae_pre": 29.76395034790039,
+                "mae_post": 9.948277473449707
+            },
+            {
+                "paciente": 1601,
+                "patient_id": 1601,
+                "mae_pre": 44.137935638427734,
+                "mae_post": 22.76384925842285
+            },
+            {
+                "paciente": 3805,
+                "patient_id": 3805,
+                "mae_pre": 12.998677253723145,
+                "mae_post": 2.687274217605591
+            },
+            {
+                "paciente": 2797,
+                "patient_id": 2797,
+                "mae_pre": 25.434741973876953,
+                "mae_post": 4.224058628082275
+            },
+            {
+                "paciente": 2998,
+                "patient_id": 2998,
+                "mae_pre": 17.904666900634766,
+                "mae_post": 6.936585903167725
+            },
+            {
+                "paciente": 3436,
+                "patient_id": 3436,
+                "mae_pre": 38.61784362792969,
+                "mae_post": 2.1245360374450684
+            },
+            {
+                "paciente": 8328,
+                "patient_id": 8328,
+                "mae_pre": 27.505361557006836,
+                "mae_post": 15.078326225280762
+            },
+            {
+                "paciente": 5578,
+                "patient_id": 5578,
+                "mae_pre": 35.24657440185547,
+                "mae_post": 21.776988983154297
+            },
+            {
+                "paciente": 10252,
+                "patient_id": 10252,
+                "mae_pre": 7.239871025085449,
+                "mae_post": 2.4266357421875
+            },
+            {
+                "paciente": 10291,
+                "patient_id": 10291,
+                "mae_pre": 34.948856353759766,
+                "mae_post": 15.521105766296387
+            },
+            {
+                "paciente": 1804,
+                "patient_id": 1804,
+                "mae_pre": 28.85733413696289,
+                "mae_post": 14.245803833007812
+            },
+            {
+                "paciente": 2958,
+                "patient_id": 2958,
+                "mae_pre": 11.846325874328613,
+                "mae_post": 5.947924613952637
+            },
+            {
+                "paciente": 7181,
+                "patient_id": 7181,
+                "mae_pre": 19.44390869140625,
+                "mae_post": 3.723440647125244
+            },
+            {
+                "paciente": 11525,
+                "patient_id": 11525,
+                "mae_pre": 12.258275985717773,
+                "mae_post": 2.4097518920898438
+            },
+            {
+                "paciente": 11909,
+                "patient_id": 11909,
+                "mae_pre": 41.936492919921875,
+                "mae_post": 12.571775436401367
+            },
+            {
+                "paciente": 6208,
+                "patient_id": 6208,
+                "mae_pre": 11.410139083862305,
+                "mae_post": 1.500970482826233
+            }
+        ]
+    },
+    {
+        "learning_rate": 0.001,
+        "n_shots": 5,
+        "pacientes": [
+            {
+                "paciente": 2960,
+                "patient_id": 2960,
+                "mae_pre": 1.0625274181365967,
+                "mae_post": 1.762420654296875
+            },
+            {
+                "paciente": 7215,
+                "patient_id": 7215,
+                "mae_pre": 4.331712245941162,
+                "mae_post": 3.066876173019409
+            },
+            {
+                "paciente": 3341,
+                "patient_id": 3341,
+                "mae_pre": 29.837759017944336,
+                "mae_post": 1.7353118658065796
+            },
+            {
+                "paciente": 9387,
+                "patient_id": 9387,
+                "mae_pre": 23.427114486694336,
+                "mae_post": 7.0806565284729
+            },
+            {
+                "paciente": 5015,
+                "patient_id": 5015,
+                "mae_pre": 20.240652084350586,
+                "mae_post": 1.4040954113006592
+            },
+            {
+                "paciente": 4031,
+                "patient_id": 4031,
+                "mae_pre": 7.098535060882568,
+                "mae_post": 1.7664276361465454
+            },
+            {
+                "paciente": 4929,
+                "patient_id": 4929,
+                "mae_pre": 22.43675994873047,
+                "mae_post": 1.4999831914901733
+            },
+            {
+                "paciente": 4126,
+                "patient_id": 4126,
+                "mae_pre": 40.57714080810547,
+                "mae_post": 28.953201293945312
+            },
+            {
+                "paciente": 8405,
+                "patient_id": 8405,
+                "mae_pre": 9.8285551071167,
+                "mae_post": 0.9344253540039062
+            },
+            {
+                "paciente": 7584,
+                "patient_id": 7584,
+                "mae_pre": 38.622703552246094,
+                "mae_post": 8.915307998657227
+            },
+            {
+                "paciente": 7952,
+                "patient_id": 7952,
+                "mae_pre": 36.764923095703125,
+                "mae_post": 25.088207244873047
+            },
+            {
+                "paciente": 5891,
+                "patient_id": 5891,
+                "mae_pre": 51.30811309814453,
+                "mae_post": 37.727027893066406
+            },
+            {
+                "paciente": 3208,
+                "patient_id": 3208,
+                "mae_pre": 48.792842864990234,
+                "mae_post": 23.75423240661621
+            },
+            {
+                "paciente": 1281,
+                "patient_id": 1281,
+                "mae_pre": 24.42888069152832,
+                "mae_post": 9.825399398803711
+            },
+            {
+                "paciente": 232,
+                "patient_id": 232,
+                "mae_pre": 34.050079345703125,
+                "mae_post": 8.3790864944458
+            },
+            {
+                "paciente": 8269,
+                "patient_id": 8269,
+                "mae_pre": 17.515506744384766,
+                "mae_post": 3.2710494995117188
+            },
+            {
+                "paciente": 11533,
+                "patient_id": 11533,
+                "mae_pre": 38.087745666503906,
+                "mae_post": 6.4515838623046875
+            },
+            {
+                "paciente": 5322,
+                "patient_id": 5322,
+                "mae_pre": 16.383953094482422,
+                "mae_post": 0.8036758303642273
+            },
+            {
+                "paciente": 8091,
+                "patient_id": 8091,
+                "mae_pre": 7.774618625640869,
+                "mae_post": 2.117610216140747
+            },
+            {
+                "paciente": 2961,
+                "patient_id": 2961,
+                "mae_pre": 13.869924545288086,
+                "mae_post": 1.1253585815429688
+            },
+            {
+                "paciente": 5469,
+                "patient_id": 5469,
+                "mae_pre": 15.985651016235352,
+                "mae_post": 2.5038955211639404
+            },
+            {
+                "paciente": 6479,
+                "patient_id": 6479,
+                "mae_pre": 30.9354248046875,
+                "mae_post": 4.034457206726074
+            },
+            {
+                "paciente": 4174,
+                "patient_id": 4174,
+                "mae_pre": 44.452857971191406,
+                "mae_post": 14.511739730834961
+            },
+            {
+                "paciente": 209,
+                "patient_id": 209,
+                "mae_pre": 4.630389213562012,
+                "mae_post": 1.3792022466659546
+            },
+            {
+                "paciente": 538,
+                "patient_id": 538,
+                "mae_pre": 32.47430419921875,
+                "mae_post": 19.893829345703125
+            },
+            {
+                "paciente": 3402,
+                "patient_id": 3402,
+                "mae_pre": 11.54913330078125,
+                "mae_post": 0.750628650188446
+            },
+            {
+                "paciente": 105,
+                "patient_id": 105,
+                "mae_pre": 6.153067111968994,
+                "mae_post": 2.68463134765625
+            },
+            {
+                "paciente": 4529,
+                "patient_id": 4529,
+                "mae_pre": 13.204263687133789,
+                "mae_post": 1.2223846912384033
+            },
+            {
+                "paciente": 612,
+                "patient_id": 612,
+                "mae_pre": 19.092405319213867,
+                "mae_post": 8.611787796020508
+            },
+            {
+                "paciente": 1772,
+                "patient_id": 1772,
+                "mae_pre": 12.613306045532227,
+                "mae_post": 0.39727783203125
+            },
+            {
+                "paciente": 4862,
+                "patient_id": 4862,
+                "mae_pre": 10.368304252624512,
+                "mae_post": 2.3043289184570312
+            },
+            {
+                "paciente": 1432,
+                "patient_id": 1432,
+                "mae_pre": 46.1859130859375,
+                "mae_post": 16.08070945739746
+            },
+            {
+                "paciente": 10141,
+                "patient_id": 10141,
+                "mae_pre": 27.570837020874023,
+                "mae_post": 5.606179714202881
+            },
+            {
+                "paciente": 5283,
+                "patient_id": 5283,
+                "mae_pre": 30.216564178466797,
+                "mae_post": 5.893517971038818
+            },
+            {
+                "paciente": 10420,
+                "patient_id": 10420,
+                "mae_pre": 5.449685573577881,
+                "mae_post": 1.8048279285430908
+            },
+            {
+                "paciente": 7364,
+                "patient_id": 7364,
+                "mae_pre": 30.733875274658203,
+                "mae_post": 5.263401985168457
+            },
+            {
+                "paciente": 578,
+                "patient_id": 578,
+                "mae_pre": 4.2805023193359375,
+                "mae_post": 0.676867663860321
+            },
+            {
+                "paciente": 1960,
+                "patient_id": 1960,
+                "mae_pre": 26.652484893798828,
+                "mae_post": 12.673975944519043
+            },
+            {
+                "paciente": 714,
+                "patient_id": 714,
+                "mae_pre": 28.817886352539062,
+                "mae_post": 8.54639720916748
+            },
+            {
+                "paciente": 2605,
+                "patient_id": 2605,
+                "mae_pre": 6.470837593078613,
+                "mae_post": 0.9213012456893921
+            },
+            {
+                "paciente": 1347,
+                "patient_id": 1347,
+                "mae_pre": 14.523231506347656,
+                "mae_post": 3.0074095726013184
+            },
+            {
+                "paciente": 11425,
+                "patient_id": 11425,
+                "mae_pre": 35.852684020996094,
+                "mae_post": 21.11526107788086
+            },
+            {
+                "paciente": 2366,
+                "patient_id": 2366,
+                "mae_pre": 23.61370277404785,
+                "mae_post": 4.562768459320068
+            },
+            {
+                "paciente": 11627,
+                "patient_id": 11627,
+                "mae_pre": 11.569786071777344,
+                "mae_post": 4.3369598388671875
+            },
+            {
+                "paciente": 6103,
+                "patient_id": 6103,
+                "mae_pre": 13.212495803833008,
+                "mae_post": 5.883659362792969
+            },
+            {
+                "paciente": 3069,
+                "patient_id": 3069,
+                "mae_pre": 33.56510543823242,
+                "mae_post": 5.0645904541015625
+            },
+            {
+                "paciente": 906,
+                "patient_id": 906,
+                "mae_pre": 14.121719360351562,
+                "mae_post": 2.263031005859375
+            },
+            {
+                "paciente": 6982,
+                "patient_id": 6982,
+                "mae_pre": 23.021814346313477,
+                "mae_post": 2.6618378162384033
+            },
+            {
+                "paciente": 8530,
+                "patient_id": 8530,
+                "mae_pre": 16.421859741210938,
+                "mae_post": 5.109358310699463
+            },
+            {
+                "paciente": 5795,
+                "patient_id": 5795,
+                "mae_pre": 28.466821670532227,
+                "mae_post": 11.473355293273926
+            },
+            {
+                "paciente": 9544,
+                "patient_id": 9544,
+                "mae_pre": 35.26409149169922,
+                "mae_post": 6.139956474304199
+            },
+            {
+                "paciente": 6597,
+                "patient_id": 6597,
+                "mae_pre": 2.4033570289611816,
+                "mae_post": 2.3489136695861816
+            },
+            {
+                "paciente": 6327,
+                "patient_id": 6327,
+                "mae_pre": 3.752859592437744,
+                "mae_post": 2.214834690093994
+            },
+            {
+                "paciente": 1019,
+                "patient_id": 1019,
+                "mae_pre": 10.293706893920898,
+                "mae_post": 3.055493116378784
+            },
+            {
+                "paciente": 10772,
+                "patient_id": 10772,
+                "mae_pre": 15.3316068649292,
+                "mae_post": 3.3041107654571533
+            },
+            {
+                "paciente": 6186,
+                "patient_id": 6186,
+                "mae_pre": 46.08396911621094,
+                "mae_post": 13.912225723266602
+            },
+            {
+                "paciente": 218,
+                "patient_id": 218,
+                "mae_pre": 8.73157024383545,
+                "mae_post": 8.124532699584961
+            },
+            {
+                "paciente": 8853,
+                "patient_id": 8853,
+                "mae_pre": 58.899330139160156,
+                "mae_post": 17.732633590698242
+            },
+            {
+                "paciente": 4544,
+                "patient_id": 4544,
+                "mae_pre": 4.9224653244018555,
+                "mae_post": 0.8087326288223267
+            },
+            {
+                "paciente": 2887,
+                "patient_id": 2887,
+                "mae_pre": 17.48632049560547,
+                "mae_post": 0.6789703369140625
+            },
+            {
+                "paciente": 3086,
+                "patient_id": 3086,
+                "mae_pre": 50.61697769165039,
+                "mae_post": 20.265186309814453
+            },
+            {
+                "paciente": 5889,
+                "patient_id": 5889,
+                "mae_pre": 17.14168357849121,
+                "mae_post": 3.3251006603240967
+            },
+            {
+                "paciente": 8475,
+                "patient_id": 8475,
+                "mae_pre": 22.748027801513672,
+                "mae_post": 9.442800521850586
+            },
+            {
+                "paciente": 1516,
+                "patient_id": 1516,
+                "mae_pre": 3.9768128395080566,
+                "mae_post": 1.856390357017517
+            },
+            {
+                "paciente": 7863,
+                "patient_id": 7863,
+                "mae_pre": 39.67736053466797,
+                "mae_post": 8.937533378601074
+            },
+            {
+                "paciente": 1788,
+                "patient_id": 1788,
+                "mae_pre": 23.203733444213867,
+                "mae_post": 5.695875644683838
+            },
+            {
+                "paciente": 1760,
+                "patient_id": 1760,
+                "mae_pre": 8.552172660827637,
+                "mae_post": 2.459857225418091
+            },
+            {
+                "paciente": 10235,
+                "patient_id": 10235,
+                "mae_pre": 14.104005813598633,
+                "mae_post": 1.0608978271484375
+            },
+            {
+                "paciente": 8344,
+                "patient_id": 8344,
+                "mae_pre": 6.9033660888671875,
+                "mae_post": 0.8461715579032898
+            },
+            {
+                "paciente": 8570,
+                "patient_id": 8570,
+                "mae_pre": 23.474390029907227,
+                "mae_post": 6.135838508605957
+            },
+            {
+                "paciente": 4270,
+                "patient_id": 4270,
+                "mae_pre": 54.56792068481445,
+                "mae_post": 26.30653953552246
+            },
+            {
+                "paciente": 8854,
+                "patient_id": 8854,
+                "mae_pre": 32.763614654541016,
+                "mae_post": 2.7487945556640625
+            },
+            {
+                "paciente": 4217,
+                "patient_id": 4217,
+                "mae_pre": 7.076056003570557,
+                "mae_post": 0.6036529541015625
+            },
+            {
+                "paciente": 479,
+                "patient_id": 479,
+                "mae_pre": 63.35402297973633,
+                "mae_post": 19.290958404541016
+            },
+            {
+                "paciente": 31,
+                "patient_id": 31,
+                "mae_pre": 14.571146011352539,
+                "mae_post": 1.707830786705017
+            },
+            {
+                "paciente": 11503,
+                "patient_id": 11503,
+                "mae_pre": 6.340151786804199,
+                "mae_post": 0.963574230670929
+            },
+            {
+                "paciente": 2080,
+                "patient_id": 2080,
+                "mae_pre": 49.88611602783203,
+                "mae_post": 20.58163833618164
+            },
+            {
+                "paciente": 11868,
+                "patient_id": 11868,
+                "mae_pre": 21.91156768798828,
+                "mae_post": 2.3931686878204346
+            },
+            {
+                "paciente": 11593,
+                "patient_id": 11593,
+                "mae_pre": 50.59906768798828,
+                "mae_post": 32.04829406738281
+            },
+            {
+                "paciente": 3013,
+                "patient_id": 3013,
+                "mae_pre": 14.974108695983887,
+                "mae_post": 3.148733615875244
+            },
+            {
+                "paciente": 11817,
+                "patient_id": 11817,
+                "mae_pre": 12.445531845092773,
+                "mae_post": 1.6810210943222046
+            },
+            {
+                "paciente": 9754,
+                "patient_id": 9754,
+                "mae_pre": 32.53119659423828,
+                "mae_post": 4.895181179046631
+            },
+            {
+                "paciente": 5748,
+                "patient_id": 5748,
+                "mae_pre": 16.509117126464844,
+                "mae_post": 3.182690382003784
+            },
+            {
+                "paciente": 6531,
+                "patient_id": 6531,
+                "mae_pre": 3.4384429454803467,
+                "mae_post": 1.7827880382537842
+            },
+            {
+                "paciente": 4748,
+                "patient_id": 4748,
+                "mae_pre": 26.498592376708984,
+                "mae_post": 8.844021797180176
+            },
+            {
+                "paciente": 1601,
+                "patient_id": 1601,
+                "mae_pre": 34.565486907958984,
+                "mae_post": 4.752123832702637
+            },
+            {
+                "paciente": 3805,
+                "patient_id": 3805,
+                "mae_pre": 9.437767028808594,
+                "mae_post": 0.9400283694267273
+            },
+            {
+                "paciente": 2797,
+                "patient_id": 2797,
+                "mae_pre": 23.54177474975586,
+                "mae_post": 5.552844047546387
+            },
+            {
+                "paciente": 2998,
+                "patient_id": 2998,
+                "mae_pre": 33.06673812866211,
+                "mae_post": 4.27069091796875
+            },
+            {
+                "paciente": 3436,
+                "patient_id": 3436,
+                "mae_pre": 55.036415100097656,
+                "mae_post": 5.041455268859863
+            },
+            {
+                "paciente": 8328,
+                "patient_id": 8328,
+                "mae_pre": 24.0434627532959,
+                "mae_post": 6.744604587554932
+            },
+            {
+                "paciente": 5578,
+                "patient_id": 5578,
+                "mae_pre": 35.6751594543457,
+                "mae_post": 17.622478485107422
+            },
+            {
+                "paciente": 10252,
+                "patient_id": 10252,
+                "mae_pre": 12.519632339477539,
+                "mae_post": 3.1400787830352783
+            },
+            {
+                "paciente": 10291,
+                "patient_id": 10291,
+                "mae_pre": 24.18125343322754,
+                "mae_post": 0.9766753911972046
+            },
+            {
+                "paciente": 1804,
+                "patient_id": 1804,
+                "mae_pre": 20.56329917907715,
+                "mae_post": 8.0079927444458
+            },
+            {
+                "paciente": 2958,
+                "patient_id": 2958,
+                "mae_pre": 18.170467376708984,
+                "mae_post": 4.041372776031494
+            },
+            {
+                "paciente": 7181,
+                "patient_id": 7181,
+                "mae_pre": 34.01538848876953,
+                "mae_post": 4.205990791320801
+            },
+            {
+                "paciente": 11525,
+                "patient_id": 11525,
+                "mae_pre": 13.343719482421875,
+                "mae_post": 4.450778007507324
+            },
+            {
+                "paciente": 11909,
+                "patient_id": 11909,
+                "mae_pre": 46.229496002197266,
+                "mae_post": 3.931288242340088
+            },
+            {
+                "paciente": 6208,
+                "patient_id": 6208,
+                "mae_pre": 24.309879302978516,
+                "mae_post": 2.3212311267852783
+            }
+        ]
+    },
+    {
+        "learning_rate": 0.005,
+        "n_shots": 5,
+        "pacientes": [
+            {
+                "paciente": 2960,
+                "patient_id": 2960,
+                "mae_pre": 1.0625274181365967,
+                "mae_post": 3.5396149158477783
+            },
+            {
+                "paciente": 7215,
+                "patient_id": 7215,
+                "mae_pre": 3.5645904541015625,
+                "mae_post": 1.362188696861267
+            },
+            {
+                "paciente": 3341,
+                "patient_id": 3341,
+                "mae_pre": 28.296239852905273,
+                "mae_post": 0.5624237060546875
+            },
+            {
+                "paciente": 9387,
+                "patient_id": 9387,
+                "mae_pre": 29.49417495727539,
+                "mae_post": 1.8217757940292358
+            },
+            {
+                "paciente": 5015,
+                "patient_id": 5015,
+                "mae_pre": 29.42197608947754,
+                "mae_post": 2.214520215988159
+            },
+            {
+                "paciente": 4031,
+                "patient_id": 4031,
+                "mae_pre": 2.0350098609924316,
+                "mae_post": 1.6577270030975342
+            },
+            {
+                "paciente": 4929,
+                "patient_id": 4929,
+                "mae_pre": 22.68686294555664,
+                "mae_post": 0.8742721676826477
+            },
+            {
+                "paciente": 4126,
+                "patient_id": 4126,
+                "mae_pre": 54.681640625,
+                "mae_post": 7.920013427734375
+            },
+            {
+                "paciente": 8405,
+                "patient_id": 8405,
+                "mae_pre": 40.27490997314453,
+                "mae_post": 0.72198486328125
+            },
+            {
+                "paciente": 7584,
+                "patient_id": 7584,
+                "mae_pre": 37.695343017578125,
+                "mae_post": 5.395652770996094
+            },
+            {
+                "paciente": 7952,
+                "patient_id": 7952,
+                "mae_pre": 57.163818359375,
+                "mae_post": 7.732729911804199
+            },
+            {
+                "paciente": 5891,
+                "patient_id": 5891,
+                "mae_pre": 27.35501480102539,
+                "mae_post": 4.374185085296631
+            },
+            {
+                "paciente": 3208,
+                "patient_id": 3208,
+                "mae_pre": 100.12620544433594,
+                "mae_post": 14.58253002166748
+            },
+            {
+                "paciente": 1281,
+                "patient_id": 1281,
+                "mae_pre": 34.65898513793945,
+                "mae_post": 2.077096462249756
+            },
+            {
+                "paciente": 232,
+                "patient_id": 232,
+                "mae_pre": 22.9499454498291,
+                "mae_post": 3.8859314918518066
+            },
+            {
+                "paciente": 8269,
+                "patient_id": 8269,
+                "mae_pre": 36.68938446044922,
+                "mae_post": 2.269213914871216
+            },
+            {
+                "paciente": 11533,
+                "patient_id": 11533,
+                "mae_pre": 2.0697402954101562,
+                "mae_post": 1.134037733078003
+            },
+            {
+                "paciente": 5322,
+                "patient_id": 5322,
+                "mae_pre": 8.951299667358398,
+                "mae_post": 0.10613250732421875
+            },
+            {
+                "paciente": 8091,
+                "patient_id": 8091,
+                "mae_pre": 9.02220630645752,
+                "mae_post": 0.806506335735321
+            },
+            {
+                "paciente": 2961,
+                "patient_id": 2961,
+                "mae_pre": 4.782182216644287,
+                "mae_post": 2.398371934890747
+            },
+            {
+                "paciente": 5469,
+                "patient_id": 5469,
+                "mae_pre": 3.230098009109497,
+                "mae_post": 2.1632111072540283
+            },
+            {
+                "paciente": 6479,
+                "patient_id": 6479,
+                "mae_pre": 49.696441650390625,
+                "mae_post": 4.691412448883057
+            },
+            {
+                "paciente": 4174,
+                "patient_id": 4174,
+                "mae_pre": 31.870281219482422,
+                "mae_post": 13.933059692382812
+            },
+            {
+                "paciente": 209,
+                "patient_id": 209,
+                "mae_pre": 1.41558837890625,
+                "mae_post": 1.848059058189392
+            },
+            {
+                "paciente": 538,
+                "patient_id": 538,
+                "mae_pre": 40.50538635253906,
+                "mae_post": 5.706230163574219
+            },
+            {
+                "paciente": 3402,
+                "patient_id": 3402,
+                "mae_pre": 25.93434715270996,
+                "mae_post": 0.30106812715530396
+            },
+            {
+                "paciente": 105,
+                "patient_id": 105,
+                "mae_pre": 21.23244857788086,
+                "mae_post": 2.835702419281006
+            },
+            {
+                "paciente": 4529,
+                "patient_id": 4529,
+                "mae_pre": 5.528027534484863,
+                "mae_post": 0.773327648639679
+            },
+            {
+                "paciente": 612,
+                "patient_id": 612,
+                "mae_pre": 31.648828506469727,
+                "mae_post": 3.7706940174102783
+            },
+            {
+                "paciente": 1772,
+                "patient_id": 1772,
+                "mae_pre": 25.108028411865234,
+                "mae_post": 0.2786102294921875
+            },
+            {
+                "paciente": 4862,
+                "patient_id": 4862,
+                "mae_pre": 20.36458969116211,
+                "mae_post": 2.204493761062622
+            },
+            {
+                "paciente": 1432,
+                "patient_id": 1432,
+                "mae_pre": 52.6589469909668,
+                "mae_post": 8.789029121398926
+            },
+            {
+                "paciente": 10141,
+                "patient_id": 10141,
+                "mae_pre": 3.159109592437744,
+                "mae_post": 3.082632541656494
+            },
+            {
+                "paciente": 5283,
+                "patient_id": 5283,
+                "mae_pre": 56.65291213989258,
+                "mae_post": 1.8897018432617188
+            },
+            {
+                "paciente": 10420,
+                "patient_id": 10420,
+                "mae_pre": 13.953359603881836,
+                "mae_post": 1.7332489490509033
+            },
+            {
+                "paciente": 7364,
+                "patient_id": 7364,
+                "mae_pre": 42.87023162841797,
+                "mae_post": 4.020179748535156
+            },
+            {
+                "paciente": 578,
+                "patient_id": 578,
+                "mae_pre": 22.118621826171875,
+                "mae_post": 0.375335693359375
+            },
+            {
+                "paciente": 1960,
+                "patient_id": 1960,
+                "mae_pre": 25.626117706298828,
+                "mae_post": 2.134504795074463
+            },
+            {
+                "paciente": 714,
+                "patient_id": 714,
+                "mae_pre": 34.171974182128906,
+                "mae_post": 3.857037305831909
+            },
+            {
+                "paciente": 2605,
+                "patient_id": 2605,
+                "mae_pre": 11.348551750183105,
+                "mae_post": 0.38768768310546875
+            },
+            {
+                "paciente": 1347,
+                "patient_id": 1347,
+                "mae_pre": 13.908411979675293,
+                "mae_post": 2.6074767112731934
+            },
+            {
+                "paciente": 11425,
+                "patient_id": 11425,
+                "mae_pre": 38.8627815246582,
+                "mae_post": 3.322056531906128
+            },
+            {
+                "paciente": 2366,
+                "patient_id": 2366,
+                "mae_pre": 32.83417510986328,
+                "mae_post": 4.3643951416015625
+            },
+            {
+                "paciente": 11627,
+                "patient_id": 11627,
+                "mae_pre": 26.706811904907227,
+                "mae_post": 1.3981796503067017
+            },
+            {
+                "paciente": 6103,
+                "patient_id": 6103,
+                "mae_pre": 14.444836616516113,
+                "mae_post": 1.741084337234497
+            },
+            {
+                "paciente": 3069,
+                "patient_id": 3069,
+                "mae_pre": 51.362754821777344,
+                "mae_post": 4.744219779968262
+            },
+            {
+                "paciente": 906,
+                "patient_id": 906,
+                "mae_pre": 2.4704651832580566,
+                "mae_post": 1.835107445716858
+            },
+            {
+                "paciente": 6982,
+                "patient_id": 6982,
+                "mae_pre": 17.358417510986328,
+                "mae_post": 0.6524627804756165
+            },
+            {
+                "paciente": 8530,
+                "patient_id": 8530,
+                "mae_pre": 26.186288833618164,
+                "mae_post": 0.7185333371162415
+            },
+            {
+                "paciente": 5795,
+                "patient_id": 5795,
+                "mae_pre": 29.48263931274414,
+                "mae_post": 1.6315429210662842
+            },
+            {
+                "paciente": 9544,
+                "patient_id": 9544,
+                "mae_pre": 50.111183166503906,
+                "mae_post": 4.991818428039551
+            },
+            {
+                "paciente": 6597,
+                "patient_id": 6597,
+                "mae_pre": 5.335031032562256,
+                "mae_post": 1.7671661376953125
+            },
+            {
+                "paciente": 6327,
+                "patient_id": 6327,
+                "mae_pre": 1.9011322259902954,
+                "mae_post": 2.176766872406006
+            },
+            {
+                "paciente": 1019,
+                "patient_id": 1019,
+                "mae_pre": 5.337594509124756,
+                "mae_post": 2.014364719390869
+            },
+            {
+                "paciente": 10772,
+                "patient_id": 10772,
+                "mae_pre": 13.679418563842773,
+                "mae_post": 4.035287380218506
+            },
+            {
+                "paciente": 6186,
+                "patient_id": 6186,
+                "mae_pre": 51.9852409362793,
+                "mae_post": 7.968951225280762
+            },
+            {
+                "paciente": 218,
+                "patient_id": 218,
+                "mae_pre": 40.6856803894043,
+                "mae_post": 7.551373481750488
+            },
+            {
+                "paciente": 8853,
+                "patient_id": 8853,
+                "mae_pre": 56.6817626953125,
+                "mae_post": 15.104867935180664
+            },
+            {
+                "paciente": 4544,
+                "patient_id": 4544,
+                "mae_pre": 30.665363311767578,
+                "mae_post": 3.04058837890625
+            },
+            {
+                "paciente": 2887,
+                "patient_id": 2887,
+                "mae_pre": 39.373558044433594,
+                "mae_post": 5.9194793701171875
+            },
+            {
+                "paciente": 3086,
+                "patient_id": 3086,
+                "mae_pre": 55.96283721923828,
+                "mae_post": 5.767813205718994
+            },
+            {
+                "paciente": 5889,
+                "patient_id": 5889,
+                "mae_pre": 6.39178466796875,
+                "mae_post": 0.9242035150527954
+            },
+            {
+                "paciente": 8475,
+                "patient_id": 8475,
+                "mae_pre": 30.871368408203125,
+                "mae_post": 2.595318555831909
+            },
+            {
+                "paciente": 1516,
+                "patient_id": 1516,
+                "mae_pre": 18.66316795349121,
+                "mae_post": 0.593096911907196
+            },
+            {
+                "paciente": 7863,
+                "patient_id": 7863,
+                "mae_pre": 37.474273681640625,
+                "mae_post": 3.5935606956481934
+            },
+            {
+                "paciente": 1788,
+                "patient_id": 1788,
+                "mae_pre": 31.2802791595459,
+                "mae_post": 1.490422010421753
+            },
+            {
+                "paciente": 1760,
+                "patient_id": 1760,
+                "mae_pre": 2.353994846343994,
+                "mae_post": 2.8465912342071533
+            },
+            {
+                "paciente": 10235,
+                "patient_id": 10235,
+                "mae_pre": 6.462762355804443,
+                "mae_post": 0.7282928228378296
+            },
+            {
+                "paciente": 8344,
+                "patient_id": 8344,
+                "mae_pre": 11.988227844238281,
+                "mae_post": 2.1599044799804688
+            },
+            {
+                "paciente": 8570,
+                "patient_id": 8570,
+                "mae_pre": 19.309309005737305,
+                "mae_post": 1.257568359375
+            },
+            {
+                "paciente": 4270,
+                "patient_id": 4270,
+                "mae_pre": 78.08079528808594,
+                "mae_post": 13.370150566101074
+            },
+            {
+                "paciente": 8854,
+                "patient_id": 8854,
+                "mae_pre": 65.0683822631836,
+                "mae_post": 10.0628080368042
+            },
+            {
+                "paciente": 4217,
+                "patient_id": 4217,
+                "mae_pre": 11.61372184753418,
+                "mae_post": 5.294639587402344
+            },
+            {
+                "paciente": 479,
+                "patient_id": 479,
+                "mae_pre": 57.65697479248047,
+                "mae_post": 13.633188247680664
+            },
+            {
+                "paciente": 31,
+                "patient_id": 31,
+                "mae_pre": 41.90333938598633,
+                "mae_post": 3.7657196521759033
+            },
+            {
+                "paciente": 11503,
+                "patient_id": 11503,
+                "mae_pre": 17.743362426757812,
+                "mae_post": 0.6437835693359375
+            },
+            {
+                "paciente": 2080,
+                "patient_id": 2080,
+                "mae_pre": 55.86072540283203,
+                "mae_post": 6.414895534515381
+            },
+            {
+                "paciente": 11868,
+                "patient_id": 11868,
+                "mae_pre": 18.287384033203125,
+                "mae_post": 2.386601209640503
+            },
+            {
+                "paciente": 11593,
+                "patient_id": 11593,
+                "mae_pre": 56.195152282714844,
+                "mae_post": 5.503420829772949
+            },
+            {
+                "paciente": 3013,
+                "patient_id": 3013,
+                "mae_pre": 50.18003463745117,
+                "mae_post": 2.8123092651367188
+            },
+            {
+                "paciente": 11817,
+                "patient_id": 11817,
+                "mae_pre": 18.875429153442383,
+                "mae_post": 2.241682529449463
+            },
+            {
+                "paciente": 9754,
+                "patient_id": 9754,
+                "mae_pre": 40.98973846435547,
+                "mae_post": 3.387869358062744
+            },
+            {
+                "paciente": 5748,
+                "patient_id": 5748,
+                "mae_pre": 18.01612663269043,
+                "mae_post": 0.9208328127861023
+            },
+            {
+                "paciente": 6531,
+                "patient_id": 6531,
+                "mae_pre": 4.483949184417725,
+                "mae_post": 2.9758193492889404
+            },
+            {
+                "paciente": 4748,
+                "patient_id": 4748,
+                "mae_pre": 24.25930404663086,
+                "mae_post": 2.360644578933716
+            },
+            {
+                "paciente": 1601,
+                "patient_id": 1601,
+                "mae_pre": 39.717262268066406,
+                "mae_post": 5.644317626953125
+            },
+            {
+                "paciente": 3805,
+                "patient_id": 3805,
+                "mae_pre": 4.108482360839844,
+                "mae_post": 3.516627550125122
+            },
+            {
+                "paciente": 2797,
+                "patient_id": 2797,
+                "mae_pre": 23.73276138305664,
+                "mae_post": 1.4886261224746704
+            },
+            {
+                "paciente": 2998,
+                "patient_id": 2998,
+                "mae_pre": 43.504180908203125,
+                "mae_post": 4.806715488433838
+            },
+            {
+                "paciente": 3436,
+                "patient_id": 3436,
+                "mae_pre": 60.962120056152344,
+                "mae_post": 6.882052421569824
+            },
+            {
+                "paciente": 8328,
+                "patient_id": 8328,
+                "mae_pre": 12.291681289672852,
+                "mae_post": 1.3104400634765625
+            },
+            {
+                "paciente": 5578,
+                "patient_id": 5578,
+                "mae_pre": 56.702064514160156,
+                "mae_post": 11.260833740234375
+            },
+            {
+                "paciente": 10252,
+                "patient_id": 10252,
+                "mae_pre": 38.139991760253906,
+                "mae_post": 2.54241943359375
+            },
+            {
+                "paciente": 10291,
+                "patient_id": 10291,
+                "mae_pre": 40.79340362548828,
+                "mae_post": 4.084625244140625
+            },
+            {
+                "paciente": 1804,
+                "patient_id": 1804,
+                "mae_pre": 10.3444185256958,
+                "mae_post": 3.5584075450897217
+            },
+            {
+                "paciente": 2958,
+                "patient_id": 2958,
+                "mae_pre": 71.81156158447266,
+                "mae_post": 5.313864231109619
+            },
+            {
+                "paciente": 7181,
+                "patient_id": 7181,
+                "mae_pre": 24.565380096435547,
+                "mae_post": 3.0795745849609375
+            },
+            {
+                "paciente": 11525,
+                "patient_id": 11525,
+                "mae_pre": 35.243560791015625,
+                "mae_post": 3.757676601409912
+            },
+            {
+                "paciente": 11909,
+                "patient_id": 11909,
+                "mae_pre": 12.518150329589844,
+                "mae_post": 0.7430740594863892
+            },
+            {
+                "paciente": 6208,
+                "patient_id": 6208,
+                "mae_pre": 19.89702606201172,
+                "mae_post": 2.1690993309020996
+            }
+        ]
+    },
+    {
+        "learning_rate": 0.01,
+        "n_shots": 5,
+        "pacientes": [
+            {
+                "paciente": 2960,
+                "patient_id": 2960,
+                "mae_pre": 1.0625274181365967,
+                "mae_post": 10.066019058227539
+            },
+            {
+                "paciente": 7215,
+                "patient_id": 7215,
+                "mae_pre": 17.231002807617188,
+                "mae_post": 1.69140625
+            },
+            {
+                "paciente": 3341,
+                "patient_id": 3341,
+                "mae_pre": 30.216541290283203,
+                "mae_post": 0.38594359159469604
+            },
+            {
+                "paciente": 9387,
+                "patient_id": 9387,
+                "mae_pre": 31.52280044555664,
+                "mae_post": 1.2114776372909546
+            },
+            {
+                "paciente": 5015,
+                "patient_id": 5015,
+                "mae_pre": 32.131019592285156,
+                "mae_post": 3.087908983230591
+            },
+            {
+                "paciente": 4031,
+                "patient_id": 4031,
+                "mae_pre": 2.138021945953369,
+                "mae_post": 5.373022556304932
+            },
+            {
+                "paciente": 4929,
+                "patient_id": 4929,
+                "mae_pre": 18.31177520751953,
+                "mae_post": 0.6555526852607727
+            },
+            {
+                "paciente": 4126,
+                "patient_id": 4126,
+                "mae_pre": 54.37642288208008,
+                "mae_post": 5.674288749694824
+            },
+            {
+                "paciente": 8405,
+                "patient_id": 8405,
+                "mae_pre": 43.68873977661133,
+                "mae_post": 2.2024993896484375
+            },
+            {
+                "paciente": 7584,
+                "patient_id": 7584,
+                "mae_pre": 39.991294860839844,
+                "mae_post": 5.910449028015137
+            },
+            {
+                "paciente": 7952,
+                "patient_id": 7952,
+                "mae_pre": 63.97737503051758,
+                "mae_post": 3.732452392578125
+            },
+            {
+                "paciente": 5891,
+                "patient_id": 5891,
+                "mae_pre": 24.294336318969727,
+                "mae_post": 6.046988010406494
+            },
+            {
+                "paciente": 3208,
+                "patient_id": 3208,
+                "mae_pre": 102.36148834228516,
+                "mae_post": 12.624539375305176
+            },
+            {
+                "paciente": 1281,
+                "patient_id": 1281,
+                "mae_pre": 43.02755355834961,
+                "mae_post": 0.7620757818222046
+            },
+            {
+                "paciente": 232,
+                "patient_id": 232,
+                "mae_pre": 23.095157623291016,
+                "mae_post": 4.788018703460693
+            },
+            {
+                "paciente": 8269,
+                "patient_id": 8269,
+                "mae_pre": 46.75645065307617,
+                "mae_post": 3.6057708263397217
+            },
+            {
+                "paciente": 11533,
+                "patient_id": 11533,
+                "mae_pre": 0.3529815673828125,
+                "mae_post": 1.509606957435608
+            },
+            {
+                "paciente": 5322,
+                "patient_id": 5322,
+                "mae_pre": 8.616609573364258,
+                "mae_post": 2.394702196121216
+            },
+            {
+                "paciente": 8091,
+                "patient_id": 8091,
+                "mae_pre": 10.017557144165039,
+                "mae_post": 3.2343430519104004
+            },
+            {
+                "paciente": 2961,
+                "patient_id": 2961,
+                "mae_pre": 1.666682481765747,
+                "mae_post": 3.0612380504608154
+            },
+            {
+                "paciente": 5469,
+                "patient_id": 5469,
+                "mae_pre": 2.8910369873046875,
+                "mae_post": 3.224980115890503
+            },
+            {
+                "paciente": 6479,
+                "patient_id": 6479,
+                "mae_pre": 51.24999237060547,
+                "mae_post": 6.581448554992676
+            },
+            {
+                "paciente": 4174,
+                "patient_id": 4174,
+                "mae_pre": 36.13127899169922,
+                "mae_post": 9.427584648132324
+            },
+            {
+                "paciente": 209,
+                "patient_id": 209,
+                "mae_pre": 15.250253677368164,
+                "mae_post": 1.8282623291015625
+            },
+            {
+                "paciente": 538,
+                "patient_id": 538,
+                "mae_pre": 41.470069885253906,
+                "mae_post": 6.2651047706604
+            },
+            {
+                "paciente": 3402,
+                "patient_id": 3402,
+                "mae_pre": 18.447118759155273,
+                "mae_post": 0.47872620820999146
+            },
+            {
+                "paciente": 105,
+                "patient_id": 105,
+                "mae_pre": 18.56061363220215,
+                "mae_post": 5.207421779632568
+            },
+            {
+                "paciente": 4529,
+                "patient_id": 4529,
+                "mae_pre": 6.8091278076171875,
+                "mae_post": 2.361828565597534
+            },
+            {
+                "paciente": 612,
+                "patient_id": 612,
+                "mae_pre": 30.687236785888672,
+                "mae_post": 2.143472194671631
+            },
+            {
+                "paciente": 1772,
+                "patient_id": 1772,
+                "mae_pre": 25.84344482421875,
+                "mae_post": 0.9538513422012329
+            },
+            {
+                "paciente": 4862,
+                "patient_id": 4862,
+                "mae_pre": 18.83164405822754,
+                "mae_post": 1.215815782546997
+            },
+            {
+                "paciente": 1432,
+                "patient_id": 1432,
+                "mae_pre": 50.27699279785156,
+                "mae_post": 4.539880275726318
+            },
+            {
+                "paciente": 10141,
+                "patient_id": 10141,
+                "mae_pre": 3.1390838623046875,
+                "mae_post": 3.671456813812256
+            },
+            {
+                "paciente": 5283,
+                "patient_id": 5283,
+                "mae_pre": 45.36822509765625,
+                "mae_post": 0.7262970209121704
+            },
+            {
+                "paciente": 10420,
+                "patient_id": 10420,
+                "mae_pre": 18.819528579711914,
+                "mae_post": 1.7158294916152954
+            },
+            {
+                "paciente": 7364,
+                "patient_id": 7364,
+                "mae_pre": 45.903480529785156,
+                "mae_post": 9.670733451843262
+            },
+            {
+                "paciente": 578,
+                "patient_id": 578,
+                "mae_pre": 19.301513671875,
+                "mae_post": 0.7550079226493835
+            },
+            {
+                "paciente": 1960,
+                "patient_id": 1960,
+                "mae_pre": 24.43239974975586,
+                "mae_post": 1.45855712890625
+            },
+            {
+                "paciente": 714,
+                "patient_id": 714,
+                "mae_pre": 29.084125518798828,
+                "mae_post": 1.0676971673965454
+            },
+            {
+                "paciente": 2605,
+                "patient_id": 2605,
+                "mae_pre": 13.94737434387207,
+                "mae_post": 1.7850631475448608
+            },
+            {
+                "paciente": 1347,
+                "patient_id": 1347,
+                "mae_pre": 11.095187187194824,
+                "mae_post": 0.280844122171402
+            },
+            {
+                "paciente": 11425,
+                "patient_id": 11425,
+                "mae_pre": 35.388458251953125,
+                "mae_post": 2.046093702316284
+            },
+            {
+                "paciente": 2366,
+                "patient_id": 2366,
+                "mae_pre": 41.752960205078125,
+                "mae_post": 5.0574798583984375
+            },
+            {
+                "paciente": 11627,
+                "patient_id": 11627,
+                "mae_pre": 34.662330627441406,
+                "mae_post": 3.4078965187072754
+            },
+            {
+                "paciente": 6103,
+                "patient_id": 6103,
+                "mae_pre": 15.92188549041748,
+                "mae_post": 3.583901882171631
+            },
+            {
+                "paciente": 3069,
+                "patient_id": 3069,
+                "mae_pre": 52.57915115356445,
+                "mae_post": 5.953634738922119
+            },
+            {
+                "paciente": 906,
+                "patient_id": 906,
+                "mae_pre": 3.5442168712615967,
+                "mae_post": 2.4332733154296875
+            },
+            {
+                "paciente": 6982,
+                "patient_id": 6982,
+                "mae_pre": 16.711681365966797,
+                "mae_post": 1.6190643310546875
+            },
+            {
+                "paciente": 8530,
+                "patient_id": 8530,
+                "mae_pre": 28.070316314697266,
+                "mae_post": 1.5178985595703125
+            },
+            {
+                "paciente": 5795,
+                "patient_id": 5795,
+                "mae_pre": 31.346630096435547,
+                "mae_post": 0.8548644781112671
+            },
+            {
+                "paciente": 9544,
+                "patient_id": 9544,
+                "mae_pre": 50.99971008300781,
+                "mae_post": 3.3091888427734375
+            },
+            {
+                "paciente": 6597,
+                "patient_id": 6597,
+                "mae_pre": 5.495862007141113,
+                "mae_post": 0.322662353515625
+            },
+            {
+                "paciente": 6327,
+                "patient_id": 6327,
+                "mae_pre": 1.204321265220642,
+                "mae_post": 5.691168308258057
+            },
+            {
+                "paciente": 1019,
+                "patient_id": 1019,
+                "mae_pre": 9.366101264953613,
+                "mae_post": 3.1875946521759033
+            },
+            {
+                "paciente": 10772,
+                "patient_id": 10772,
+                "mae_pre": 13.555523872375488,
+                "mae_post": 4.287045478820801
+            },
+            {
+                "paciente": 6186,
+                "patient_id": 6186,
+                "mae_pre": 53.67534255981445,
+                "mae_post": 0.9888061285018921
+            },
+            {
+                "paciente": 218,
+                "patient_id": 218,
+                "mae_pre": 48.51427459716797,
+                "mae_post": 11.993512153625488
+            },
+            {
+                "paciente": 8853,
+                "patient_id": 8853,
+                "mae_pre": 57.176605224609375,
+                "mae_post": 12.54536247253418
+            },
+            {
+                "paciente": 4544,
+                "patient_id": 4544,
+                "mae_pre": 36.65020751953125,
+                "mae_post": 1.8868834972381592
+            },
+            {
+                "paciente": 2887,
+                "patient_id": 2887,
+                "mae_pre": 39.959938049316406,
+                "mae_post": 5.945073127746582
+            },
+            {
+                "paciente": 3086,
+                "patient_id": 3086,
+                "mae_pre": 58.11783981323242,
+                "mae_post": 6.515872001647949
+            },
+            {
+                "paciente": 5889,
+                "patient_id": 5889,
+                "mae_pre": 1.8710052967071533,
+                "mae_post": 2.457794189453125
+            },
+            {
+                "paciente": 8475,
+                "patient_id": 8475,
+                "mae_pre": 35.5854606628418,
+                "mae_post": 3.1376495361328125
+            },
+            {
+                "paciente": 1516,
+                "patient_id": 1516,
+                "mae_pre": 22.177066802978516,
+                "mae_post": 1.153570532798767
+            },
+            {
+                "paciente": 7863,
+                "patient_id": 7863,
+                "mae_pre": 37.48298263549805,
+                "mae_post": 5.253408908843994
+            },
+            {
+                "paciente": 1788,
+                "patient_id": 1788,
+                "mae_pre": 43.27385330200195,
+                "mae_post": 4.397404670715332
+            },
+            {
+                "paciente": 1760,
+                "patient_id": 1760,
+                "mae_pre": 0.1492156982421875,
+                "mae_post": 0.581372082233429
+            },
+            {
+                "paciente": 10235,
+                "patient_id": 10235,
+                "mae_pre": 9.599096298217773,
+                "mae_post": 0.5784149169921875
+            },
+            {
+                "paciente": 8344,
+                "patient_id": 8344,
+                "mae_pre": 14.401277542114258,
+                "mae_post": 1.368219017982483
+            },
+            {
+                "paciente": 8570,
+                "patient_id": 8570,
+                "mae_pre": 19.649974822998047,
+                "mae_post": 0.30694580078125
+            },
+            {
+                "paciente": 4270,
+                "patient_id": 4270,
+                "mae_pre": 83.30506896972656,
+                "mae_post": 13.710250854492188
+            },
+            {
+                "paciente": 8854,
+                "patient_id": 8854,
+                "mae_pre": 87.13404846191406,
+                "mae_post": 4.856545925140381
+            },
+            {
+                "paciente": 4217,
+                "patient_id": 4217,
+                "mae_pre": 4.474572658538818,
+                "mae_post": 1.39996337890625
+            },
+            {
+                "paciente": 479,
+                "patient_id": 479,
+                "mae_pre": 62.13859939575195,
+                "mae_post": 13.676623344421387
+            },
+            {
+                "paciente": 31,
+                "patient_id": 31,
+                "mae_pre": 15.349444389343262,
+                "mae_post": 0.722393810749054
+            },
+            {
+                "paciente": 11503,
+                "patient_id": 11503,
+                "mae_pre": 13.408349990844727,
+                "mae_post": 2.1715545654296875
+            },
+            {
+                "paciente": 2080,
+                "patient_id": 2080,
+                "mae_pre": 57.12908935546875,
+                "mae_post": 9.580198287963867
+            },
+            {
+                "paciente": 11868,
+                "patient_id": 11868,
+                "mae_pre": 10.06219482421875,
+                "mae_post": 5.467765808105469
+            },
+            {
+                "paciente": 11593,
+                "patient_id": 11593,
+                "mae_pre": 54.49321365356445,
+                "mae_post": 3.774249315261841
+            },
+            {
+                "paciente": 3013,
+                "patient_id": 3013,
+                "mae_pre": 57.0587043762207,
+                "mae_post": 4.017129421234131
+            },
+            {
+                "paciente": 11817,
+                "patient_id": 11817,
+                "mae_pre": 4.838742256164551,
+                "mae_post": 1.3559890985488892
+            },
+            {
+                "paciente": 9754,
+                "patient_id": 9754,
+                "mae_pre": 43.472862243652344,
+                "mae_post": 5.428335666656494
+            },
+            {
+                "paciente": 5748,
+                "patient_id": 5748,
+                "mae_pre": 13.894572257995605,
+                "mae_post": 0.7403427362442017
+            },
+            {
+                "paciente": 6531,
+                "patient_id": 6531,
+                "mae_pre": 1.801153540611267,
+                "mae_post": 2.3342041969299316
+            },
+            {
+                "paciente": 4748,
+                "patient_id": 4748,
+                "mae_pre": 28.23086166381836,
+                "mae_post": 5.84295654296875
+            },
+            {
+                "paciente": 1601,
+                "patient_id": 1601,
+                "mae_pre": 36.790592193603516,
+                "mae_post": 4.784661769866943
+            },
+            {
+                "paciente": 3805,
+                "patient_id": 3805,
+                "mae_pre": 7.091538906097412,
+                "mae_post": 2.794551134109497
+            },
+            {
+                "paciente": 2797,
+                "patient_id": 2797,
+                "mae_pre": 29.715747833251953,
+                "mae_post": 1.74462890625
+            },
+            {
+                "paciente": 2998,
+                "patient_id": 2998,
+                "mae_pre": 43.30577850341797,
+                "mae_post": 5.699804782867432
+            },
+            {
+                "paciente": 3436,
+                "patient_id": 3436,
+                "mae_pre": 76.15281677246094,
+                "mae_post": 2.288839817047119
+            },
+            {
+                "paciente": 8328,
+                "patient_id": 8328,
+                "mae_pre": 14.223340034484863,
+                "mae_post": 10.197341918945312
+            },
+            {
+                "paciente": 5578,
+                "patient_id": 5578,
+                "mae_pre": 41.569889068603516,
+                "mae_post": 9.279073715209961
+            },
+            {
+                "paciente": 10252,
+                "patient_id": 10252,
+                "mae_pre": 60.420921325683594,
+                "mae_post": 6.549108982086182
+            },
+            {
+                "paciente": 10291,
+                "patient_id": 10291,
+                "mae_pre": 34.45348358154297,
+                "mae_post": 9.746685981750488
+            },
+            {
+                "paciente": 1804,
+                "patient_id": 1804,
+                "mae_pre": 22.188030242919922,
+                "mae_post": 3.667858839035034
+            },
+            {
+                "paciente": 2958,
+                "patient_id": 2958,
+                "mae_pre": 93.05073547363281,
+                "mae_post": 5.712658882141113
+            },
+            {
+                "paciente": 7181,
+                "patient_id": 7181,
+                "mae_pre": 48.075897216796875,
+                "mae_post": 4.607888698577881
+            },
+            {
+                "paciente": 11525,
+                "patient_id": 11525,
+                "mae_pre": 50.102081298828125,
+                "mae_post": 3.4401214122772217
+            },
+            {
+                "paciente": 11909,
+                "patient_id": 11909,
+                "mae_pre": 7.563912868499756,
+                "mae_post": 5.082226753234863
+            },
+            {
+                "paciente": 6208,
+                "patient_id": 6208,
+                "mae_pre": 16.551271438598633,
+                "mae_post": 2.364523410797119
+            }
+        ]
+    },
+    {
+        "learning_rate": 0.05,
+        "n_shots": 5,
+        "pacientes": [
+            {
+                "paciente": 2960,
+                "patient_id": 2960,
+                "mae_pre": 1.0625274181365967,
+                "mae_post": 5.575560092926025
+            },
+            {
+                "paciente": 7215,
+                "patient_id": 7215,
+                "mae_pre": 18.371112823486328,
+                "mae_post": 3.210218906402588
+            },
+            {
+                "paciente": 3341,
+                "patient_id": 3341,
+                "mae_pre": 32.805397033691406,
+                "mae_post": 5.684091091156006
+            },
+            {
+                "paciente": 9387,
+                "patient_id": 9387,
+                "mae_pre": 27.022541046142578,
+                "mae_post": 17.955921173095703
+            },
+            {
+                "paciente": 5015,
+                "patient_id": 5015,
+                "mae_pre": 12.756311416625977,
+                "mae_post": 5.5578155517578125
+            },
+            {
+                "paciente": 4031,
+                "patient_id": 4031,
+                "mae_pre": 6.744570732116699,
+                "mae_post": 0.34752196073532104
+            },
+            {
+                "paciente": 4929,
+                "patient_id": 4929,
+                "mae_pre": 23.958965301513672,
+                "mae_post": 15.338844299316406
+            },
+            {
+                "paciente": 4126,
+                "patient_id": 4126,
+                "mae_pre": 39.36029815673828,
+                "mae_post": 3.9589385986328125
+            },
+            {
+                "paciente": 8405,
+                "patient_id": 8405,
+                "mae_pre": 45.89399337768555,
+                "mae_post": 9.580248832702637
+            },
+            {
+                "paciente": 7584,
+                "patient_id": 7584,
+                "mae_pre": 47.01158142089844,
+                "mae_post": 10.661657333374023
+            },
+            {
+                "paciente": 7952,
+                "patient_id": 7952,
+                "mae_pre": 56.93592071533203,
+                "mae_post": 12.130716323852539
+            },
+            {
+                "paciente": 5891,
+                "patient_id": 5891,
+                "mae_pre": 40.323402404785156,
+                "mae_post": 3.476174831390381
+            },
+            {
+                "paciente": 3208,
+                "patient_id": 3208,
+                "mae_pre": 100.77445983886719,
+                "mae_post": 6.5618696212768555
+            },
+            {
+                "paciente": 1281,
+                "patient_id": 1281,
+                "mae_pre": 54.88572311401367,
+                "mae_post": 13.184130668640137
+            },
+            {
+                "paciente": 232,
+                "patient_id": 232,
+                "mae_pre": 38.139408111572266,
+                "mae_post": 21.24356460571289
+            },
+            {
+                "paciente": 8269,
+                "patient_id": 8269,
+                "mae_pre": 62.877479553222656,
+                "mae_post": 1.7038803100585938
+            },
+            {
+                "paciente": 11533,
+                "patient_id": 11533,
+                "mae_pre": 1.0766875743865967,
+                "mae_post": 2.537318468093872
+            },
+            {
+                "paciente": 5322,
+                "patient_id": 5322,
+                "mae_pre": 11.21333122253418,
+                "mae_post": 8.379423141479492
+            },
+            {
+                "paciente": 8091,
+                "patient_id": 8091,
+                "mae_pre": 19.361431121826172,
+                "mae_post": 8.555624008178711
+            },
+            {
+                "paciente": 2961,
+                "patient_id": 2961,
+                "mae_pre": 12.555346488952637,
+                "mae_post": 2.0169708728790283
+            },
+            {
+                "paciente": 5469,
+                "patient_id": 5469,
+                "mae_pre": 3.169110059738159,
+                "mae_post": 5.797418117523193
+            },
+            {
+                "paciente": 6479,
+                "patient_id": 6479,
+                "mae_pre": 53.619529724121094,
+                "mae_post": 1.2078704833984375
+            },
+            {
+                "paciente": 4174,
+                "patient_id": 4174,
+                "mae_pre": 30.555587768554688,
+                "mae_post": 14.786336898803711
+            },
+            {
+                "paciente": 209,
+                "patient_id": 209,
+                "mae_pre": 38.91400909423828,
+                "mae_post": 7.073150634765625
+            },
+            {
+                "paciente": 538,
+                "patient_id": 538,
+                "mae_pre": 50.16497802734375,
+                "mae_post": 8.19245433807373
+            },
+            {
+                "paciente": 3402,
+                "patient_id": 3402,
+                "mae_pre": 17.16208267211914,
+                "mae_post": 10.224433898925781
+            },
+            {
+                "paciente": 105,
+                "patient_id": 105,
+                "mae_pre": 28.534744262695312,
+                "mae_post": 8.388299942016602
+            },
+            {
+                "paciente": 4529,
+                "patient_id": 4529,
+                "mae_pre": 7.4586639404296875,
+                "mae_post": 4.874459743499756
+            },
+            {
+                "paciente": 612,
+                "patient_id": 612,
+                "mae_pre": 34.261085510253906,
+                "mae_post": 4.489265441894531
+            },
+            {
+                "paciente": 1772,
+                "patient_id": 1772,
+                "mae_pre": 31.979427337646484,
+                "mae_post": 14.457870483398438
+            },
+            {
+                "paciente": 4862,
+                "patient_id": 4862,
+                "mae_pre": 33.39811325073242,
+                "mae_post": 12.836210250854492
+            },
+            {
+                "paciente": 1432,
+                "patient_id": 1432,
+                "mae_pre": 64.91639709472656,
+                "mae_post": 12.805252075195312
+            },
+            {
+                "paciente": 10141,
+                "patient_id": 10141,
+                "mae_pre": 4.378064155578613,
+                "mae_post": 6.816388130187988
+            },
+            {
+                "paciente": 5283,
+                "patient_id": 5283,
+                "mae_pre": 49.966949462890625,
+                "mae_post": 4.017918586730957
+            },
+            {
+                "paciente": 10420,
+                "patient_id": 10420,
+                "mae_pre": 14.554025650024414,
+                "mae_post": 14.567132949829102
+            },
+            {
+                "paciente": 7364,
+                "patient_id": 7364,
+                "mae_pre": 32.38612747192383,
+                "mae_post": 15.646146774291992
+            },
+            {
+                "paciente": 578,
+                "patient_id": 578,
+                "mae_pre": 46.54844665527344,
+                "mae_post": 9.184808731079102
+            },
+            {
+                "paciente": 1960,
+                "patient_id": 1960,
+                "mae_pre": 34.601966857910156,
+                "mae_post": 24.425518035888672
+            },
+            {
+                "paciente": 714,
+                "patient_id": 714,
+                "mae_pre": 57.3296012878418,
+                "mae_post": 3.504037380218506
+            },
+            {
+                "paciente": 2605,
+                "patient_id": 2605,
+                "mae_pre": 13.220097541809082,
+                "mae_post": 0.7729263305664062
+            },
+            {
+                "paciente": 1347,
+                "patient_id": 1347,
+                "mae_pre": 14.69775390625,
+                "mae_post": 4.262420654296875
+            },
+            {
+                "paciente": 11425,
+                "patient_id": 11425,
+                "mae_pre": 41.617637634277344,
+                "mae_post": 10.770176887512207
+            },
+            {
+                "paciente": 2366,
+                "patient_id": 2366,
+                "mae_pre": 55.414215087890625,
+                "mae_post": 9.471725463867188
+            },
+            {
+                "paciente": 11627,
+                "patient_id": 11627,
+                "mae_pre": 43.59656524658203,
+                "mae_post": 1.7114684581756592
+            },
+            {
+                "paciente": 6103,
+                "patient_id": 6103,
+                "mae_pre": 12.730862617492676,
+                "mae_post": 0.9408645629882812
+            },
+            {
+                "paciente": 3069,
+                "patient_id": 3069,
+                "mae_pre": 48.49137496948242,
+                "mae_post": 15.962381362915039
+            },
+            {
+                "paciente": 906,
+                "patient_id": 906,
+                "mae_pre": 26.885793685913086,
+                "mae_post": 5.080526828765869
+            },
+            {
+                "paciente": 6982,
+                "patient_id": 6982,
+                "mae_pre": 12.242584228515625,
+                "mae_post": 7.846710205078125
+            },
+            {
+                "paciente": 8530,
+                "patient_id": 8530,
+                "mae_pre": 36.673126220703125,
+                "mae_post": 23.114852905273438
+            },
+            {
+                "paciente": 5795,
+                "patient_id": 5795,
+                "mae_pre": 6.665865898132324,
+                "mae_post": 2.197460889816284
+            },
+            {
+                "paciente": 9544,
+                "patient_id": 9544,
+                "mae_pre": 50.878761291503906,
+                "mae_post": 3.599383592605591
+            },
+            {
+                "paciente": 6597,
+                "patient_id": 6597,
+                "mae_pre": 9.00903606414795,
+                "mae_post": 8.844741821289062
+            },
+            {
+                "paciente": 6327,
+                "patient_id": 6327,
+                "mae_pre": 10.025375366210938,
+                "mae_post": 3.2221527099609375
+            },
+            {
+                "paciente": 1019,
+                "patient_id": 1019,
+                "mae_pre": 3.0061492919921875,
+                "mae_post": 12.884084701538086
+            },
+            {
+                "paciente": 10772,
+                "patient_id": 10772,
+                "mae_pre": 8.699945449829102,
+                "mae_post": 9.110754013061523
+            },
+            {
+                "paciente": 6186,
+                "patient_id": 6186,
+                "mae_pre": 64.40895080566406,
+                "mae_post": 10.054250717163086
+            },
+            {
+                "paciente": 218,
+                "patient_id": 218,
+                "mae_pre": 60.726280212402344,
+                "mae_post": 8.439623832702637
+            },
+            {
+                "paciente": 8853,
+                "patient_id": 8853,
+                "mae_pre": 77.36092376708984,
+                "mae_post": 16.565677642822266
+            },
+            {
+                "paciente": 4544,
+                "patient_id": 4544,
+                "mae_pre": 49.77505111694336,
+                "mae_post": 4.031481742858887
+            },
+            {
+                "paciente": 2887,
+                "patient_id": 2887,
+                "mae_pre": 40.327903747558594,
+                "mae_post": 7.6866254806518555
+            },
+            {
+                "paciente": 3086,
+                "patient_id": 3086,
+                "mae_pre": 70.79267883300781,
+                "mae_post": 2.374951124191284
+            },
+            {
+                "paciente": 5889,
+                "patient_id": 5889,
+                "mae_pre": 8.547528266906738,
+                "mae_post": 9.435934066772461
+            },
+            {
+                "paciente": 8475,
+                "patient_id": 8475,
+                "mae_pre": 42.5164794921875,
+                "mae_post": 3.962780714035034
+            },
+            {
+                "paciente": 1516,
+                "patient_id": 1516,
+                "mae_pre": 23.605661392211914,
+                "mae_post": 22.139636993408203
+            },
+            {
+                "paciente": 7863,
+                "patient_id": 7863,
+                "mae_pre": 59.59038162231445,
+                "mae_post": 13.453054428100586
+            },
+            {
+                "paciente": 1788,
+                "patient_id": 1788,
+                "mae_pre": 35.06774139404297,
+                "mae_post": 6.280602931976318
+            },
+            {
+                "paciente": 1760,
+                "patient_id": 1760,
+                "mae_pre": 11.424888610839844,
+                "mae_post": 5.260467529296875
+            },
+            {
+                "paciente": 10235,
+                "patient_id": 10235,
+                "mae_pre": 4.103091239929199,
+                "mae_post": 7.012270927429199
+            },
+            {
+                "paciente": 8344,
+                "patient_id": 8344,
+                "mae_pre": 5.530949592590332,
+                "mae_post": 19.803207397460938
+            },
+            {
+                "paciente": 8570,
+                "patient_id": 8570,
+                "mae_pre": 2.3017044067382812,
+                "mae_post": 6.303640842437744
+            },
+            {
+                "paciente": 4270,
+                "patient_id": 4270,
+                "mae_pre": 75.69801330566406,
+                "mae_post": 17.62068748474121
+            },
+            {
+                "paciente": 8854,
+                "patient_id": 8854,
+                "mae_pre": 73.82872009277344,
+                "mae_post": 8.089044570922852
+            },
+            {
+                "paciente": 4217,
+                "patient_id": 4217,
+                "mae_pre": 4.791334629058838,
+                "mae_post": 12.189082145690918
+            },
+            {
+                "paciente": 479,
+                "patient_id": 479,
+                "mae_pre": 75.04291534423828,
+                "mae_post": 3.8519928455352783
+            },
+            {
+                "paciente": 31,
+                "patient_id": 31,
+                "mae_pre": 36.904815673828125,
+                "mae_post": 3.378448486328125
+            },
+            {
+                "paciente": 11503,
+                "patient_id": 11503,
+                "mae_pre": 17.693450927734375,
+                "mae_post": 1.928228735923767
+            },
+            {
+                "paciente": 2080,
+                "patient_id": 2080,
+                "mae_pre": 60.44329833984375,
+                "mae_post": 0.9571624994277954
+            },
+            {
+                "paciente": 11868,
+                "patient_id": 11868,
+                "mae_pre": 3.1727371215820312,
+                "mae_post": 10.121786117553711
+            },
+            {
+                "paciente": 11593,
+                "patient_id": 11593,
+                "mae_pre": 55.93950271606445,
+                "mae_post": 5.709097385406494
+            },
+            {
+                "paciente": 3013,
+                "patient_id": 3013,
+                "mae_pre": 62.03248977661133,
+                "mae_post": 8.204536437988281
+            },
+            {
+                "paciente": 11817,
+                "patient_id": 11817,
+                "mae_pre": 3.756809949874878,
+                "mae_post": 16.076204299926758
+            },
+            {
+                "paciente": 9754,
+                "patient_id": 9754,
+                "mae_pre": 27.853679656982422,
+                "mae_post": 12.923126220703125
+            },
+            {
+                "paciente": 5748,
+                "patient_id": 5748,
+                "mae_pre": 37.44305419921875,
+                "mae_post": 8.314104080200195
+            },
+            {
+                "paciente": 6531,
+                "patient_id": 6531,
+                "mae_pre": 12.8679838180542,
+                "mae_post": 14.033163070678711
+            },
+            {
+                "paciente": 4748,
+                "patient_id": 4748,
+                "mae_pre": 14.946258544921875,
+                "mae_post": 1.713348388671875
+            },
+            {
+                "paciente": 1601,
+                "patient_id": 1601,
+                "mae_pre": 47.62370300292969,
+                "mae_post": 4.2191619873046875
+            },
+            {
+                "paciente": 3805,
+                "patient_id": 3805,
+                "mae_pre": 5.984771728515625,
+                "mae_post": 6.6885833740234375
+            },
+            {
+                "paciente": 2797,
+                "patient_id": 2797,
+                "mae_pre": 24.018362045288086,
+                "mae_post": 7.063546657562256
+            },
+            {
+                "paciente": 2998,
+                "patient_id": 2998,
+                "mae_pre": 52.16411590576172,
+                "mae_post": 10.668798446655273
+            },
+            {
+                "paciente": 3436,
+                "patient_id": 3436,
+                "mae_pre": 81.64593505859375,
+                "mae_post": 8.476903915405273
+            },
+            {
+                "paciente": 8328,
+                "patient_id": 8328,
+                "mae_pre": 1.363616943359375,
+                "mae_post": 8.536514282226562
+            },
+            {
+                "paciente": 5578,
+                "patient_id": 5578,
+                "mae_pre": 65.60872650146484,
+                "mae_post": 19.33133316040039
+            },
+            {
+                "paciente": 10252,
+                "patient_id": 10252,
+                "mae_pre": 35.08013916015625,
+                "mae_post": 0.7311919927597046
+            },
+            {
+                "paciente": 10291,
+                "patient_id": 10291,
+                "mae_pre": 27.987350463867188,
+                "mae_post": 2.7293548583984375
+            },
+            {
+                "paciente": 1804,
+                "patient_id": 1804,
+                "mae_pre": 11.611602783203125,
+                "mae_post": 19.625686645507812
+            },
+            {
+                "paciente": 2958,
+                "patient_id": 2958,
+                "mae_pre": 67.37632751464844,
+                "mae_post": 4.2049970626831055
+            },
+            {
+                "paciente": 7181,
+                "patient_id": 7181,
+                "mae_pre": 53.8326301574707,
+                "mae_post": 4.208526611328125
+            },
+            {
+                "paciente": 11525,
+                "patient_id": 11525,
+                "mae_pre": 47.74877166748047,
+                "mae_post": 10.948577880859375
+            },
+            {
+                "paciente": 11909,
+                "patient_id": 11909,
+                "mae_pre": 4.5988874435424805,
+                "mae_post": 0.7328643798828125
+            },
+            {
+                "paciente": 6208,
+                "patient_id": 6208,
+                "mae_pre": 24.381690979003906,
+                "mae_post": 6.635963439941406
+            }
+        ]
+    }
+]

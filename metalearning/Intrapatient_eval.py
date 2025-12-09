@@ -12,7 +12,7 @@ from sklearn.metrics import mean_absolute_error
 import matplotlib.pyplot as plt
 import os
 
-def main(n_shots=5, n_epochs=5, lr = 1e-3, MIN_SEÑALES_REQUERIDAS = 200, NUM_PACIENTES_A_PROBAR = 10, tipo_presion='SBP'):
+def main(n_shots=5, n_epochs=5, lr = 1e-3, MIN_SEÑALES_REQUERIDAS = 200, NUM_PACIENTES_A_PROBAR = 10, tipo_presion='DBP'):
 
     SEED = 42
     random.seed(SEED)
@@ -21,7 +21,7 @@ def main(n_shots=5, n_epochs=5, lr = 1e-3, MIN_SEÑALES_REQUERIDAS = 200, NUM_PA
     if torch.cuda.is_available():
         torch.cuda.manual_seed(SEED)
 
-    save_dir_graficas = "resultados_intrapatient/graficas_adaptacion"
+    save_dir_graficas = "resultados_intrapatient/graficas_adaptacion_dbp"
     os.makedirs(save_dir_graficas, exist_ok=True)
     if tipo_presion == "SBP":
         MEAN = 134.02

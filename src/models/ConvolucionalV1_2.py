@@ -22,7 +22,7 @@ def calculate_output_dim(long_signal=250):
     # 128 canales de la última conv
     return 128 * dim
 
-class Modelo_ConvolucionalV1(nn.Module):
+class Modelo_ConvolucionalV1_2(nn.Module):
     def __init__(self, out_channels, long_signal=250):
         super().__init__()
         # Bloque 1
@@ -30,7 +30,7 @@ class Modelo_ConvolucionalV1(nn.Module):
         self.conv_ecg = nn.Conv1d(1, 16, kernel_size=3,stride=1)
         #self.bn1 = nn.BatchNorm1d(16, momentum=0.5, eps=1e-4)
         self.bn1 = nn.BatchNorm1d(16)
-        self.conv2 = nn.Conv1d(16, 64, kernel_size=3,stride=1)
+        self.conv2 = nn.Conv1d(32, 64, kernel_size=3,stride=1) #se modifico de 32 a 64 (antes era 16)
         self.pool = nn.MaxPool1d(kernel_size=2, stride=2)
         self.bn2 = nn.BatchNorm1d(64)
         self.conv3 = nn.Conv1d(64, 128, kernel_size=3,stride=1)
@@ -51,7 +51,7 @@ class Modelo_ConvolucionalV1(nn.Module):
 
 
     def forward(self, x):
-        ppg, ecg = x[:,0:1,:], x[:,1:1,:]
+        ppg, ecg = x[:,0:1,:], x[:,1:2,:]
         ppg = F.relu(self.conv_ppg(ppg))
         ecg = F.relu(self.conv_ecg(ecg))
         x = torch.cat((ppg, ecg), dim=1)

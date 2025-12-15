@@ -2,6 +2,7 @@ import torch
 #from Modelos.Modelo_conv import Modelo_Convolucional
 from src.models.InceptionTime import InceptionTime
 from src.models.ConvolucionalV1 import Modelo_ConvolucionalV1
+from src.models.ConvolucionalV1_2 import Modelo_ConvolucionalV1_2
 from src.models.ConvolucionalV2 import Modelo_ConvolucionalV2
 from src.data.data_chargers.Clase_UCIDataset import UCIDataset
 import os
@@ -119,11 +120,12 @@ def main():
     
     #dataloader = torch.utils.data.DataLoader(dataset, **parameters)
 
-    path_model = 'models/best_models/best_model_conv_v1_con_PAM_global_norm_L1.pt'
+    path_model = 'models/best_models/best_model_conv_v2_100_epocas_picos_def_SD1.pt'
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     #model = InceptionTime(c_in=2, c_out=3, seq_len=None, n_filters=32)
-    model=Modelo_ConvolucionalV1(in_channels=2, out_channels=3, long_signal=500)
+    model=Modelo_ConvolucionalV2(in_channels=2, out_channels=2, long_signal=500)
+    #model=Modelo_ConvolucionalV1_2(out_channels=2, long_signal=500)
     
     checkpoint = torch.load(path_model, map_location=device)
     model.load_state_dict(checkpoint['model_state_dict'])
@@ -150,11 +152,12 @@ def main():
     with torch.no_grad():
         for batch in bar:
             data, labels, ID_paciente, indice_muestra = batch
-            labels_sbp = labels[:,0].unsqueeze(1)
-            labels_dbp = labels[:,1].unsqueeze(1)
-            labels_pam = Tools.calcular_pam(labels_sbp, labels_dbp)
+            #labels_sbp = labels[:,0].unsqueeze(1)
+            #labels_dbp = labels[:,1].unsqueeze(1)
+            
+            #labels_pam = Tools.calcular_pam(labels_sbp, labels_dbp)
 
-            labels = torch.cat((labels_sbp, labels_dbp, labels_pam), dim=1)
+            #labels = torch.cat((labels_sbp, labels_dbp, labels_pam), dim=1)
             data, labels = data.to(device), labels.to(device)
             
             pred = model(data)

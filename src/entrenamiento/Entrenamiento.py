@@ -4,15 +4,18 @@ import os
 from torch.utils import data
 from torch.utils.data import TensorDataset, random_split
 import numpy as np
-#from src.models.InceptionTime import InceptionTime
+from src.models.InceptionTime import InceptionTime
 #from src.models.Modelo_conv import Modelo_Convolucional
 from src.models.ConvolucionalV1 import Modelo_ConvolucionalV1
-#from src.models.ConvolucionalV2 import Modelo_ConvolucionalV2
+from src.models.ConvolucionalV1_2 import Modelo_ConvolucionalV1_2
+from src.models.ConvolucionalV2 import Modelo_ConvolucionalV2
 from tqdm.auto import tqdm 
 import matplotlib.pyplot as plt
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import random
 import src.utils.Tools.Tools as Tools
+import pandas as pd
+
 
 def set_seed(seed=42):
     random.seed(seed)
@@ -23,6 +26,22 @@ def set_seed(seed=42):
 
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+
+def init_worker_fn(worker_id):
+    """
+    Función que el DataLoader ejecutará en cada nuevo proceso worker.
+    """
+    worker_info = torch.utils.data.get_worker_info()
+    dataset = worker_info.dataset
+    
+    # Como usas random_split, 'dataset' es un objeto Subset.
+    # Tenemos que bajar hasta encontrar el UCIDataset real.
+    while hasattr(dataset, 'dataset'):
+        dataset = dataset.dataset
+    
+    # Ahora sí, llamamos al método que abre los archivos
+    if hasattr(dataset, 'worker_init'):
+        dataset.worker_init()
 
 def save_test_dataset(save_dir, prefix, data, labels, patients, indexs):
     """
@@ -78,9 +97,18 @@ def save_test_dataset(save_dir, prefix, data, labels, patients, indexs):
 def main():
     # Configuración del dispositivo
     parameters = {
-        'batch_size': 64,
+        'batch_size': 256,
         'shuffle': True,
-        'num_workers': 0,
+        'num_workers': 2,
+        'pin_memory': True,
+        'persistent_workers': True, # Mantiene los workers vivos entre épocas
+        'prefetch_factor': 2 ,   # Precarga 2 batches por worker
+        'worker_init_fn': init_worker_fn
+    }
+    test_params = {
+        'batch_size': 256,
+        'shuffle': False, # Generalmente test no necesita shuffle
+        'num_workers': 0, # CRITICO: 0 workers para evitar el error de pickling en este bucle
         'pin_memory': False
     }
     set_seed(42)
@@ -114,12 +142,11 @@ def main():
     # Dividir aleatoriamente el dataset
     train_set, val_set, test_set = random_split(dataset_completo, [train_size, val_size, test_size])
 
-
     print(f"Train: {len(train_set)}, Val: {len(val_set)}, Test: {len(test_set)}")
 
     training_generator = torch.utils.data.DataLoader(train_set, **parameters)
     validation_generator = torch.utils.data.DataLoader(val_set, **parameters)
-    test_generator = torch.utils.data.DataLoader(test_set, **parameters)
+    test_generator = torch.utils.data.DataLoader(test_set, **test_params)
 
     """
     test_signals = []
@@ -180,10 +207,11 @@ def main():
 
     # Crear el modelo
 
-    #odel=InceptionTime(c_in=2, c_out=3, seq_len=None, n_filters=32)
+    #model=InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32, depth = 6)
     #model=Modelo_Convolucional(in_channels=2,out_channels=2, long_signal=250)
-    model=Modelo_ConvolucionalV1(in_channels=2,out_channels=3, long_signal=500)
-    #model=Modelo_ConvolucionalV2(in_channels=2,out_channels=2, long_signal=1250)
+    #model=Modelo_ConvolucionalV1(in_channels=2,out_channels=3, long_signal=500)
+    model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=500)
+    #model=Modelo_ConvolucionalV2(in_channels=2,out_channels=2, long_signal=500)
     # Añade esto después de crear el modelo
 
     
@@ -198,13 +226,16 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)  # Mueve el modelo a la GPU
     #optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay= 1e-4)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay= 1e-4)
     scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, min_lr=1e-6, verbose=True)    
     criterion = torch.nn.MSELoss()  # MSELoss para regresión
+    scaler = torch.amp.GradScaler('cuda')
 
     #retomar entrenamiento 
     start_epoch = 0
-    checkpoint_path = "models/best_models/best_model_conv_v1_con_PAM_global_norm_L1.pt"
+    log_path = 'graficas/training_log.csv' 
+    os.makedirs('graficas', exist_ok=True)
+    checkpoint_path = "models/best_models/best_model_conv_v1_200_epocas_picos_def_early8.pt"
     if os.path.exists(checkpoint_path):
         checkpoint = torch.load(checkpoint_path, map_location=device)
         model.load_state_dict(checkpoint["model_state_dict"])
@@ -215,28 +246,48 @@ def main():
     else:
         print("No se encontró un checkpoint, se comienza entrenamiento desde cero.")
 
+    if os.path.exists(log_path):
+        try:
+            # Leemos el CSV. Asumimos columnas: epoch, train_loss, valid_loss
+            df_log = pd.read_csv(log_path)
+            print(f" Historial encontrado con {len(df_log)} registros.")
+            
+            # Llenamos el running_loss con lo que ya teniamos
+            for _, row in df_log.iterrows():
+                ep = int(row['epoch'])
+                if ep < max_epochs:
+                    running_loss[ep, 0] = row['train_loss']
+                    running_loss[ep, 1] = row['valid_loss']
+        except Exception as e:
+            print(f" Error leyendo el log anterior: {e}. Se graficará solo lo nuevo.")
+    
+    # Si empezamos de cero absoluto, creamos el archivo con cabeceras
+    if start_epoch == 0:
+        with open(log_path, 'w') as f:
+            f.write("epoch,train_loss,valid_loss\n")
+
     # ENTRENAMIENTO
     def train_one_step(batch, l1_lambda=1e-5):
-        optimizer.zero_grad() # Reinicia los gradientes
+        optimizer.zero_grad(set_to_none=True) # Reinicia los gradientes
         data, labels, _, _ = batch # Obtiene los datos y etiquetas
 
-        labels_sbp= labels[:,0].unsqueeze(1)
-        labels_dbp= labels[:,1].unsqueeze(1)
-        labels_pam = Tools.calcular_pam(labels_sbp, labels_dbp)
+        #labels_sbp= labels[:,0].unsqueeze(1)
+        #labels_dbp= labels[:,1].unsqueeze(1)
+        #labels_pam = Tools.calcular_pam(labels_sbp, labels_dbp)
 
-        labels = torch.cat((labels_sbp, labels_dbp, labels_pam), dim=1)
+        #labels = torch.cat((labels_sbp, labels_dbp, labels_pam), dim=1)
 
-        data, labels = data.to(device), labels.to(device) # Mueve los datos y etiquetas a la GPU
+        data, labels = data.to(device, non_blocking=True), labels.to(device, non_blocking=True) # Mueve los datos y etiquetas a la GPU
         
         #print("Rango de datos:", torch.min(data).item(), torch.max(data).item())
 
         #for name, param in model.named_parameters():
         #    print(f"{name}: mean={param.mean().item():.4f}, std={param.std().item():.4f}")
-
-        preds = model.forward(data) # Realiza la predicción
-        #print("Preds:", preds[0])
-        #print("Labels:", labels[0])
-        loss = criterion(preds, labels) # Calcula la pérdida
+        with torch.amp.autocast('cuda'):
+            preds = model.forward(data) # Realiza la predicción
+            #print("Preds:", preds[0])
+            #print("Labels:", labels[0])
+            loss = criterion(preds, labels) # Calcula la pérdida
         """
         if torch.isnan(loss):
             print("¡Loss con NaN detectado! Abortando...")
@@ -245,23 +296,26 @@ def main():
             exit()
         """
         # Regularización L1 manual
-        l1_norm = sum(p.abs().sum() for p in model.parameters())
-        loss = loss + l1_lambda * l1_norm
+        #l1_norm = sum(p.abs().sum() for p in model.parameters())
+        #loss = loss + l1_lambda * l1_norm
 
-        loss.backward() # Calcula los gradientes mediante backpropagation
+        #loss.backward() # Calcula los gradientes mediante backpropagation
+        scaler.scale(loss).backward()
         # Añade gradient clipping (busca evitar explosión de gradiente)
         #torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-        optimizer.step() # Actualiza los parámetros del modelo
+        #optimizer.step() # Actualiza los parámetros del modelo
+        scaler.step(optimizer)
+        scaler.update()
         return loss.item() # Devuelve la pérdida
 
     def evaluate_one_step(batch):
         with torch.no_grad():
             data, labels, _, _ = batch
 
-            labels_sbp= labels[:,0].unsqueeze(1)
-            labels_dbp= labels[:,1].unsqueeze(1)
-            labels_pam = Tools.calcular_pam(labels_sbp, labels_dbp)
-            labels = torch.cat((labels_sbp, labels_dbp, labels_pam), dim=1)
+            #labels_sbp= labels[:,0].unsqueeze(1)
+            #labels_dbp= labels[:,1].unsqueeze(1)
+            #labels_pam = Tools.calcular_pam(labels_sbp, labels_dbp)
+            #labels = torch.cat((labels_sbp, labels_dbp, labels_pam), dim=1)
 
             data, labels = data.to(device), labels.to(device)
             preds = model.forward(data)
@@ -272,30 +326,36 @@ def main():
         train_loss, valid_loss = 0.0, 0.0
 
         model.train()
-        for batch in training_generator:
+      
+        loop = tqdm(training_generator, leave=False, desc="Train Step")
+        for batch in loop:
         #for batch in subset_loader:
-            train_loss += train_one_step(batch)
+            loss_batch = train_one_step(batch)
+            train_loss += loss_batch
+            loop.set_postfix(loss=loss_batch)
         
-
+   
         model.eval()    
         for batch in validation_generator:
         #for batch in subset_loader:
             valid_loss += evaluate_one_step(batch)
+       
 
         return train_loss/len(training_generator), valid_loss/len(validation_generator)
     
-    max_epochs = 100
+    max_epochs = 200
     best_valid_loss = float('inf') 
     running_loss = np.zeros(shape=(max_epochs, 2))
-    min_delta = 0.00002  # mejora mínima requerida
-    patience = 15
-    patience_significativa = 15
-  
+    min_delta = 0.0001  # mejora mínima requerida
+    patience = 8
+    patience_significativa = 8
     for epoch in tqdm(range(start_epoch, max_epochs)):
+
         train_l, valid_l = train_one_epoch()
         running_loss[epoch] = (train_l,valid_l)
+        with open(log_path, 'a') as f:
+            f.write(f"{epoch},{train_l:.6f},{valid_l:.6f}\n")    
         print(f"[Época {epoch}] Train Loss: {train_l:.6f} - Valid Loss: {valid_l:.6f}")
-        
         improvement = best_valid_loss - valid_l
 
         if valid_l < best_valid_loss:
@@ -307,7 +367,7 @@ def main():
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': valid_l,
                 'best_valid_loss': best_valid_loss 
-            }, 'models/best_models/best_model_conv_v1_con_PAM_global_norm_L1.pt')
+            }, 'models/best_models/best_model_conv_v1_200_epocas_picos_def_early8.pt')
             print(f"Nuevo mejor modelo guardado (valid_loss = {valid_l:.6f})")
 
             
@@ -328,10 +388,13 @@ def main():
             break
 
         scheduler.step(valid_l)
+    
+    final_epoch_reached = epoch + 1
 
     fig, ax = plt.subplots(figsize=(7, 4), tight_layout=True)
-    ax.plot(running_loss[:epoch, 0], label='Entrenamiento')
-    ax.plot(running_loss[:epoch, 1], label='Validación')
+
+    ax.plot(range(final_epoch_reached), running_loss[:final_epoch_reached, 0], label='Entrenamiento')
+    ax.plot(range(final_epoch_reached), running_loss[:final_epoch_reached, 1], label='Validación')
     ax.set_xlabel('Epoch')
     ax.set_ylabel('Loss')
     ax.legend()

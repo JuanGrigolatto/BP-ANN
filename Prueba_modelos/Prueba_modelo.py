@@ -8,11 +8,22 @@ from src.data.data_chargers.Clase_UCIDataset import UCIDataset
 import os
 from tqdm.auto import tqdm 
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from scipy.stats import pearsonr
 import numpy as np
 import matplotlib.pyplot as plt
 import src.utils.Tools.Tools as Tools
+import random
 
 # Valores reales de Min y Max que usaste al normalizar SBP y DBP
+
+def set_seed(seed=42):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 SBP_MIN, SBP_MAX = 70, 199.99
 DBP_MIN, DBP_MAX = 50, 140
@@ -35,7 +46,7 @@ def desnormalizar_minmax(norm_array, min_val, max_val):
 def desnormalizar_zscore(norm_array, media, std):
     return norm_array * std + media
 
-def bland_altman_graf(preds, labels, title):
+def bland_altman_graf(preds, labels, title, color="blue"):
     differences = preds - labels
     averages = (preds + labels) / 2
 
@@ -46,7 +57,7 @@ def bland_altman_graf(preds, labels, title):
     lower_limit = mean_diff - 1.96 * std_diff
 
     plt.figure(figsize=(8,5))
-    plt.scatter(averages, differences, alpha=0.5)
+    plt.scatter(averages, differences, alpha=0.2, color=color, s=15)
     plt.axhline(mean_diff, color='red', linestyle='--', label=f'Media: {mean_diff:.2f}')
     plt.axhline(upper_limit, color='gray', linestyle='--', label=f'+1.96 SD: {upper_limit:.2f}')
     plt.axhline(lower_limit, color='gray', linestyle='--', label=f'-1.96 SD: {lower_limit:.2f}')
@@ -92,11 +103,15 @@ def plot_comparacion_errores(dataset, indices_alto, indices_bajo, n=3):
     plt.show()
 
 def main():
+
+    set_seed(42)
+
     parameters = {
         'batch_size': 256,
-        'shuffle': True,
+        'shuffle': False,
         'num_workers': 0,
-        'pin_memory': False
+        'pin_memory': False,
+        'drop_last': False
     }
 
     print(os.path.exists('data/processed/data_UCI/test_set_por_picos/test_meta.pt"'))
@@ -120,11 +135,11 @@ def main():
     
     #dataloader = torch.utils.data.DataLoader(dataset, **parameters)
 
-    path_model = 'models/best_models/best_model_conv_v2_100_epocas_picos_def_SD1.pt'
+    path_model = 'models/best_models/best_model_conv_Time32_200_epocas_picos_def_early8.pt'
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    #model = InceptionTime(c_in=2, c_out=3, seq_len=None, n_filters=32)
-    model=Modelo_ConvolucionalV2(in_channels=2, out_channels=2, long_signal=500)
+    model = InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32)
+    #model=Modelo_ConvolucionalV2(in_channels=2, out_channels=2, long_signal=500)
     #model=Modelo_ConvolucionalV1_2(out_channels=2, long_signal=500)
     
     checkpoint = torch.load(path_model, map_location=device)
@@ -133,6 +148,12 @@ def main():
     model.to(device)
 
     bar = tqdm(dataloader)
+    
+    all_preds_desnorm = []
+    all_labels_desnorm = []
+
+    global_idx_counter = 0
+    
     accmse, accrmse, accmae, accr2 = [], [], [], []
     acc_mean_error_sbp = []
     acc_std_error_sbp = []
@@ -140,7 +161,7 @@ def main():
     acc_std_error_dbp = []
     all_preds = []
     all_labels = []
-    
+
     n_error=0
 
     indices_errores = []
@@ -178,14 +199,79 @@ def main():
             true_SBP = desnormalizar_zscore(labels[:, 0], SBP_MEAN, SBP_STD)
             true_DBP = desnormalizar_zscore(labels[:, 1], DBP_MEAN, DBP_STD)
             
-            pred_desnorm = np.stack([pred_SBP, pred_DBP], axis=1)
-            labels_desnorm = np.stack([true_SBP, true_DBP], axis=1)
+            #pred_desnorm = np.stack([pred_SBP, pred_DBP], axis=1)
+            #labels_desnorm = np.stack([true_SBP, true_DBP], axis=1)
+
+            batch_pred_desnorm = np.stack([pred_SBP, pred_DBP], axis=1)
+            batch_labels_desnorm = np.stack([true_SBP, true_DBP], axis=1)
+
+            all_preds_desnorm.append(batch_pred_desnorm)
+            all_labels_desnorm.append(batch_labels_desnorm)
+
+            # Lógica de detección de errores (manteniendo tu lógica original)
+            for j in range(batch_pred_desnorm.shape[0]):
+                pred_sbp_val, pred_dbp_val = batch_pred_desnorm[j]
+                true_sbp_val, true_dbp_val = batch_labels_desnorm[j]
+                
+                error_sbp = abs(pred_sbp_val - true_sbp_val)
+                error_dbp = abs(pred_dbp_val - true_dbp_val)
+                
+                valores_errores.append([error_sbp, error_dbp])
+                # Usamos indice_muestra del dataloader si es confiable, o el contador global
+                indices_errores.append(indice_muestra[j].item()) 
+
+                # Tu lógica de clasificación de errores
+                # NOTA: Aquí uso global_idx_counter para saber el índice absoluto en el subset
+                current_absolute_idx = global_idx_counter + j
+                
+                if error_sbp >= 10 or error_dbp >= 10:
+                    indices_error_alto.append(current_absolute_idx)
+                else:
+                    indices_error_bajo.append(current_absolute_idx)
             
+            global_idx_counter += batch_pred_desnorm.shape[0]
+
+    all_preds = np.concatenate(all_preds_desnorm, axis=0)
+    all_labels = np.concatenate(all_labels_desnorm, axis=0)
+    
+    print(f"Total muestras evaluadas: {all_preds.shape[0]}")
+    """
             mse = mean_squared_error(labels_desnorm, pred_desnorm)
             rmse = np.sqrt(mse)
             mae = mean_absolute_error(labels_desnorm, pred_desnorm)
             r2 = r2_score(labels_desnorm, pred_desnorm)
+            r_sbp, p_value_sbp = pearsonr(labels_desnorm[:,0], pred_desnorm[:,0])
+            r_dbp, p_value_dbp = pearsonr(labels_desnorm[:,1], pred_desnorm[:,1])
+    """
 
+    mse = mean_squared_error(all_labels, all_preds)
+    rmse = np.sqrt(mse)
+    mae = mean_absolute_error(all_labels, all_preds)
+    r2 = r2_score(all_labels, all_preds)
+    
+    # Pearson global
+    r_sbp, _ = pearsonr(all_labels[:,0], all_preds[:,0])
+    r_dbp, _ = pearsonr(all_labels[:,1], all_preds[:,1])
+
+    # AAMI Metrics globales
+    mean_error_sbp, std_error_sbp = aami_metrics(all_labels[:,0], all_preds[:,0])
+    mean_error_dbp, std_error_dbp = aami_metrics(all_labels[:,1], all_preds[:,1])
+
+    print(f"\nMétricas GLOBALES (valores desnormalizados en mmHg):")
+    print(f"  MSE: {mse:.4f}")
+    print(f" RMSE: {rmse:.4f}")
+    print(f"  MAE: {mae:.4f}")
+    print(f"   R2: {r2:.4f}")
+    print(f"\n   r SBP:  {r_sbp:.4f}")
+    print(f"   r DBP:  {r_dbp:.4f}")
+    print(f"\nMétricas AAMI Globales:")
+    print(f"SBP - Mean Error: {mean_error_sbp:.2f} (+/- {std_error_sbp:.2f})")
+    print(f"DBP - Mean Error: {mean_error_dbp:.2f} (+/- {std_error_dbp:.2f})")
+    
+    print(f"Muestras con error alto: {len(indices_error_alto)}")
+    plot_comparacion_errores(subset, indices_error_alto, indices_error_bajo, n=7)
+    
+    """"
             mean_error_SBP, std_error_SBP = aami_metrics(true_SBP, pred_SBP)
             mean_error_DBP, std_error_DBP = aami_metrics(true_DBP, pred_DBP)        
 
@@ -216,12 +302,13 @@ def main():
                     indices_error_bajo.append(j)
     
                 # Umbral configurable para detección de error alto
-            """
+    """
+    """
                 if error_sbp > 20 or error_dbp > 20:
                     n_error = n_error + 1
                     indices_errores.append(indice_muestra)
-            """
-            """
+    """
+    """
                     print(f"\n Error alto detectado:")
                     print(f"  Predicción SBP/DBP: {pred_sbp:.2f} / {pred_dbp:.2f}")
                     print(f"  Real      SBP/DBP: {true_sbp:.2f} / {true_dbp:.2f}")
@@ -248,13 +335,13 @@ def main():
 
                     plt.tight_layout()
                     plt.show()
-        """
-        """
+    """
+    """
                 if error_sbp < 10 and error_dbp < 10:
                     n_error = n_error + 1
                     indices_errores.append(indice_muestra)
-        """
-        """    
+    """
+    """    
                     print(f"\n Error bajo detectado:")
                     print(f"  Predicción SBP/DBP: {pred_sbp:.2f} / {pred_dbp:.2f}")
                     print(f"  Real      SBP/DBP: {true_sbp:.2f} / {true_dbp:.2f}")
@@ -281,11 +368,11 @@ def main():
 
                     plt.tight_layout()
                     plt.show()
-        """
+    """
     print(f"Muestras con error alto: {len(indices_error_alto)}")
     print(f"Muestras con error bajo: {len(indices_error_bajo)}")
             
-    plot_comparacion_errores(subset, indices_error_alto, indices_error_bajo, n=7)
+    #plot_comparacion_errores(subset, indices_error_alto, indices_error_bajo, n=7)
     
     print(f"numero de ventanas con errores: {n_error}")
 
@@ -296,21 +383,20 @@ def main():
 
     np.savez('data/processed/Errores_predicción', **errores)
     
-    # Unimos todos los resultados para gráficos finales
-    all_preds = np.concatenate(all_preds, axis=0)
-    all_labels = np.concatenate(all_labels, axis=0)
-
+    """
     print(f"\nMétricas promedio (valores desnormalizados en mmHg):")
     print(f"  MSE: {np.mean(accmse):.4f}")
     print(f" RMSE: {np.mean(accrmse):.4f}")
     print(f"  MAE: {np.mean(accmae):.4f}")
     print(f"   R2: {np.mean(accr2):.4f}")
+    print(f"\n   r SBP:  {np.mean(r_sbp):.4f}")
+    print(f"   r DBP:  {np.mean(r_dbp):.4f}")
     print(f"\nPromedio de métricas AAMI (valores desnormalizados en mmHg):")
     print(f"SBP - Mean Error: {np.mean(acc_mean_error_sbp):.2f}")
     print(f"SBP - Std Error:  {np.mean(acc_std_error_sbp):.2f}")
     print(f"DBP - Mean Error: {np.mean(acc_mean_error_dbp):.2f}")
     print(f"DBP - Std Error:  {np.mean(acc_std_error_dbp):.2f}")
-    """
+    
     # Gráfico real vs predicho
     plt.figure(figsize=(8, 5))
     plt.scatter(all_labels, all_preds, alpha=0.5)
@@ -345,8 +431,8 @@ def main():
     """
         # Gráfico real vs predicho (SBP y DBP con distinto color)
     plt.figure(figsize=(8, 5))
-    plt.scatter(all_labels[:, 0], all_preds[:, 0], alpha=0.5, label="SBP", color="blue")
-    plt.scatter(all_labels[:, 1], all_preds[:, 1], alpha=0.5, label="DBP", color="orange")
+    plt.scatter(all_labels[:, 0], all_preds[:, 0], alpha=0.2, label="SBP", color='#1f77b4',s=15)
+    plt.scatter(all_labels[:, 1], all_preds[:, 1], alpha=0.2, label="DBP", color='#ff7f0e',s=15)
     plt.plot([all_labels.min(), all_labels.max()],
              [all_labels.min(), all_labels.max()], 'r--')
     plt.xlabel("Valor verdadero (mmHg)")
@@ -362,8 +448,8 @@ def main():
     residuals_dbp = all_preds[:, 1] - all_labels[:, 1]
 
     plt.figure(figsize=(8, 4))
-    plt.scatter(all_labels[:, 0], residuals_sbp, alpha=0.5, label="SBP", color="blue")
-    plt.scatter(all_labels[:, 1], residuals_dbp, alpha=0.5, label="DBP", color="orange")
+    plt.scatter(all_labels[:, 0], residuals_sbp, alpha=0.2, label="SBP", color='#1f77b4', s=15)
+    plt.scatter(all_labels[:, 1], residuals_dbp, alpha=0.2, label="DBP", color='#ff7f0e', s=15)
     plt.axhline(0, color='red', linestyle='--')
     plt.xlabel("Valor verdadero (mmHg)")
     plt.ylabel("Error (Pred - Real) (mmHg)")
@@ -374,8 +460,8 @@ def main():
 
     # Histograma de errores (SBP y DBP separados)
     plt.figure(figsize=(8, 5))
-    plt.hist(residuals_sbp, bins=50, alpha=0.6, label="SBP", color="blue", edgecolor="black")
-    plt.hist(residuals_dbp, bins=50, alpha=0.6, label="DBP", color="orange", edgecolor="black")
+    plt.hist(residuals_sbp, bins=50, alpha=0.4, label="SBP", color='#1f77b4', edgecolor="black")
+    plt.hist(residuals_dbp, bins=50, alpha=0.4, label="DBP", color='#ff7f0e', edgecolor="black")
     plt.title("Distribución de errores")
     plt.xlabel("Error (mmHg)")
     plt.ylabel("Frecuencia")
@@ -384,8 +470,8 @@ def main():
     plt.show()
 
     # Gráfico Bland-Altman para SBP y DBP
-    bland_altman_graf(all_preds[:,0], all_labels[:,0], title="SBP")
-    bland_altman_graf(all_preds[:,1], all_labels[:,1], title="DBP")
+    bland_altman_graf(all_preds[:,0], all_labels[:,0], title="SBP", color='#1f77b4')
+    bland_altman_graf(all_preds[:,1], all_labels[:,1], title="DBP", color='#ff7f0e')
 
 if __name__ == '__main__':
     main()

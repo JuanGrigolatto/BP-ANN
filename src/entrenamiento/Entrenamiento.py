@@ -207,10 +207,10 @@ def main():
 
     # Crear el modelo
 
-    #model=InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32, depth = 6)
+    model=InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32, depth = 6)
     #model=Modelo_Convolucional(in_channels=2,out_channels=2, long_signal=250)
     #model=Modelo_ConvolucionalV1(in_channels=2,out_channels=3, long_signal=500)
-    model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=500)
+    #model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=500)
     #model=Modelo_ConvolucionalV2(in_channels=2,out_channels=2, long_signal=500)
     # Añade esto después de crear el modelo
 
@@ -235,7 +235,7 @@ def main():
     start_epoch = 0
     log_path = 'graficas/training_log.csv' 
     os.makedirs('graficas', exist_ok=True)
-    checkpoint_path = "models/best_models/best_model_conv_v1_200_epocas_picos_def_early8.pt"
+    checkpoint_path = "models/best_models/best_model_conv_time32_200_epocas_picos_def_early8.pt"
     if os.path.exists(checkpoint_path):
         checkpoint = torch.load(checkpoint_path, map_location=device)
         model.load_state_dict(checkpoint["model_state_dict"])
@@ -367,7 +367,7 @@ def main():
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': valid_l,
                 'best_valid_loss': best_valid_loss 
-            }, 'models/best_models/best_model_conv_v1_200_epocas_picos_def_early8.pt')
+            }, 'models/best_models/best_model_conv_time32_200_epocas_picos_def_early8.pt')
             print(f"Nuevo mejor modelo guardado (valid_loss = {valid_l:.6f})")
 
             

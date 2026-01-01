@@ -114,8 +114,8 @@ def main():
         'drop_last': False
     }
 
-    print(os.path.exists('data/processed/data_UCI/test_set_por_picos/test_meta.pt"'))
-    dataset = UCIDataset(['data/processed/data_UCI/test_set_por_picos/test_meta.pt'])
+    print(os.path.exists('data/processed/data_UCI/test_set_por_pacientes_iso/test_meta.pt'))
+    dataset = UCIDataset(['data/processed/data_UCI/test_set_por_pacientes_iso/test_meta.pt'])
     
     subset = torch.utils.data.Subset(dataset, indices=list(range(10000)))
     dataloader = torch.utils.data.DataLoader(subset, **parameters)
@@ -135,11 +135,11 @@ def main():
     
     #dataloader = torch.utils.data.DataLoader(dataset, **parameters)
 
-    path_model = 'models/best_models/best_model_conv_Time32_200_epocas_picos_def_early8.pt'
+    path_model = 'models/best_models/best_model_conv_Time32_200_epocas_picos_def_early8_ps.pt'
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32)
-    #model=Modelo_ConvolucionalV2(in_channels=2, out_channels=2, long_signal=500)
+    #model=Modelo_ConvolucionalV1(in_channels=2, out_channels=2, long_signal=500)
     #model=Modelo_ConvolucionalV1_2(out_channels=2, long_signal=500)
     
     checkpoint = torch.load(path_model, map_location=device)

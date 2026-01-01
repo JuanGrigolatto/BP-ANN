@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # 1. Cargar el archivo
-df = pd.read_csv('graficas/training_log.csv')
+df = pd.read_csv('graficas/training_log_Time32_ps.csv')
 
 # 2. Configuración del gráfico
 plt.figure(figsize=(10, 6)) 

@@ -9,40 +9,7 @@ from src.data.data_chargers.Clase_UCIDataset import UCIDataset
 import pandas as pd
 import os
 from tqdm import tqdm
-
-def compute_metrics(y_true, y_pred):
-    """
-    Devuelve métricas como floats porque la red predice solo DBP (salida única).
-    Acepta tensores torch con shape (N,1) o (N,) y convierte a 1D numpy.
-    """
-    y_true = y_true.cpu().numpy()
-    y_pred = y_pred.cpu().numpy()
-
-    # Si vienen como (N,1) -> pasar a (N,)
-    if y_true.ndim == 2 and y_true.shape[1] == 1:
-        y_true = y_true.squeeze(axis=1)
-    if y_pred.ndim == 2 and y_pred.shape[1] == 1:
-        y_pred = y_pred.squeeze(axis=1)
-
-    # Ahora y_true y y_pred son vectores 1D
-    mse = float(np.mean((y_true - y_pred) ** 2))
-    rmse = float(np.sqrt(mse))
-    mae = float(np.mean(np.abs(y_true - y_pred)))
-
-    # R^2 (protección si ss_tot == 0)
-    ss_res = np.sum((y_true - y_pred) ** 2)
-    ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
-    if ss_tot == 0:
-        r2 = 0.0
-    else:
-        r2 = float(1 - ss_res / ss_tot)
-
-    return {
-        "MSE": mse,
-        "RMSE": rmse,
-        "MAE": mae,
-        "R2": r2
-    }
+import multiprocessing
 
 def compute_metrics_two_labels(y_true, y_pred):
     """
@@ -118,223 +85,226 @@ def get_patient_map(pt_files):
 
     full_map = np.concatenate(global_indices_map, axis=0)
     return full_map
-# ----------------------------
-# Configuración
-# ----------------------------
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-batch_size = 256
-epochs = 10
-k_folds = 5
-learning_rate = 1e-3
 
-# ----------------------------
-# Dataset
-# ----------------------------
-archivos = [
-    'data/processed/data_UCI/dataset_parte_1_por_picos.pt',
-    'data/processed/data_UCI/dataset_parte_2_por_picos.pt',
-    'data/processed/data_UCI/dataset_parte_3_por_picos.pt',
-    'data/processed/data_UCI/dataset_parte_4_por_picos.pt',
-]
+def main():
+    # ----------------------------
+    # Configuración
+    # ----------------------------
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    batch_size = 256
+    epochs = 10
+    k_folds = 5
+    learning_rate = 1e-3
 
-dataset_completo = UCIDataset(archivos)
-
-# ----------------------------
-# Criterio de pérdida
-# ----------------------------
-criterion = nn.MSELoss()
-
-# ----------------------------
-# Validación cruzada
-# ----------------------------
-kfold = KFold(n_splits=k_folds, shuffle=True, random_state=42)
-
-fold_results = []
-# 1. OBTENER EL MAPA DE PACIENTES
-full_map = get_patient_map(archivos) 
-# full_map[:, 0] son los IDs de pacientes
-# full_map[:, 1] son los índices globales (0, 1, 2... N)
-
-unique_patients = np.unique(full_map[:, 0])
-print(f"Total de pacientes únicos para CV: {len(unique_patients)}")
-# Iteramos sobre los PACIENTES, no sobre el dataset directamente
-for fold, (train_patients_idx, val_patients_idx) in enumerate(tqdm(kfold.split(unique_patients), total=k_folds)):
+    # --- CONFIGURACIÓN OPTIMIZADA ---
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    # Obtenemos los IDs reales de los pacientes para este fold
-    train_patients = unique_patients[train_patients_idx]
-    val_patients = unique_patients[val_patients_idx]
+    # 1. ACELERACIÓN DE HARDWARE
+    if device.type == 'cuda':
+        torch.backends.cudnn.benchmark = True # Acelera convs si input fijo
+        print(f"Usando GPU: {torch.cuda.get_device_name(0)}")
+        scaler = torch.amp.GradScaler('cuda') # Mixed Precision
+    else:
+        print("ADVERTENCIA: Usando CPU. Será lento.")
+        scaler = None
+
+    # Usar cores físicos - 1 suele ser seguro y rápido
+    num_workers = min(2, multiprocessing.cpu_count() - 1)
+    pin_memory = True if device.type == 'cuda' else False
+
+    # ----------------------------
+    # Dataset
+    # ----------------------------
+    archivos = [
+        'data/processed/data_UCI/dataset_parte_1_por_picos.pt',
+        'data/processed/data_UCI/dataset_parte_2_por_picos.pt',
+        'data/processed/data_UCI/dataset_parte_3_por_picos.pt',
+        'data/processed/data_UCI/dataset_parte_4_por_picos.pt',
+    ]
+
+    dataset_completo = UCIDataset(archivos)
+
+    # ----------------------------
+    # Criterio de pérdida
+    # ----------------------------
+    criterion = nn.MSELoss()
+
+    # --------------------------
+    # Validación cruzada
+    # --------------------------
+    kfold = KFold(n_splits=k_folds, shuffle=True, random_state=42)
+
+    fold_results = []
+    # 1. OBTENER EL MAPA DE PACIENTES
+    full_map = get_patient_map(archivos) 
+    # full_map[:, 0] son los IDs de pacientes
+    # full_map[:, 1] son los índices globales (0, 1, 2... N)
+
+    unique_patients = np.unique(full_map[:, 0])
+    print(f"Total de pacientes únicos para CV: {len(unique_patients)}")
+    # Iteramos sobre los PACIENTES, no sobre el dataset directamente
+    for fold, (train_patients_idx, val_patients_idx) in enumerate(tqdm(kfold.split(unique_patients), total=k_folds)):
     
-    # -------------------------------------------------------
-    # CRÍTICO: Convertir lista de pacientes a índices de muestras
-    # -------------------------------------------------------
-    # Buscamos en full_map qué filas corresponden a los pacientes de train
-    mask_train = np.isin(full_map[:, 0], train_patients)
-    mask_val = np.isin(full_map[:, 0], val_patients)
+        # Obtenemos los IDs reales de los pacientes para este fold
+        train_patients = unique_patients[train_patients_idx]
+        val_patients = unique_patients[val_patients_idx]
     
-    # Extraemos los índices globales
-    train_indices = full_map[mask_train, 1]
-    val_indices = full_map[mask_val, 1]
+        # -------------------------------------------------------
+        # CRÍTICO: Convertir lista de pacientes a índices de muestras
+        # -------------------------------------------------------
+        # Buscamos en full_map qué filas corresponden a los pacientes de train
+        mask_train = np.isin(full_map[:, 0], train_patients)
+        mask_val = np.isin(full_map[:, 0], val_patients)
     
-    # Control de sanidad
-    intersect = np.intersect1d(train_indices, val_indices)
-    assert len(intersect) == 0, "ERROR: Hay cruce de datos entre train y val!"
+        # Extraemos los índices globales
+        train_indices = full_map[mask_train, 1]
+        val_indices = full_map[mask_val, 1]
     
-    print(f"\nFold {fold+1}: {len(train_patients)} pacientes en Train ({len(train_indices)} muestras), {len(val_patients)} pacientes en Val ({len(val_indices)} muestras)")
-
-    # Creamos los Subsets y Loaders
-    train_subset = Subset(dataset_completo, train_indices)
-    val_subset = Subset(dataset_completo, val_indices)
-
-    train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_subset, batch_size=batch_size, shuffle=False)
-    # Modelo nuevo en cada fold (salida = 1 para DBP)
-    model = Modelo_ConvolucionalV1(in_channels=2, out_channels=2, long_signal=500)
-    model = model.to(device)
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-
-    best_val_loss = float("inf")
-    best_metrics = None
+        # Control de sanidad
+        intersect = np.intersect1d(train_indices, val_indices)
+        assert len(intersect) == 0, "ERROR: Hay cruce de datos entre train y val!"
     
-    for epoch in tqdm(range(epochs), desc=f"Fold {fold+1}/{k_folds}", leave=False):
-        model.train()
-        train_loss = 0.0
-        for batch in train_loader:
-            signals, labels, _, _ = batch
-            # seleccionás DBP y dejás shape (N,1)
-            #labels = labels[:,0].unsqueeze(1)
-            labels = labels[:, :2]
+        print(f"\nFold {fold+1}: {len(train_patients)} pacientes en Train ({len(train_indices)} muestras), {len(val_patients)} pacientes en Val ({len(val_indices)} muestras)")
 
-            signals, labels = signals.to(device), labels.to(device)
+        # Creamos los Subsets y Loaders
+        train_subset = Subset(dataset_completo, train_indices)
+        val_subset = Subset(dataset_completo, val_indices)
 
-            optimizer.zero_grad()
-            outputs = model(signals)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
+        train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=True, 
+                              num_workers=2, pin_memory=True, persistent_workers=True)
+    
+        val_loader = DataLoader(val_subset, batch_size=batch_size, shuffle=False, 
+                            num_workers=2, pin_memory=True, persistent_workers=True)
+        # Modelo nuevo en cada fold (salida = 1 para DBP)
+        model = Modelo_ConvolucionalV1(in_channels=2, out_channels=2, long_signal=500)
+        model = model.to(device)
+        optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-            train_loss += loss.item()
-
-        # Validación
-        model.eval()
-        val_loss = 0.0
-        all_preds, all_labels = [], []
-        with torch.no_grad():
-            for batch in val_loader:
+        best_val_loss = float("inf")
+        best_metrics = None
+    
+        for epoch in tqdm(range(epochs), desc=f"Fold {fold+1}/{k_folds}", leave=False):
+            model.train()
+            train_loss = 0.0
+            for batch in train_loader:
                 signals, labels, _, _ = batch
+                # seleccionás DBP y dejás shape (N,1)
                 #labels = labels[:,0].unsqueeze(1)
                 labels = labels[:, :2]
+                signals, labels = signals.to(device, non_blocking=True), labels.to(device, non_blocking=True)
 
-                signals, labels = signals.to(device), labels.to(device)
-                
-                outputs = model(signals)
-                loss = criterion(outputs, labels)
-                val_loss += loss.item()
+                optimizer.zero_grad(set_to_none=True)
+                if scaler:
+                    with torch.amp.autocast('cuda'):
+                        outputs = model(signals)
+                        loss = criterion(outputs, labels)
+                    scaler.scale(loss).backward()
+                    scaler.step(optimizer)
+                    scaler.update()
+                else:
+                    outputs = model(signals)
+                    loss = criterion(outputs, labels)
+                    loss.backward()
+                    optimizer.step()
 
-                all_preds.append(outputs)
-                all_labels.append(labels)
+                train_loss += loss.item()
 
-        train_loss /= len(train_loader)
-        val_loss /= len(val_loader)
+            # Validación
+            model.eval()
+            val_loss = 0.0
+            all_preds, all_labels = [], []
+            with torch.no_grad():
+                # Si usas scaler arriba, es buena práctica usar autocast aquí también
+                if scaler:
+                    context = torch.amp.autocast('cuda')
+                else:
+                    context = torch.no_grad() # Placeholder inofensivo si no hay scaler
 
-        all_preds = torch.cat(all_preds)
-        all_labels = torch.cat(all_labels)
-        #metrics = compute_metrics(all_labels, all_preds)
-        metrics = compute_metrics_two_labels(all_labels, all_preds)
-        # metrics['MAE'] ya es float si la red es single-output
-        """
-        print(f"Epoch {epoch+1}/{epochs} | "
-              f"Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f} | "
-              f"Val MAE [DBP={metrics['MAE']:.2f}]")
-        """
+                with context:
+                    for batch in val_loader:
+                        signals, labels, _, _ = batch
+                        labels = labels[:, :2]
+
+                        signals, labels = signals.to(device, non_blocking=True), labels.to(device, non_blocking=True)
+                        
+                        outputs = model(signals)
+                        loss = criterion(outputs, labels)
+                        val_loss += loss.item()
+
+                        all_preds.append(outputs)
+                        all_labels.append(labels)
+
+            train_loss /= len(train_loader)
+            val_loss /= len(val_loader)
+
+            all_preds = torch.cat(all_preds)
+            all_labels = torch.cat(all_labels)
+            #metrics = compute_metrics(all_labels, all_preds)
+            metrics = compute_metrics_two_labels(all_labels, all_preds)
+            # metrics['MAE'] ya es float si la red es single-output
     
-        print(f"Epoch {epoch+1}/{epochs} | "
-              f"Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f} | "
-              f"MAE [SBP={metrics['MAE_SBP']:.2f}, DBP={metrics['MAE_DBP']:.2f}]")
+            print(f"Epoch {epoch+1}/{epochs} | "
+                  f"Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f} | "
+                  f"MAE [SBP={metrics['MAE_SBP']:.2f}, DBP={metrics['MAE_DBP']:.2f}]")
 
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            best_metrics = metrics
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                best_metrics = metrics
 
-    fold_results.append(best_metrics)
-    #print(f"Fold {fold+1} - Mejor MAE: DBP={best_metrics['MAE']:.2f}")
-    print(f"Fold {fold+1} - Mejor MAE: SBP={best_metrics['MAE_SBP']:.2f}, DBP={best_metrics['MAE_DBP']:.2f}")
+        fold_results.append(best_metrics)
+        #print(f"Fold {fold+1} - Mejor MAE: DBP={best_metrics['MAE']:.2f}")
+        print(f"Fold {fold+1} - Mejor MAE: SBP={best_metrics['MAE_SBP']:.2f}, DBP={best_metrics['MAE_DBP']:.2f}")
 
-# ----------------------------
-# Resultados finales
-# ----------------------------
-print("\n Resultados por fold:")
-"""
-resultados_dict = {
-    "fold": [],
-    "MSE": [],
-    "RMSE": [],
-    "MAE": [],
-    "R2": []
-}
-"""
-resultados_dict = {
-    "fold": [],
-    "MAE_SBP": [], "RMSE_SBP": [], "R2_SBP": [],
-    "MAE_DBP": [], "RMSE_DBP": [], "R2_DBP": [],
-    "MAE_mean": [], "RMSE_mean": [], "R2_mean": []
-}
+    # ----------------------------
+    # Resultados finales
+    # ----------------------------
+    print("\n Resultados por fold:")
 
-"""
-for i, m in enumerate(fold_results):
-    print(f"Fold {i+1}: "
-          f"MAE [DBP={m['MAE']:.2f}], "
-          f"RMSE [DBP={m['RMSE']:.2f}], "
-          f"R² [DBP={m['R2']:.3f}]")
-    
-    resultados_dict["fold"].append(i+1)
-    resultados_dict["MSE"].append(m["MSE"])
-    resultados_dict["RMSE"].append(m["RMSE"])
-    resultados_dict["MAE"].append(m["MAE"])
-    resultados_dict["R2"].append(m["R2"])
+    resultados_dict = {
+        "fold": [],
+        "MAE_SBP": [], "RMSE_SBP": [], "R2_SBP": [],
+        "MAE_DBP": [], "RMSE_DBP": [], "R2_DBP": [],
+        "MAE_mean": [], "RMSE_mean": [], "R2_mean": []
+    }
 
-# Promedio sobre folds
-avg_mae = np.mean([m["MAE"] for m in fold_results])
-avg_rmse = np.mean([m["RMSE"] for m in fold_results])
-avg_r2 = np.mean([m["R2"] for m in fold_results])
 
-print("\n🔎 Promedio en todos los folds:")
-print(f"MAE  -> DBP={avg_mae:.2f}")
-print(f"RMSE -> DBP={avg_rmse:.2f}")
-print(f"R²   -> DBP={avg_r2:.3f}")
-"""
-for i, m in enumerate(fold_results):
-    print(f"Fold {i+1}: "
-          f"MAE [SBP={m['MAE_SBP']:.2f}, DBP={m['MAE_DBP']:.2f}] | "
-          f"RMSE [SBP={m['RMSE_SBP']:.2f}, DBP={m['RMSE_DBP']:.2f}]")
+    for i, m in enumerate(fold_results):
+        print(f"Fold {i+1}: "
+              f"MAE [SBP={m['MAE_SBP']:.2f}, DBP={m['MAE_DBP']:.2f}] | "
+              f"RMSE [SBP={m['RMSE_SBP']:.2f}, DBP={m['RMSE_DBP']:.2f}]")
 
-    resultados_dict["fold"].append(i+1)
-    resultados_dict["MAE_SBP"].append(m["MAE_SBP"])
-    resultados_dict["RMSE_SBP"].append(m["RMSE_SBP"])
-    resultados_dict["R2_SBP"].append(m["R2_SBP"])
-    resultados_dict["MAE_DBP"].append(m["MAE_DBP"])
-    resultados_dict["RMSE_DBP"].append(m["RMSE_DBP"])
-    resultados_dict["R2_DBP"].append(m["R2_DBP"])
-    resultados_dict["MAE_mean"].append(m["MAE_mean"])
-    resultados_dict["RMSE_mean"].append(m["RMSE_mean"])
-    resultados_dict["R2_mean"].append(m["R2_mean"])
+        resultados_dict["fold"].append(i+1)
+        resultados_dict["MAE_SBP"].append(m["MAE_SBP"])
+        resultados_dict["RMSE_SBP"].append(m["RMSE_SBP"])
+        resultados_dict["R2_SBP"].append(m["R2_SBP"])
+        resultados_dict["MAE_DBP"].append(m["MAE_DBP"])
+        resultados_dict["RMSE_DBP"].append(m["RMSE_DBP"])
+        resultados_dict["R2_DBP"].append(m["R2_DBP"])
+        resultados_dict["MAE_mean"].append(m["MAE_mean"])
+        resultados_dict["RMSE_mean"].append(m["RMSE_mean"])
+        resultados_dict["R2_mean"].append(m["R2_mean"])
 
-# Promedio sobre folds
-print("\n🔎 Promedio en todos los folds:")
-for k in ["MAE_SBP", "MAE_DBP", "RMSE_SBP", "RMSE_DBP", "R2_SBP", "R2_DBP"]:
-    vals = [m[k] for m in fold_results]
-    print(f"{k}: mean={np.mean(vals):.2f}, std={np.std(vals):.2f}")
+    # Promedio sobre folds
+    print("\n🔎 Promedio en todos los folds:")
+    for k in ["MAE_SBP", "MAE_DBP", "RMSE_SBP", "RMSE_DBP", "R2_SBP", "R2_DBP"]:
+        vals = [m[k] for m in fold_results]
+        print(f"{k}: mean={np.mean(vals):.2f}, std={np.std(vals):.2f}")
 
-# Guardar a CSV
-df = pd.DataFrame(resultados_dict)
-"""
-df.loc["mean"] = ["-", np.mean(df["MSE"]), np.mean(df["RMSE"]), np.mean(df["MAE"]), np.mean(df["R2"])]
-df.loc["std"] = ["-", np.std(df["MSE"]), np.std(df["RMSE"]), np.std(df["MAE"]), np.std(df["R2"])]
-"""
-df.loc["mean"] = ["-"] + [np.mean(df[c]) for c in df.columns if c != "fold"]
-df.loc["std"] = ["-"] + [np.std(df[c]) for c in df.columns if c != "fold"]
+    # Guardar a CSV
+    df = pd.DataFrame(resultados_dict)
+    """
+    df.loc["mean"] = ["-", np.mean(df["MSE"]), np.mean(df["RMSE"]), np.mean(df["MAE"]), np.mean(df["R2"])]
+    df.loc["std"] = ["-", np.std(df["MSE"]), np.std(df["RMSE"]), np.std(df["MAE"]), np.std(df["R2"])]
+    """
+    df.loc["mean"] = ["-"] + [np.mean(df[c]) for c in df.columns if c != "fold"]
+    df.loc["std"] = ["-"] + [np.std(df[c]) for c in df.columns if c != "fold"]
 
-os.makedirs("results", exist_ok=True)
-csv_path = os.path.abspath(os.path.join("results", "cross_validation_metrics_sbp_dbp_PS.csv"))
-df.to_csv(csv_path, index=True)
+    os.makedirs("results", exist_ok=True)
+    csv_path = os.path.abspath(os.path.join("results", "cross_validation_metrics_sbp_dbp_PS.csv"))
+    df.to_csv(csv_path, index=True)
 
-print(f"\n Métricas guardadas en '{csv_path}'")
+    print(f"\n Métricas guardadas en '{csv_path}'")
+
+
+if __name__ == '__main__':
+    main()

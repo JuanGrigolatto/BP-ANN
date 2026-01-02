@@ -6,7 +6,7 @@ df = pd.read_csv('graficas/training_log_Time32_ps.csv')
 
 # 2. Configuración del gráfico
 plt.figure(figsize=(10, 6)) 
-plt.style.use('seaborn-v0_8-whitegrid') 
+#plt.style.use('seaborn-v0_8-whitegrid') 
 
 # 3. Graficar las líneas
 # 'train_loss'
@@ -24,8 +24,8 @@ plt.xlabel('Epoca')
 plt.ylabel('Pérdida (Loss)')
 plt.legend() 
 # 5. Ajustes finales
-plt.xlim(df['epoch'].min(), df['epoch'].max()) 
-plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+#plt.xlim(df['epoch'].min(), df['epoch'].max()) 
+#plt.grid(True, which='both', linestyle='--', linewidth=0.5)
 
 # 6. Mostrar y Guardar
 plt.tight_layout() 

@@ -6,6 +6,16 @@ from datetime import datetime
 import torch
 from src.data.data_chargers.Clase_UCIDataset import UCIDataset
 from metalearning.Fewshot_single import main
+import random
+import numpy as np
+
+def set_all_seeds(seed=42):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
 
 RESULTS_DIR = "resultados_hiper_fewshot"
 os.makedirs(RESULTS_DIR, exist_ok=True)
@@ -27,6 +37,7 @@ print(" Datos cargados correctamente.")
 # === Hiperparámetros a probar ===
 learning_rates = [1e-5, 1e-4, 5e-4, 1e-3, 5e-3, 1e-2, 5e-2]
 num_shots = 5 
+SEED_FIJA = 42
 
 # === Archivo de resultados ===
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -46,7 +57,8 @@ todos_resultados_por_paciente = []
 for i, lr in enumerate(learning_rates, start=1):
     print(f"\n=== Experimento {i}/{len(learning_rates)} ===")
     print(f"Learning Rate: {lr:.5f}, Shots: {num_shots}")
-
+    print(f" Reseteando semilla a {SEED_FIJA} para reproducibilidad...")
+    set_all_seeds(SEED_FIJA)
     try:
         resultados = main(
             n_shots=num_shots,

@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # 1. Cargar el archivo
-df = pd.read_csv('graficas/training_log_Time32_ps.csv')
+df = pd.read_csv('metalearning/logs/training_log.csv')
 
 # 2. Configuración del gráfico
 plt.figure(figsize=(10, 6)) 
@@ -29,5 +29,5 @@ plt.legend()
 
 # 6. Mostrar y Guardar
 plt.tight_layout() 
-plt.savefig('curva_loss.png', dpi=300) 
+plt.savefig('metalearning/logs/curva_loss.png', dpi=300) 
 plt.show() 

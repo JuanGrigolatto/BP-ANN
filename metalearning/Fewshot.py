@@ -4,120 +4,188 @@ from src.data.data_chargers.MetaDataset import TaskDataset
 from src.models.Modelo_conv import Modelo_Convolucional
 from src.models.ConvolucionalV1 import Modelo_ConvolucionalV1
 import numpy as np
-from torch import nn, optim
+from torch import device, nn, optim
 import matplotlib.pyplot as plt
-#from src.models.InceptionTime import InceptionTime
 import torch.utils.data as data
 import torch
 from src.data.data_chargers.Tuningndataset import TuningNDataset
 import random
 from sklearn.metrics import r2_score
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
 
 def promedio_metricas(m_list):
     return np.mean(m_list, axis=0)
 
 def calcular_metricas(y_true, y_pred):
+    errores = y_pred - y_true
     mae = mean_absolute_error(y_true, y_pred)
-    rmse = np.sqrt(mean_squared_error(y_true, y_pred))
-    bias = np.mean(y_pred - y_true)  # Sesgo sistemático promedio
-    r2 = r2_score(y_true, y_pred)
-    return mae, rmse, bias, r2
+    rmse = np.sqrt(mean_squared_error(y_true, y_pred))    
+    
+    # Métricas Clínicas (ISO 81060-2)
+    bias = np.mean(errores)   
+    std = np.std(errores)     
+    
+    # Retorna 4 valores: 0:MAE, 1:RMSE, 2:BIAS, 3:STD
+    return mae, rmse, bias, std
 
 def desnormalizar_zscore(norm_array, media, std):
     return norm_array * std + media
 
-def desnormalizar_minmax(norm_array, min_val, max_val):
-    return norm_array * (max_val - min_val) + min_val
-
 def tuning(sample, optimizer, model, criterion, device):
-        optimizer.zero_grad() # Reinicia los gradientes
-        data, labels, *_ = sample # Obtiene los datos y etiquetas
+    optimizer.zero_grad() 
+    data, labels, *_ = sample 
+    
+    if isinstance(data, list): data = data[0]
+    if isinstance(labels, list): labels = labels[0]
         
-        if isinstance(data, list):
-            data = data[0]
-        if isinstance(labels, list):
-            labels = labels[0]
-            # Congelar todas las capas BatchNorm
-        for layer in model.modules():
-            if isinstance(layer, torch.nn.BatchNorm1d):
-                layer.eval()
-                layer.weight.requires_grad = False
-                layer.bias.requires_grad = False
+    # Congelar capas BatchNorm para estabilidad en few-shot
+    for layer in model.modules():
+        if isinstance(layer, torch.nn.BatchNorm1d):
+            layer.eval()
+            layer.weight.requires_grad = False
+            layer.bias.requires_grad = False
 
-        data, labels = data.to(device), labels.to(device) # Mueve los datos y etiquetas a la GPU
-        preds = model.forward(data) # Realiza la predicción
-        loss = criterion(preds, labels) # Calcula la pérdida
-        loss.backward() # Calcula los gradientes mediante backpropagation
-        optimizer.step() # Actualiza los parámetros del modelo
-        return loss.item() # Devuelve la pérdida
+    data, labels = data.to(device), labels.to(device) 
+    preds = model.forward(data) 
+    loss = criterion(preds, labels) 
+    loss.backward() 
+    optimizer.step() 
+    return loss.item() 
 
 def evaluation(batch, model, criterion, device):
     with torch.no_grad():
         data, labels, *_ = batch
-        # Si vienen como listas (por batch_size=1), convertirlos a tensores
-        if isinstance(data, list):
-            data = data[0]
-        if isinstance(labels, list):
-            labels = labels[0]
+        if isinstance(data, list): data = data[0]
+        if isinstance(labels, list): labels = labels[0]
         data, labels = data.to(device), labels.to(device)
         preds = model.forward(data)
         loss = criterion(preds, labels)
     return preds, loss
 
-def main(n_shots=5, base_lr = 1e-6, base_dataset=None, test_patient_ids=None):
+def graficar_resultados_pacientes(true_means, pred_means, maes, titulo="Por Paciente"):
+    """
+    Grafica 1 punto por paciente (Promedio Real vs Promedio Predicho).
+    Ayuda a ver el desempeño poblacional sin el ruido de cada latido.
+    """
+    # Convertir a numpy por seguridad
+    true_means = np.array(true_means)
+    pred_means = np.array(pred_means)
+    maes = np.array(maes)
+    
+    bias_per_patient = pred_means - true_means
+    mean_bias = np.mean(bias_per_patient)
+    std_bias = np.std(bias_per_patient)
+
+    fig, axs = plt.subplots(1, 3, figsize=(18, 5))
+    fig.suptitle(f'Análisis inter-instancia (N={len(true_means)}): {titulo}', fontsize=16)
+
+    # --- 1. Scatter: Promedio Real vs Promedio Predicho ---
+    # ¿El modelo detecta pacientes hipertensos?
+    axs[0].scatter(true_means, pred_means, alpha=0.5, s=15, c='blue', edgecolors='k', linewidth=0.5)
+    
+    # Línea ideal
+    min_val = min(true_means.min(), pred_means.min())
+    max_val = max(true_means.max(), pred_means.max())
+    axs[0].plot([min_val, max_val], [min_val, max_val], 'r--', lw=2, label='Ideal')
+    
+    axs[0].set_title('Regresión: Promedios por Paciente')
+    axs[0].set_xlabel('Promedio Real (mmHg)')
+    axs[0].set_ylabel('Promedio Predicho (mmHg)')
+    axs[0].grid(True, alpha=0.3)
+    axs[0].legend()
+
+    # --- 2. Bland-Altman de Promedios ---
+    # ¿El error depende de si el paciente es hipertenso?
+    means = (true_means + pred_means) / 2
+    axs[1].scatter(means, bias_per_patient, alpha=0.5, s=15, c='purple', edgecolors='k', linewidth=0.5)
+    
+    axs[1].axhline(mean_bias, color='k', ls='-', lw=2, label=f'Bias Global: {mean_bias:.2f}')
+    axs[1].axhline(mean_bias + 1.96 * std_bias, color='r', ls='--', label=f'±1.96 SD')
+    axs[1].axhline(mean_bias - 1.96 * std_bias, color='r', ls='--')
+    
+    axs[1].set_title('Bland-Altman (Por Paciente)')
+    axs[1].set_xlabel('Presión Arterial Media del Paciente (mmHg)')
+    axs[1].set_ylabel('Bias del Paciente (Pred - Real)')
+    axs[1].legend()
+    axs[1].grid(True, alpha=0.3)
+
+    # --- 3. Histograma de MAE por Paciente ---
+    # ¿Cuántos pacientes tienen un error inaceptable?
+    axs[2].hist(maes, bins=30, color='orange', edgecolor='black', alpha=0.7)
+    axs[2].axvline(5, color='red', linestyle='dashed', linewidth=2, label='Umbral 5 mmHg')
+    axs[2].set_title('Distribución de MAE por Paciente')
+    axs[2].set_xlabel('MAE del Paciente (mmHg)')
+    axs[2].set_ylabel('Cantidad de Pacientes')
+    axs[2].legend()
+
+    plt.tight_layout()
+    plt.savefig(f'metalearning/pacientes_{titulo}.png', dpi=300)
+    print(f"Gráfico guardado: metalearning/pacientes_{titulo}.png")
+
+def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
     SBP_MEAN = 134.02
     DBP_MEAN = 63.47
     SBP_STD = 22.75
     DBP_STD = 23.69
-    if base_dataset is None:
+    
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    # --- Carga de Datos ---
+    if base_dataset is None:
         data_paths = [
         'data/processed/data_UCI/dataset_parte_1_por_picos.pt',
         'data/processed/data_UCI/dataset_parte_2_por_picos.pt',
         'data/processed/data_UCI/dataset_parte_3_por_picos.pt',
         'data/processed/data_UCI/dataset_parte_4_por_picos.pt'
         ]
- 
         dataset_completo = UCIDataset(data_paths)
     else:
         dataset_completo = base_dataset
 
     if test_patient_ids is None:
-        test_data = torch.load('data/processed/data_UCI/few_shot_patient_data.pt')
+        # weights_only=False para evitar warnings
+        test_data = torch.load('data/processed/data_UCI/few_shot_patient_data.pt', weights_only=False)
         test_patient_ids = test_data['test_patient_ids']
-    
     else: 
         test_patient_ids = test_patient_ids
 
-    #Carga de modelo metaentrenado 
-    #model=Modelo_Convolucional(in_channels=2,out_channels=2, long_signal=500)
-    model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=500)
-    path_model='models/checkpoints/best_meta_model_v1.pt'
-    checkpoint = torch.load(path_model, map_location=torch.device('cpu'))
-    model.load_state_dict(checkpoint['model_state_dict'])
-
-    base_weights = model.state_dict()  # Guarda los pesos iniciales del modelo
-
-    # Criterio de pérdida
-    criterion = torch.nn.MSELoss()
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    #Evaluación modelo previo a fine tuning
-    model = model.to(device)  # Mueve el modelo a la GPU
-
+    # --- Carga de Modelo ---
+    model = Modelo_ConvolucionalV1(in_channels=2, out_channels=2, long_signal=500)
+    path_model = 'models/checkpoints/best_meta_model_v1.pt'
     
-    #optimizer = torch.optim.Adam(model.parameters(), lr=1e-3) 
-    # Definicón del optimizador SOLO con los parámetros entrenables
-    #optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-4)
-    #optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    print(f"Cargando modelo desde {path_model}...")
+    checkpoint = torch.load(path_model, map_location=device, weights_only=False) 
+    state_dict = checkpoint['model_state_dict']
+
+    # Limpieza de prefijos 'module.'
+    new_state_dict = {}
+    for k, v in state_dict.items():
+        if k.startswith('module.'):
+            new_state_dict[k[7:]] = v
+        else:
+            new_state_dict[k] = v
+  
+    model.load_state_dict(new_state_dict)
+    base_weights = model.state_dict()
+    criterion = torch.nn.MSELoss()
+    model = model.to(device) 
 
     taskset = TaskDataset(list_IDs=test_patient_ids, base_dataset=dataset_completo, num_shots=n_shots)
-    #id_patient_for_tuning =  random.choice(test_patient_ids)
-    
 
-
+    # Listas globales
     global_metrics_pre_SBP, global_metrics_post_SBP = [], []
     global_metrics_pre_DBP, global_metrics_post_DBP = [], []
+
+    means_true_sbp = []
+    means_pred_sbp = []
+    maes_sbp = [] 
+
+    means_true_dbp = []
+    means_pred_dbp = []
+    maes_dbp = []
 
     mejoraron_sbp = 0
     empeoraron_sbp = 0
@@ -126,127 +194,50 @@ def main(n_shots=5, base_lr = 1e-6, base_dataset=None, test_patient_ids=None):
 
     resultados_por_paciente = []
 
+    print(f"\nIniciando evaluación Few-Shot en {len(taskset.list_IDs)} pacientes...")
+
     for i in range(len(taskset.list_IDs)):
         id_paciente = taskset.list_IDs[i]
-        preds_post_fine_tuning = []
-        loss_post_fine_tuning = []
-
-        preds_pre_fine_tuning = []
-        loss_pre_fine_tuning = []
         
-        model.load_state_dict(base_weights)  # Reinicia los pesos del modelo antes de cada fine-tuning
-
+        # Reiniciar modelo y optimizador
+        model.load_state_dict(base_weights)
         optimizer = torch.optim.Adam(model.parameters(), lr=base_lr)
-        id_patient_for_tuning =  taskset.list_IDs[i]
-
+        id_patient_for_tuning = taskset.list_IDs[i]
   
-        tuningset_for_train=TuningNDataset(taskset, id_patient_for_tuning, n_shots=n_shots, validation=False)
-        tuningset_for_valid=TuningNDataset(taskset, id_patient_for_tuning, validation=True)
+        tuningset_for_train = TuningNDataset(taskset, id_patient_for_tuning, n_shots=n_shots, validation=False)
+        tuningset_for_valid = TuningNDataset(taskset, id_patient_for_tuning, validation=True)
 
-        #print(f"ID paciente para fine tuning: {id_patient_for_tuning}")
-        print(f"\n=== Fine-Tuning Paciente {id_patient_for_tuning} ({i+1}/{len(taskset.list_IDs)}) ===")
+        tuning_loader_TRAIN = torch.utils.data.DataLoader(tuningset_for_train, batch_size=1, shuffle=False)
+        tuning_loader_VALID = torch.utils.data.DataLoader(tuningset_for_valid, batch_size=1, shuffle=False)
 
-        tuning_dataloader_TRAIN=torch.utils.data.DataLoader(tuningset_for_train, batch_size=1, shuffle=False)
-        tuning_dataloader_VALID=torch.utils.data.DataLoader(tuningset_for_valid, batch_size=1, shuffle=False)
+        # 1. Evaluación PRE Fine-Tuning
+        model.eval()
+        preds_pre, loss_pre = [], []
+        for batch in tuning_loader_VALID:
+            p, l = evaluation(batch, model, criterion, device)
+            preds_pre.extend(p.detach().cpu().numpy())  
+            loss_pre.extend([l.item()]*len(p))
+        preds_pre = np.array(preds_pre)
 
-        #Estrategia de evaluación previa al fine tuning
-
-        # 1) Fine-tuning completo
-        #for param in model.parameters():
-        #    param.requires_grad = True
-
-        # 2) Solo dense layers (Congelar capas de convolución)
-        """
-        for param in model.parameters():
-            param.requires_grad = False
-        for param in model.dense1.parameters():
-            param.requires_grad = True
-        for param in model.dense2.parameters():
-            param.requires_grad = True
-        """
-
-        # 3) Congelar BatchNorm (Error con batch size = 1 si no se congela)
-        """
-        for m in model.modules():
-            if isinstance(m, torch.nn.BatchNorm1d):
-                m.eval()
-                for param in m.parameters():
-                    param.requires_grad = False
-        """
-        #Fine tunning N-way K-shot    
-    
-        model.eval()    
-    
-        
-
-        for batch in tuning_dataloader_VALID:
-        #    preds_pre_fine_tuning[k] ,loss_pre_fine_tuning[k] = evaluation(batch, model, criterion, device)
-            preds, loss = evaluation(batch, model, criterion, device)
-            preds_pre_fine_tuning.extend(preds.detach().cpu().numpy())  
-            loss_pre_fine_tuning.extend([loss.item()]*len(preds))
-
-        preds_pre_fine_tuning = np.array(preds_pre_fine_tuning)
-        loss_pre_fine_tuning = np.array(loss_pre_fine_tuning)
-    
-        labels = np.array([l.squeeze().cpu().numpy() for l in tuning_dataloader_VALID.dataset.labels])
-        """
-        fig, ax = plt.subplots(figsize=(7, 4), tight_layout=True)
-        ax.plot(loss_pre_fine_tuning, label='Loss pre fine tuning')
-        ax.set_xlabel('number of sample')
-        ax.set_ylabel('Loss')
-        ax.legend()
-        plt.savefig('metalearning/loss_pre_fine_tuning.png')
-        plt.show()
-        """
+        # 2. Fine-Tuning
         model.train()
         tuning_loss = np.zeros(shape=n_shots)
-
-        for shot_idx, sample in enumerate(tuning_dataloader_TRAIN):
-            
+        for shot_idx, sample in enumerate(tuning_loader_TRAIN):
             tuning_loss[shot_idx] = tuning(sample, optimizer, model, criterion, device)
     
-        torch.save({'model_state_dict': model.state_dict(),
-                        'optimizer_state_dict': optimizer.state_dict(),
-                        'loss': tuning_loss[n_shots-1]}, 
-                        'models/tuning_model.pt')
-        """
-        fig, ax = plt.subplots(figsize=(7, 4), tight_layout=True)
-        ax.plot(tuning_loss, label='Fine Tuning for 5 shots')
-        ax.set_xlabel('number of shot')
-        ax.set_ylabel('Loss')
-        ax.legend()
-        plt.savefig('metalearning/loss_curve_fine_tuning.png')
-        plt.show()
-        """
-    
-        #Evaluación de modelo posterior al fine tuning
+        # 3. Evaluación POST Fine-Tuning
+        model.eval()
+        preds_post, loss_post = [], []
+        for batch in tuning_loader_VALID:
+            p, l = evaluation(batch, model, criterion, device)
+            preds_post.extend(p.detach().cpu().numpy())
+            loss_post.extend([l.item()]*len(p))
+        preds_post = np.array(preds_post)
 
-        #preds_post_fine_tuning = np.zeros((len(tuning_dataloader_VALID), n_shots, 2))
-        #loss_post_fine_tuning = np.zeros(len(tuning_dataloader_VALID))
-
-        model.eval()    
-        for batch in tuning_dataloader_VALID:
-            #preds_post_fine_tuning[j], loss_post_fine_tuning[j] = evaluation(batch, model, criterion, device)
-            preds, loss = evaluation(batch, model, criterion, device)
-            preds_post_fine_tuning.extend(preds.detach().cpu().numpy())
-            loss_post_fine_tuning.extend([loss.item()]*len(preds))
-
-        preds_post_fine_tuning = np.array(preds_post_fine_tuning)
-        loss_post_fine_tuning = np.array(loss_post_fine_tuning)
-        #Desnormalización
-        """
-        pred_pre_SBP_norm = desnormalizar_zscore(preds_pre_fine_tuning[:, 0], SBP_MEAN, SBP_STD)
-        pred_pre_DBP_norm = desnormalizar_zscore(preds_pre_fine_tuning[:, 1], DBP_MEAN, DBP_STD)
-    
-        pred_post_SBP_norm = desnormalizar_zscore(preds_post_fine_tuning[:, 0], SBP_MEAN, SBP_STD)
-        pred_post_DBP_norm = desnormalizar_zscore(preds_post_fine_tuning[:, 1], DBP_MEAN, DBP_STD)
-
-        true_SBP_norm = desnormalizar_zscore(labels[:, 0], SBP_MEAN, SBP_STD)
-        true_DBP_norm = desnormalizar_zscore(labels[:, 1], DBP_MEAN, DBP_STD)
-        """
-        pred_pre_flat = preds_pre_fine_tuning.reshape(-1, 2)
-        pred_post_flat = preds_post_fine_tuning.reshape(-1, 2)
-        labels_flat = np.array([l.squeeze().cpu().numpy() for l in tuning_dataloader_VALID.dataset.labels]).reshape(-1, 2)
+        # Desnormalización
+        pred_pre_flat = preds_pre.reshape(-1, 2)
+        pred_post_flat = preds_post.reshape(-1, 2)
+        labels_flat = np.array([l.squeeze().cpu().numpy() for l in tuning_loader_VALID.dataset.labels]).reshape(-1, 2)
 
         pred_pre_SBP = desnormalizar_zscore(pred_pre_flat[:,0], SBP_MEAN, SBP_STD)
         pred_pre_DBP = desnormalizar_zscore(pred_pre_flat[:,1], DBP_MEAN, DBP_STD)
@@ -254,242 +245,117 @@ def main(n_shots=5, base_lr = 1e-6, base_dataset=None, test_patient_ids=None):
         pred_post_DBP = desnormalizar_zscore(pred_post_flat[:,1], DBP_MEAN, DBP_STD)
         true_SBP = desnormalizar_zscore(labels_flat[:,0], SBP_MEAN, SBP_STD)
         true_DBP = desnormalizar_zscore(labels_flat[:,1], DBP_MEAN, DBP_STD)
-    
-        """
-        fig, ax = plt.subplots(figsize=(7, 4), tight_layout=True)
-        ax.plot(loss_post_fine_tuning, label='Loss post fine tuning')
-        ax.set_xlabel('number of sample')
-        ax.set_ylabel('Loss')
-        ax.legend()
-        plt.savefig('metalearning/loss_post_fine_tuning.png')
-        plt.show()
-
-        # --- 1. Real vs Predicho ---
-        fig, axs = plt.subplots(2, 2, figsize=(12, 5))
-        axs[0][0].scatter(true_SBP_norm, pred_pre_SBP_norm, alpha=0.5)
-        axs[0][0].plot([true_SBP_norm.min(), true_SBP_norm.max()],
-                [true_SBP_norm.min(), true_SBP_norm.max()], 'r--')
-        axs[0][0].set_title(f"SBP - Antes del Fine-Tuning")
-        axs[0][0].set_xlabel("Valor verdadero")
-        axs[0][0].set_ylabel("Predicción")
-        axs[0][0].grid(True)
-
-        axs[0][1].scatter(true_DBP_norm, pred_pre_DBP_norm, alpha=0.5)
-        axs[0][1].plot([true_DBP_norm.min(), true_DBP_norm.max()],
-                [true_DBP_norm.min(), true_DBP_norm.max()], 'r--')
-        axs[0][1].set_title(f"DBP - Antes del Fine-Tuning")
-        axs[0][1].set_xlabel("Valor verdadero")
-        axs[0][1].set_ylabel("Predicción")
-        axs[0][1].grid(True)
-
-        axs[1][0].scatter(true_SBP_norm, pred_post_SBP_norm, alpha=0.5)
-        axs[1][0].plot([true_SBP_norm.min(), true_SBP_norm.max()],
-            [true_SBP_norm.min(), true_SBP_norm.max()], 'r--')
-        axs[1][0].set_title(f"SBP - Despues del Fine-Tuning")
-        axs[1][0].set_xlabel("Valor verdadero")
-        axs[1][0].set_ylabel("Predicción")
-        axs[1][0].grid(True)
-    
-        axs[1][1].scatter(true_DBP_norm, pred_post_DBP_norm, alpha=0.5)
-        axs[1][1].plot([true_DBP_norm.min(), true_DBP_norm.max()],
-             [true_DBP_norm.min(), true_DBP_norm.max()], 'r--')
-        axs[1][1].set_title(f"DBP - Despues del Fine-Tuning")
-        axs[1][1].set_xlabel("Valor verdadero")
-        axs[1][1].set_ylabel("Predicción")
-        axs[1][1].grid(True)
-
-        plt.tight_layout()
-        plt.show()
-
-        # --- 2. Residuos ---
-        residuals_pre_SBP = pred_pre_SBP_norm - true_SBP_norm
-        residuals_pre_DBP = pred_pre_DBP_norm - true_DBP_norm
-        residuals_post_SBP = pred_post_SBP_norm - true_SBP_norm
-        residuals_post_DBP = pred_post_DBP_norm - true_DBP_norm
-
-        fig, axs = plt.subplots(2, 2, figsize=(12, 5))
-        axs[0][0].scatter(true_SBP_norm, residuals_pre_SBP, alpha=0.5)
-        axs[0][0].axhline(0, color='red', linestyle='--')
-        axs[0][0].set_title("Antes - Residuos - SBP")
-        axs[0][0].set_xlabel("Valor verdadero")
-        axs[0][0].set_ylabel("Error (Pred - Real)")
-        axs[0][0].grid(True)
-
-        axs[0][1].scatter(true_DBP_norm, residuals_pre_DBP, alpha=0.5)
-        axs[0][1].axhline(0, color='red', linestyle='--')
-        axs[0][1].set_title("Antes - Residuos - DBP")
-        axs[0][1].set_xlabel("Valor verdadero")
-        axs[0][1].set_ylabel("Error (Pred - Real)")
-        axs[0][1].grid(True)
-    
-        axs[1][0].scatter(true_SBP_norm, residuals_post_SBP, alpha=0.5)
-        axs[1][0].axhline(0, color='red', linestyle='--')
-        axs[1][0].set_title("Después - Residuos -SBP")
-        axs[1][0].set_xlabel("Valor verdadero")
-        axs[1][0].set_ylabel("Error (Pred - Real)")
-        axs[1][0].grid(True)
-
-        axs[1][1].scatter(true_DBP_norm, residuals_post_DBP, alpha=0.5)
-        axs[1][1].axhline(0, color='red', linestyle='--')
-        axs[1][1].set_title("Después - Residuos - DBP") 
-        axs[1][1].set_xlabel("Valor verdadero")
-        axs[1][1].set_ylabel("Error (Pred - Real)")
-        axs[1][1].grid(True)
-
-        plt.tight_layout()
-        plt.show()
-
-        # --- 3. Histograma de errores ---
-        fig, axs = plt.subplots(2, 2, figsize=(12, 5))
-        axs[0][0].hist(residuals_pre_SBP, bins=50, edgecolor='black')
-        axs[0][0].set_title("Antes - Histograma de errores -SBP")
-        axs[0][0].set_xlabel("Error (Pred - Real)")
-        axs[0][0].set_ylabel("Frecuencia")
-        axs[0][0].grid(True)
-
-        axs[0][1].hist(residuals_pre_DBP, bins=50, edgecolor='black')
-        axs[0][1].set_title("Antes - Histograma de errores -DBP")
-        axs[0][1].set_xlabel("Error (Pred - Real)")
-        axs[0][1].set_ylabel("Frecuencia")
-        axs[0][1].grid(True)
-
-        axs[1][0].hist(residuals_post_SBP, bins=50, edgecolor='black')
-        axs[1][0].set_title("Después - Histograma de errores -SBP")
-        axs[1][0].set_xlabel("Error (Pred - Real)")
-        axs[1][0].set_ylabel("Frecuencia")
-        axs[1][0].grid(True)
-
-        axs[1][1].hist(residuals_post_DBP, bins=50, edgecolor='black')
-        axs[1][1].set_title("Después - Histograma de errores -DBP")
-        axs[1][1].set_xlabel("Error (Pred - Real)")
-        axs[1][1].set_ylabel("Frecuencia")
-        axs[1][1].grid(True)
-
-        plt.tight_layout()
-        plt.show()
-        """
-
         
-        metrics_pre_SBP = calcular_metricas(true_SBP, pred_pre_SBP)
-        metrics_post_SBP = calcular_metricas(true_SBP, pred_post_SBP)
-        metrics_pre_DBP = calcular_metricas(true_DBP, pred_pre_DBP)
-        metrics_post_DBP = calcular_metricas(true_DBP, pred_post_DBP)
+        # Métricas (mae, rmse, bias, std)
+        m_pre_sbp = calcular_metricas(true_SBP, pred_pre_SBP)
+        m_post_sbp = calcular_metricas(true_SBP, pred_post_SBP)
+        m_pre_dbp = calcular_metricas(true_DBP, pred_pre_DBP)
+        m_post_dbp = calcular_metricas(true_DBP, pred_post_DBP)
 
-        global_metrics_pre_SBP.append(metrics_pre_SBP)
-        global_metrics_post_SBP.append(metrics_post_SBP)
-        global_metrics_pre_DBP.append(metrics_pre_DBP)
-        global_metrics_post_DBP.append(metrics_post_DBP)
+        global_metrics_pre_SBP.append(m_pre_sbp)
+        global_metrics_post_SBP.append(m_post_sbp)
+        global_metrics_pre_DBP.append(m_pre_dbp)
+        global_metrics_post_DBP.append(m_post_dbp)
 
-        mae_pre_sbp = metrics_pre_SBP[0]
-        mae_post_sbp = metrics_post_SBP[0]
-        mae_pre_dbp = metrics_pre_DBP[0]
-        mae_post_dbp = metrics_post_DBP[0]
+        means_true_sbp.append(np.mean(true_SBP))
+        means_pred_sbp.append(np.mean(pred_post_SBP))
+        maes_sbp.append(m_post_sbp[0]) # MAE del paciente
 
-        if mae_post_sbp < mae_pre_sbp:
-            mejoraron_sbp += 1
-        else:
-            empeoraron_sbp += 1
+        means_true_dbp.append(np.mean(true_DBP))
+        means_pred_dbp.append(np.mean(pred_post_DBP))
+        maes_dbp.append(m_post_dbp[0])  
 
-        if mae_post_dbp < mae_pre_dbp:
-            mejoraron_dbp += 1
-        else:
-            empeoraron_dbp += 1
+        if m_post_sbp[0] < m_pre_sbp[0]: mejoraron_sbp += 1
+        else: empeoraron_sbp += 1
 
+        if m_post_dbp[0] < m_pre_dbp[0]: mejoraron_dbp += 1
+        else: empeoraron_dbp += 1
+
+        # Guardar historial completo por paciente
         resultados_por_paciente.append({
             "paciente": id_paciente,
-            'patient_id': int(id_patient_for_tuning),
-            'mae_pre_sbp': float(mae_pre_sbp),
-            'mae_post_sbp': float(mae_post_sbp),
-            'mae_pre_dbp': float(mae_pre_dbp),
-            'mae_post_dbp': float(mae_post_dbp)
+            # SBP
+            'mae_pre_sbp': float(m_pre_sbp[0]),
+            'mae_post_sbp': float(m_post_sbp[0]),
+            'rmse_pre_sbp': float(m_pre_sbp[1]),
+            'rmse_post_sbp': float(m_post_sbp[1]),
+            'iso_bias_pre_sbp': float(m_pre_sbp[2]),
+            'iso_bias_post_sbp': float(m_post_sbp[2]), 
+            'iso_std_pre_sbp': float(m_pre_sbp[3]),
+            'iso_std_post_sbp': float(m_post_sbp[3]),
+            # DBP
+            'mae_pre_dbp': float(m_pre_dbp[0]),
+            'mae_post_dbp': float(m_post_dbp[0]),
+            'rmse_pre_dbp': float(m_pre_dbp[1]),
+            'rmse_post_dbp': float(m_post_dbp[1]),
+            'iso_bias_pre_dbp': float(m_pre_dbp[2]),
+            'iso_bias_post_dbp': float(m_post_dbp[2]), 
+            'iso_std_pre_dbp': float(m_pre_dbp[3]),
+            'iso_std_post_dbp': float(m_post_dbp[3]),
         })
 
-        print(f"\n=== Paciente {id_patient_for_tuning} ===")
-        print("SBP → Antes / Después")
-        print(f"MAE: {metrics_pre_SBP[0]:.2f} → {metrics_post_SBP[0]:.2f}")
-        print(f"RMSE: {metrics_pre_SBP[1]:.2f} → {metrics_post_SBP[1]:.2f}")
-        print(f"R²: {metrics_pre_SBP[3]:.3f} → {metrics_post_SBP[3]:.3f}")
-        print("DBP → Antes / Después")
-        print(f"MAE: {metrics_pre_DBP[0]:.2f} → {metrics_post_DBP[0]:.2f}")
-        print(f"RMSE: {metrics_pre_DBP[1]:.2f} → {metrics_post_DBP[1]:.2f}")
-        print(f"R²: {metrics_pre_DBP[3]:.3f} → {metrics_post_DBP[3]:.3f}")
-        """
-        if i == len(taskset.list_IDs) - 1:
-            residuals_pre = pred_pre_SBP - true_SBP
-            residuals_post = pred_post_SBP - true_SBP
-            plt.figure(figsize=(6,4))
-            plt.scatter(true_SBP, residuals_pre, alpha=0.5, label="Pre-FSL")
-            plt.scatter(true_SBP, residuals_post, alpha=0.5, label="Post-FSL")
-            plt.axhline(0, color='r', linestyle='--')
-            plt.title(f"Residuos SBP - Paciente {id_patient_for_tuning}")
-            plt.xlabel("SBP real (mmHg)")
-            plt.ylabel("Error (Pred - Real)")
-            plt.legend()
-            plt.show()
-        """
+        print(f"Paciente {id_patient_for_tuning} | SBP MAE: {m_pre_sbp[0]:.2f}->{m_post_sbp[0]:.2f} | RMSE: {m_pre_sbp[1]:.2f}->{m_post_sbp[1]:.2f} | ISO: {m_pre_sbp[2]:.2f}±{m_pre_sbp[3]:.2f} -> {m_post_sbp[2]:.2f}±{m_post_sbp[3]:.2f}")
 
+    # --- REPORTE GLOBAL ---
     avg_pre_SBP = promedio_metricas(global_metrics_pre_SBP)
     avg_post_SBP = promedio_metricas(global_metrics_post_SBP)
     avg_pre_DBP = promedio_metricas(global_metrics_pre_DBP)
     avg_post_DBP = promedio_metricas(global_metrics_post_DBP)
+    
+    total = len(taskset.list_IDs)
+    tasa_mejora_sbp = mejoraron_sbp / total
+    tasa_mejora_dbp = mejoraron_dbp / total
 
-    print("\n===============================")
-    print("=== MÉTRICAS GLOBALES (PROMEDIO ENTRE PACIENTES) ===")
-    print("===============================")
-    print(f"SBP → MAE: {avg_pre_SBP[0]:.2f} → {avg_post_SBP[0]:.2f}  | RMSE: {avg_pre_SBP[1]:.2f} → {avg_post_SBP[1]:.2f}  | R²: {avg_pre_SBP[3]:.3f} → {avg_post_SBP[3]:.3f}")
-    print(f"DBP → MAE: {avg_pre_DBP[0]:.2f} → {avg_post_DBP[0]:.2f}  | RMSE: {avg_pre_DBP[1]:.2f} → {avg_post_DBP[1]:.2f}  | R²: {avg_pre_DBP[3]:.3f} → {avg_post_DBP[3]:.3f}")
+    print("\n" + "="*60)
+    print("       RESULTADOS FINALES GLOBAL (Promedio Pacientes)")
+    print("="*60)
+    
+    # SBP REPORT
+    print("\n--- SISTÓLICA (SBP) ---")
+    print(f"Ingeniería (MAE)   : {avg_pre_SBP[0]:.2f} -> {avg_post_SBP[0]:.2f} mmHg")
+    print(f"Ingeniería (RMSE)  : {avg_pre_SBP[1]:.2f} -> {avg_post_SBP[1]:.2f} mmHg")
+    print(f"Clínica (ISO Bias) : {avg_pre_SBP[2]:.2f} -> {avg_post_SBP[2]:.2f} mmHg")
+    print(f"Clínica (ISO STD)  : {avg_pre_SBP[3]:.2f} -> {avg_post_SBP[3]:.2f} mmHg")
+    print(f"RESUMEN ISO FINAL  : {avg_post_SBP[2]:.2f} ± {avg_post_SBP[3]:.2f} mmHg (Meta: <= 5 ± 8)")
 
-    # Estimación global de mejora porcentual
-    mejora_global_SBP = ((avg_pre_SBP - avg_post_SBP) / np.abs(avg_pre_SBP)) * 100
-    mejora_global_DBP = ((avg_pre_DBP - avg_post_DBP) / np.abs(avg_pre_DBP)) * 100
+    # DBP REPORT
+    print("\n--- DIASTÓLICA (DBP) ---")
+    print(f"Ingeniería (MAE)   : {avg_pre_DBP[0]:.2f} -> {avg_post_DBP[0]:.2f} mmHg")
+    print(f"Ingeniería (RMSE)  : {avg_pre_DBP[1]:.2f} -> {avg_post_DBP[1]:.2f} mmHg")
+    print(f"RESUMEN ISO FINAL  : {avg_post_DBP[2]:.2f} ± {avg_post_DBP[3]:.2f} mmHg (Meta: <= 5 ± 8)")
 
-    print("\n=== Mejora global Few-Shot (%) ===")
-    print(f"SBP → MAE: {mejora_global_SBP[0]:.2f}%, RMSE: {mejora_global_SBP[1]:.2f}%, R²: {mejora_global_SBP[3]:.2f}%")
-    print(f"DBP → MAE: {mejora_global_DBP[0]:.2f}%, RMSE: {mejora_global_DBP[1]:.2f}%, R²: {mejora_global_DBP[3]:.2f}%")
+    print("\n--- CONSISTENCIA ---")
+    print(f"Tasa Mejora SBP: {(tasa_mejora_sbp)*100:.1f}% ({mejoraron_sbp}/{total})")
+    print(f"Tasa Mejora DBP: {(tasa_mejora_dbp)*100:.1f}% ({mejoraron_dbp}/{total})")
+    
+    graficar_resultados_pacientes(means_true_sbp, means_pred_sbp, maes_sbp, titulo="SBP")
+    graficar_resultados_pacientes(means_true_dbp, means_pred_dbp, maes_dbp, titulo="DBP")
 
-    total_pacientes = len(taskset.list_IDs)
-    tasa_mejora_sbp = (mejoraron_sbp / total_pacientes) * 100
-    tasa_mejora_dbp = (mejoraron_dbp / total_pacientes) * 100
-
-    print("\n=== Pacientes: mejora (MAE) ===")
-    print(f"Evaluados: {total_pacientes}")
-    print(f"SBP -> Mejoraron: {mejoraron_sbp}, Empeoraron: {empeoraron_sbp}, Tasa mejora: {tasa_mejora_sbp:.2f}%")
-    print(f"DBP -> Mejoraron: {mejoraron_dbp}, Empeoraron: {empeoraron_dbp}, Tasa mejora: {tasa_mejora_dbp:.2f}%")
-
-    mejoras_mae_sbp = [r['mae_pre_sbp'] - r['mae_post_sbp'] for r in resultados_por_paciente]
-    mejoras_mae_dbp = [r['mae_pre_dbp'] - r['mae_post_dbp'] for r in resultados_por_paciente]
-    print(f"\nMejora MAE promedio SBP por paciente: {np.mean(mejoras_mae_sbp):.3f} mmHg")
-    print(f"Mejora MAE promedio DBP por paciente: {np.mean(mejoras_mae_dbp):.3f} mmHg")
-
-    print("\n=== Pacientes que NO mejoraron con Few-Shot (MAE) ===")
-
-    # Pacientes que empeoraron o no cambiaron (SBP)
-    no_mejoran_sbp = [r for r in resultados_por_paciente if r['mae_post_sbp'] >= r['mae_pre_sbp']]
-    # Pacientes que empeoraron o no cambiaron (DBP)
-    no_mejoran_dbp = [r for r in resultados_por_paciente if r['mae_post_dbp'] >= r['mae_pre_dbp']]
-
-    if len(no_mejoran_sbp) == 0 and len(no_mejoran_dbp) == 0:
-        print("Todos los pacientes mejoraron en SBP y DBP.")
-    else:
-        if len(no_mejoran_sbp) > 0:
-            print(f"\nSBP (Pacientes: {len(no_mejoran_sbp)})")
-            for r in no_mejoran_sbp:
-                diff = r['mae_post_sbp'] - r['mae_pre_sbp']
-                print(f" - Paciente {r['paciente']}: MAE_pre={r['mae_pre_sbp']:.2f}, MAE_post={r['mae_post_sbp']:.2f}, Δ={diff:+.2f}")
-        if len(no_mejoran_dbp) > 0:
-            print(f"\nDBP (Pacientes: {len(no_mejoran_dbp)})")
-            for r in no_mejoran_dbp:
-                diff = r['mae_post_dbp'] - r['mae_pre_dbp']
-                print(f" - Paciente {r['paciente']}: MAE_pre={r['mae_pre_dbp']:.2f}, MAE_post={r['mae_post_dbp']:.2f}, Δ={diff:+.2f}")
+    # DICCIONARIO COMPLETO (PRE Y POST PARA COMPARAR)
     resultados = {
+        # SBP PRE
         "mae_pre_sbp": float(avg_pre_SBP[0]),
+        "rmse_pre_sbp": float(avg_pre_SBP[1]),
+        "iso_bias_pre_sbp": float(avg_pre_SBP[2]),
+        "iso_std_pre_sbp": float(avg_pre_SBP[3]),
+        # SBP POST
         "mae_post_sbp": float(avg_post_SBP[0]),
+        "rmse_post_sbp": float(avg_post_SBP[1]),
+        "iso_bias_post_sbp": float(avg_post_SBP[2]),
+        "iso_std_post_sbp": float(avg_post_SBP[3]),
+        
+        # DBP PRE
         "mae_pre_dbp": float(avg_pre_DBP[0]),
+        "rmse_pre_dbp": float(avg_pre_DBP[1]),
+        "iso_bias_pre_dbp": float(avg_pre_DBP[2]),
+        "iso_std_pre_dbp": float(avg_pre_DBP[3]),
+        # DBP POST
         "mae_post_dbp": float(avg_post_DBP[0]),
-        "mejoraron sbp": mejoraron_sbp,
-        "mejoraron dbp": mejoraron_dbp,
-        "empeoraron sbp": empeoraron_sbp,
-        "empeoraron dbp": empeoraron_dbp,
+        "rmse_post_dbp": float(avg_post_DBP[1]),
+        "iso_bias_post_dbp": float(avg_post_DBP[2]),
+        "iso_std_post_dbp": float(avg_post_DBP[3]),
+
+        # Métricas de Mejora
         "tasa_mejora_sbp": tasa_mejora_sbp,
         "tasa_mejora_dbp": tasa_mejora_dbp,
         "resultados_por_paciente": resultados_por_paciente

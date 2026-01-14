@@ -2,13 +2,14 @@ import os
 import csv 
 import pandas as pd 
 from src.data.data_chargers.MetaDataset import TaskDataset
+from src.data.data_chargers.PatientWiseSet import PatientWiseDataset
 #from src.models.Modelo_conv import Modelo_Convolucional
 #from src.models.InceptionTime import InceptionTime
 from src.models.ConvolucionalV1 import Modelo_ConvolucionalV1
 #from src.models.ConvolucionalV2 import Modelo_ConvolucionalV2
 import numpy as np
 import learn2learn as l2l
-from torch import nn, optim, seed
+from torch import mode, nn, optim, seed
 import matplotlib.pyplot as plt
 import torch.utils.data as data
 from tqdm.auto import tqdm 
@@ -18,46 +19,57 @@ from src.data.data_chargers.Clase_UCIDataset import UCIDataset
 
 CHECKPOINT_DIR = 'models/checkpoints'
 LOG_DIR = 'metalearning/logs'
-LATEST_CKPT_PATH = os.path.join(CHECKPOINT_DIR, 'checkpoint_latest.pt')
-BEST_CKPT_PATH = os.path.join(CHECKPOINT_DIR, 'best_meta_model_v1.pt')
-CSV_LOG_PATH = os.path.join(LOG_DIR, 'training_log.csv')
+
+# CAMBIO: Nombres específicos para este experimento
+LATEST_CKPT_PATH = os.path.join(CHECKPOINT_DIR, 'checkpoint_latest_patientwise_paramoptimos_s10q20.pt')
+BEST_CKPT_PATH = os.path.join(CHECKPOINT_DIR, 'best_meta_model_patientwise_paramoptimos_s10q20.pt')
+CSV_LOG_PATH = os.path.join(LOG_DIR, 'training_log_patientwise_paramoptimos_s10q20.csv')
 
 os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 os.makedirs(LOG_DIR, exist_ok=True)
 
-def validate_meta_epoch(maml, val_loader, lossfn, adapt_steps, shots, device):
+def validate_meta_epoch(maml, val_loader, lossfn, adapt_steps, shots, device, mode='traditional'):
     meta_val_loss = 0.0
     num_batches = 0
     
-    # Importante: No queremos guardar gradientes del modelo PRINCIPAL, 
-    # pero el learner.adapt SI necesita gradientes locales.
-    # Por eso NO usamos 'with torch.no_grad():' globalmente aquí, es truculento en MAML.
-    
     for batch in val_loader:
-        x_batch, y_batch = batch
-        if device.type == 'cuda':
-            x_batch, y_batch = x_batch.to(device, non_blocking=True), y_batch.to(device, non_blocking=True)
+        # Lógica de desempaquetado según el modo
+        if mode == 'traditional':
+            x_batch, y_batch = batch
+            if device.type == 'cuda':
+                x_batch, y_batch = x_batch.to(device, non_blocking=True), y_batch.to(device, non_blocking=True)
+            effective_batch_size = x_batch.size(0)
+        else: # patient_wise
+            # AQUÍ ESTÁ LA CLAVE: Recibir 4 tensores
+            x_support_batch, y_support_batch, x_query_batch, y_query_batch = batch
+            if device.type == 'cuda':
+                x_support_batch = x_support_batch.to(device, non_blocking=True)
+                y_support_batch = y_support_batch.to(device, non_blocking=True)
+                x_query_batch = x_query_batch.to(device, non_blocking=True)
+                y_query_batch = y_query_batch.to(device, non_blocking=True)
+            effective_batch_size = x_support_batch.size(0)
             
-        effective_batch_size = x_batch.size(0)
         batch_loss = 0.0
         
         for i in range(effective_batch_size):
-            # Clonamos el modelo para validación (esto no afecta al modelo entrenado)
             learner = maml.clone()
             
-            x_task, y_task = x_batch[i], y_batch[i]
-            x_support, y_support = x_task[:shots], y_task[:shots]
-            x_query, y_query = x_task[shots:], y_task[shots:]
+            # Preparación de datos support/query
+            if mode == 'traditional':
+                x_task, y_task = x_batch[i], y_batch[i]
+                x_support, y_support = x_task[:shots], y_task[:shots]
+                x_query, y_query = x_task[shots:], y_task[shots:]
+            else: # patient_wise
+                x_support, y_support = x_support_batch[i], y_support_batch[i]
+                x_query, y_query = x_query_batch[i], y_query_batch[i]
             
-            # Adaptación Rápida (Inner Loop) en el set de validación
-            # Esto simula: "¿Qué tan bien aprende el modelo con un paciente nuevo?"
+            # Inner Loop
             for _ in range(adapt_steps):
                 support_preds = learner(x_support)
                 support_loss = lossfn(support_preds, y_support)
                 learner.adapt(support_loss)
             
-            # Evaluar en Query (Outer Loop)
-            # Desactivamos gradientes aquí porque solo queremos medir el error, no entrenar
+            # Outer Loop
             with torch.no_grad():
                 query_preds = learner(x_query)
                 query_loss = lossfn(query_preds, y_query)
@@ -66,6 +78,7 @@ def validate_meta_epoch(maml, val_loader, lossfn, adapt_steps, shots, device):
         meta_val_loss += batch_loss / effective_batch_size
         num_batches += 1
         
+    if num_batches == 0: return 0.0
     return meta_val_loss / num_batches
 
 def save_checkpoint(state, is_best, filename=LATEST_CKPT_PATH):
@@ -106,8 +119,11 @@ def plot_from_csv(csv_path):
     except Exception as e:
         print(f"No se pudo graficar desde CSV: {e}")
 
-def main(shots=5,tasks_per_batch=4, adapt_lr=0.01, meta_lr=0.001, adapt_steps=5, seed=42, num_epochs=500, patience=20, min_delta=1e-3):
+def main(mode='patient_wise', shots=5,tasks_per_batch=4, adapt_lr=0.01, meta_lr=0.001, adapt_steps=5, seed=42, num_epochs=500, patience=20, min_delta=1e-3,
+         # Parametros modo patient_wise:
+         N_patient_group=4, p_support=5, q_query=10):
 
+    print(f"MODO SELECCIONADO: {mode.upper()}")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Usando dispositivo: {device}")
     if device.type == 'cuda':
@@ -130,12 +146,26 @@ def main(shots=5,tasks_per_batch=4, adapt_lr=0.01, meta_lr=0.001, adapt_steps=5,
     print("Cargando datasets...")
     dataset_completo = UCIDataset(data_paths)
 
-    #unique_patients = merged_data['patient_ids'].unique().tolist()
     all_pids = torch.tensor([dataset_completo[i][2] for i in range(len(dataset_completo))])
     unique_patients = all_pids.unique().tolist()
 
     random.shuffle(unique_patients)
+
+    if mode == 'traditional':
+
+        min_samples = shots * 2 
+    else:
+        
+        min_samples = p_support + q_query
     
+    patient_to_indices = {pid: [] for pid in unique_patients}
+    for i in range(len(dataset_completo)):
+        _, _, pid, _ = dataset_completo[i]
+        patient_to_indices[int(pid)].append(i)
+        
+    valid_IDs_global = [pid for pid, idxs in patient_to_indices.items() if len(idxs) >= min_samples]
+    unique_patients = valid_IDs_global
+
     total_patients = len(unique_patients)
     n_train = int(total_patients * 0.70)
     n_val = int(total_patients * 0.15)
@@ -148,12 +178,20 @@ def main(shots=5,tasks_per_batch=4, adapt_lr=0.01, meta_lr=0.001, adapt_steps=5,
     # Guardar lista de pacientes para evaluación few-shot
     torch.save({'test_patient_ids': test_patients}, 'data/processed/data_UCI/few_shot_patient_data.pt')
 
-    train_tasksets = TaskDataset(list_IDs=train_patients, base_dataset=dataset_completo, num_shots=shots)
-    train_loader = data.DataLoader(train_tasksets, batch_size=tasks_per_batch, shuffle=True, num_workers=0, pin_memory=True)
-    
-    val_tasksets = TaskDataset(list_IDs=val_patients, base_dataset=dataset_completo, num_shots=shots)
-  
-    val_loader = data.DataLoader(val_tasksets, batch_size=tasks_per_batch, shuffle=False, num_workers=0, pin_memory=True)
+    if mode == 'traditional':
+        train_tasksets = TaskDataset(list_IDs=train_patients, base_dataset=dataset_completo, num_shots=shots)
+        val_tasksets = TaskDataset(list_IDs=val_patients, base_dataset=dataset_completo, num_shots=shots)
+    elif mode == 'patient_wise':
+        train_tasksets = PatientWiseDataset(list_IDs=train_patients, base_dataset=dataset_completo, 
+                                            N_patients=N_patient_group, p_support=p_support, q_query=q_query)
+        val_tasksets = PatientWiseDataset(list_IDs=val_patients, base_dataset=dataset_completo, 
+                                          N_patients=N_patient_group, p_support=p_support, q_query=q_query)
+    else:
+        raise ValueError("Mode debe ser 'traditional' o 'patient_wise'")
+
+    # Dataloaders
+    train_loader = data.DataLoader(train_tasksets, batch_size=tasks_per_batch, shuffle=True, num_workers=0, pin_memory=True, drop_last=True)
+    val_loader = data.DataLoader(val_tasksets, batch_size=tasks_per_batch, shuffle=False, num_workers=0, pin_memory=True, drop_last=True)
  
     model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=500)
     model.to(device)
@@ -165,62 +203,66 @@ def main(shots=5,tasks_per_batch=4, adapt_lr=0.01, meta_lr=0.001, adapt_steps=5,
     patience_counter = 0
     best_valid_loss = float('inf')
 
-    # Verificamos si existe un archivo de "último estado"
+    
     if os.path.exists(LATEST_CKPT_PATH):
         print(f"Checkpoint encontrado en {LATEST_CKPT_PATH}. Reanudando...")
         checkpoint = torch.load(LATEST_CKPT_PATH)
-        maml.load_state_dict(checkpoint['model_state_dict']) # Cargamos pesos
-        opt.load_state_dict(checkpoint['optimizer_state_dict']) # Cargamos estado del optimizador (CRÍTICO)
-        start_epoch = checkpoint['epoch'] + 1 # Arrancamos en la siguiente época
+        maml.load_state_dict(checkpoint['model_state_dict']) 
+        opt.load_state_dict(checkpoint['optimizer_state_dict']) 
         best_valid_loss = checkpoint['best_loss']
         patience_counter = checkpoint.get('patience_counter', 0)
         print(f"Reanudando desde época {start_epoch}. Mejor Loss anterior: {best_valid_loss:.4f}")
     else:
         print("Iniciando entrenamiento desde cero.")
         if os.path.exists(CSV_LOG_PATH):
-            os.remove(CSV_LOG_PATH) # Limpiamos log viejo si empezamos de cero
+            os.remove(CSV_LOG_PATH) 
 
     # Entrenamiento del modelo
-    #Epochs bucle
+
     for epoch in range(start_epoch, num_epochs):  
         print(f"\n--- Época {epoch+1}/{num_epochs} ---")
         epoch_loss_accum = 0.0   
         num_batches = 0
-        # Outer loop: iteraciones sobre lotes de tareas
+        
         with tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}") as pbar:
             for batch in pbar:
                 meta_train_loss = 0.0
-                x_batch, y_batch = batch # batch: lote de tareas, x_batch: entradas, y_batch: etiquetas
-                if device.type == 'cuda':
-                    x_batch = x_batch.to(device, non_blocking=True)
-                    y_batch = y_batch.to(device, non_blocking=True)
-                #x_batch, y_batch = x_batch.to(device), y_batch.to(device)
-                effective_batch_size = x_batch.size(0)
-                # Bucle sobre las tareas en el batch
+                
+                if mode == 'traditional':
+                    x_batch, y_batch = batch
+                    if device.type == 'cuda':
+                        x_batch, y_batch = x_batch.to(device, non_blocking=True), y_batch.to(device, non_blocking=True)
+                    effective_batch_size = x_batch.size(0)
+                else: # patient_wise
+                    x_sup_batch, y_sup_batch, x_qry_batch, y_qry_batch = batch
+                    if device.type == 'cuda':
+                         x_sup_batch, y_sup_batch = x_sup_batch.to(device, non_blocking=True), y_sup_batch.to(device, non_blocking=True)
+                         x_qry_batch, y_qry_batch = x_qry_batch.to(device, non_blocking=True), y_qry_batch.to(device, non_blocking=True)
+                    effective_batch_size = x_sup_batch.size(0)
+
                 for i in range(effective_batch_size):
                     learner = maml.clone()
 
-                    x_task = x_batch[i]
-                    y_task = y_batch[i]
+                    if mode == 'traditional':
+                        x_task, y_task = x_batch[i], y_batch[i]
+                        x_support, y_support = x_task[:shots], y_task[:shots]
+                        x_query, y_query = x_task[shots:], y_task[shots:]
+                    else: # patient_wise
+                        x_support, y_support = x_sup_batch[i], y_sup_batch[i]
+                        x_query, y_query = x_qry_batch[i], y_qry_batch[i]
 
-                    x_support = x_task[:shots]
-                    y_support = y_task[:shots]
-                    x_query   = x_task[shots:]
-                    y_query   = y_task[shots:]
-
-                    # Inner loop: adaptación del modelo a la tarea
-                    for _ in range(adapt_steps): #adapt_steps: cantidad de pasos de adaptación a la tarea
+                    # Inner loop
+                    for _ in range(adapt_steps): 
                         support_preds = learner(x_support)
                         support_loss = lossfn(support_preds, y_support)
                         learner.adapt(support_loss)
 
-                    # Evaluación del modelo adaptado en el conjunto de consulta
+                    # Outer Loop
                     query_preds = learner(x_query)
                     query_loss = lossfn(query_preds, y_query)
                     meta_train_loss += query_loss
 
                 meta_train_loss = meta_train_loss / effective_batch_size
-
                 epoch_loss_accum += meta_train_loss.item()
                 num_batches += 1
                 pbar.set_postfix({'batch_loss': meta_train_loss.item()})
@@ -233,10 +275,9 @@ def main(shots=5,tasks_per_batch=4, adapt_lr=0.01, meta_lr=0.001, adapt_steps=5,
         epoch_train_loss = epoch_loss_accum / num_batches
         print(f"Train Loss: {epoch_train_loss:.4f}")
 
-        # 2. VALIDACIÓN (NUEVO)
-        # Validamos sobre pacientes NO vistos
         print("Validando...")
-        valid_loss = validate_meta_epoch(maml, val_loader, lossfn, adapt_steps, shots, device)
+        shots_arg = shots if mode == 'traditional' else p_support
+        valid_loss = validate_meta_epoch(maml, val_loader, lossfn, adapt_steps, shots_arg, device, mode=mode)
         print(f"Valid Loss: {valid_loss:.4f}")
 
         log_to_csv(epoch+1, epoch_train_loss, valid_loss)
@@ -271,4 +312,6 @@ def main(shots=5,tasks_per_batch=4, adapt_lr=0.01, meta_lr=0.001, adapt_steps=5,
     plot_from_csv(CSV_LOG_PATH)
     
 if __name__ == '__main__':
-    main()        
+    main(mode='patient_wise', shots=5,tasks_per_batch=4, adapt_lr=0.01, meta_lr=0.005, adapt_steps=10, seed=42, num_epochs=500, patience=20, min_delta=1e-3,
+         # Parametros modo patient_wise:
+         N_patient_group=4, p_support=10, q_query=20)        

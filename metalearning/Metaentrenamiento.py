@@ -21,9 +21,9 @@ CHECKPOINT_DIR = 'models/checkpoints'
 LOG_DIR = 'metalearning/logs'
 
 # CAMBIO: Nombres específicos para este experimento
-LATEST_CKPT_PATH = os.path.join(CHECKPOINT_DIR, 'checkpoint_latest_patientwise_paramoptimos_s10q20.pt')
-BEST_CKPT_PATH = os.path.join(CHECKPOINT_DIR, 'best_meta_model_patientwise_paramoptimos_s10q20.pt')
-CSV_LOG_PATH = os.path.join(LOG_DIR, 'training_log_patientwise_paramoptimos_s10q20.csv')
+LATEST_CKPT_PATH = os.path.join(CHECKPOINT_DIR, 'checkpoint_latest_patientwise_s10q20_adapt5_PG1.pt')
+BEST_CKPT_PATH = os.path.join(CHECKPOINT_DIR, 'best_meta_model_patientwise_s10q20_adapt5_PG1.pt')
+CSV_LOG_PATH = os.path.join(LOG_DIR, 'training_log_patientwises_s10q20_adapt5_PG1.csv')
 
 os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 os.makedirs(LOG_DIR, exist_ok=True)
@@ -312,6 +312,6 @@ def main(mode='patient_wise', shots=5,tasks_per_batch=4, adapt_lr=0.01, meta_lr=
     plot_from_csv(CSV_LOG_PATH)
     
 if __name__ == '__main__':
-    main(mode='patient_wise', shots=5,tasks_per_batch=4, adapt_lr=0.01, meta_lr=0.005, adapt_steps=10, seed=42, num_epochs=500, patience=20, min_delta=1e-3,
+    main(mode='patient_wise', shots=5,tasks_per_batch=4, adapt_lr=0.01, meta_lr=0.001, adapt_steps=5, seed=42, num_epochs=500, patience=20, min_delta=1e-3,
          # Parametros modo patient_wise:
-         N_patient_group=4, p_support=10, q_query=20)        
+         N_patient_group=1, p_support=10, q_query=20)        

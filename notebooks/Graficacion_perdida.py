@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # 1. Cargar el archivo
-df = pd.read_csv('metalearning/logs/training_log_patientwise_40paciencia.csv')
+df = pd.read_csv('metalearning/logs/training_log_patientwise_paramoptimos_s10q20.csv')
 
 # 2. Configuración del gráfico
 plt.figure(figsize=(10, 6)) 

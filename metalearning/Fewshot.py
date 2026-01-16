@@ -154,7 +154,7 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
 
     # --- Carga de Modelo ---
     model = Modelo_ConvolucionalV1(in_channels=2, out_channels=2, long_signal=500)
-    path_model = 'models/checkpoints/best_meta_model_patientwise_paramoptimos.pt'
+    path_model = 'models/checkpoints/best_meta_model_patientwise_s10q20_adapt5_PG2.pt'
     
     print(f"Cargando modelo desde {path_model}...")
     checkpoint = torch.load(path_model, map_location=device, weights_only=False) 
@@ -175,6 +175,10 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
 
     taskset = TaskDataset(list_IDs=test_patient_ids, base_dataset=dataset_completo, num_shots=n_shots)
 
+    global_errors_pre_SBP = []
+    global_errors_post_SBP = []
+    global_errors_pre_DBP = []
+    global_errors_post_DBP = []
     # Listas globales
     global_metrics_pre_SBP, global_metrics_post_SBP = [], []
     global_metrics_pre_DBP, global_metrics_post_DBP = [], []
@@ -245,6 +249,11 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
         pred_post_DBP = desnormalizar_zscore(pred_post_flat[:,1], DBP_MEAN, DBP_STD)
         true_SBP = desnormalizar_zscore(labels_flat[:,0], SBP_MEAN, SBP_STD)
         true_DBP = desnormalizar_zscore(labels_flat[:,1], DBP_MEAN, DBP_STD)
+
+        global_errors_pre_SBP.extend(pred_pre_SBP - true_SBP)
+        global_errors_post_SBP.extend(pred_post_SBP - true_SBP)
+        global_errors_pre_DBP.extend(pred_pre_DBP - true_DBP)
+        global_errors_post_DBP.extend(pred_post_DBP - true_DBP)
         
         # Métricas (mae, rmse, bias, std)
         m_pre_sbp = calcular_metricas(true_SBP, pred_pre_SBP)
@@ -297,32 +306,50 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
         print(f"Paciente {id_patient_for_tuning} | SBP MAE: {m_pre_sbp[0]:.2f}->{m_post_sbp[0]:.2f} | RMSE: {m_pre_sbp[1]:.2f}->{m_post_sbp[1]:.2f} | ISO: {m_pre_sbp[2]:.2f}±{m_pre_sbp[3]:.2f} -> {m_post_sbp[2]:.2f}±{m_post_sbp[3]:.2f}")
 
     # --- REPORTE GLOBAL ---
-    avg_pre_SBP = promedio_metricas(global_metrics_pre_SBP)
-    avg_post_SBP = promedio_metricas(global_metrics_post_SBP)
-    avg_pre_DBP = promedio_metricas(global_metrics_pre_DBP)
-    avg_post_DBP = promedio_metricas(global_metrics_post_DBP)
+    err_pre_sbp_all = np.array(global_errors_pre_SBP)
+    err_post_sbp_all = np.array(global_errors_post_SBP)
+    err_pre_dbp_all = np.array(global_errors_pre_DBP)
+    err_post_dbp_all = np.array(global_errors_post_DBP)
+
+    # MAE Global (Coincide generalmente con el promedio de MAEs, pero es más exacto calcularlo global)
+    mae_post_sbp_global = np.mean(np.abs(err_post_sbp_all))
+    mae_post_dbp_global = np.mean(np.abs(err_post_dbp_all))
+
+    # RMSE Global (Raíz del error cuadrático medio de TODOS los latidos)
+    rmse_post_sbp_global = np.sqrt(np.mean(np.square(err_post_sbp_all)))
+    rmse_post_dbp_global = np.sqrt(np.mean(np.square(err_post_dbp_all)))
+
+    # ISO STD Global (La desviación estándar de TODOS los errores concatenados)
+    std_post_sbp_global = np.std(err_post_sbp_all)
+    std_post_dbp_global = np.std(err_post_dbp_all)
+
+    # ISO BIAS Global
+    bias_post_sbp_global = np.mean(err_post_sbp_all)
+    bias_post_dbp_global = np.mean(err_post_dbp_all)
     
+    # Tasas
     total = len(taskset.list_IDs)
     tasa_mejora_sbp = mejoraron_sbp / total
     tasa_mejora_dbp = mejoraron_dbp / total
 
     print("\n" + "="*60)
-    print("       RESULTADOS FINALES GLOBAL (Promedio Pacientes)")
+    print("       RESULTADOS FINALES GLOBAL (Calculados sobre todos los latidos)")
     print("="*60)
     
     # SBP REPORT
     print("\n--- SISTÓLICA (SBP) ---")
-    print(f"Ingeniería (MAE)   : {avg_pre_SBP[0]:.2f} -> {avg_post_SBP[0]:.2f} mmHg")
-    print(f"Ingeniería (RMSE)  : {avg_pre_SBP[1]:.2f} -> {avg_post_SBP[1]:.2f} mmHg")
-    print(f"Clínica (ISO Bias) : {avg_pre_SBP[2]:.2f} -> {avg_post_SBP[2]:.2f} mmHg")
-    print(f"Clínica (ISO STD)  : {avg_pre_SBP[3]:.2f} -> {avg_post_SBP[3]:.2f} mmHg")
-    print(f"RESUMEN ISO FINAL  : {avg_post_SBP[2]:.2f} ± {avg_post_SBP[3]:.2f} mmHg (Meta: <= 5 ± 8)")
+    print(f"Ingeniería (MAE)   : {mae_post_sbp_global:.2f} mmHg")
+    print(f"Ingeniería (RMSE)  : {rmse_post_sbp_global:.2f} mmHg")
+    print(f"RESUMEN ISO FINAL  : {bias_post_sbp_global:.2f} ± {std_post_sbp_global:.2f} mmHg (Meta: <= 5 ± 8)")
+    # Verificación matemática rápida para tu paz mental
+    check_rmse = np.sqrt(bias_post_sbp_global**2 + std_post_sbp_global**2)
+    print(f"  [Chequeo: sqrt(Bias^2 + STD^2) = {check_rmse:.2f} vs RMSE = {rmse_post_sbp_global:.2f}] -> ¡Cuadran!")
 
     # DBP REPORT
     print("\n--- DIASTÓLICA (DBP) ---")
-    print(f"Ingeniería (MAE)   : {avg_pre_DBP[0]:.2f} -> {avg_post_DBP[0]:.2f} mmHg")
-    print(f"Ingeniería (RMSE)  : {avg_pre_DBP[1]:.2f} -> {avg_post_DBP[1]:.2f} mmHg")
-    print(f"RESUMEN ISO FINAL  : {avg_post_DBP[2]:.2f} ± {avg_post_DBP[3]:.2f} mmHg (Meta: <= 5 ± 8)")
+    print(f"Ingeniería (MAE)   : {mae_post_dbp_global:.2f} mmHg")
+    print(f"Ingeniería (RMSE)  : {rmse_post_dbp_global:.2f} mmHg")
+    print(f"RESUMEN ISO FINAL  : {bias_post_dbp_global:.2f} ± {std_post_dbp_global:.2f} mmHg (Meta: <= 5 ± 8)")
 
     print("\n--- CONSISTENCIA ---")
     print(f"Tasa Mejora SBP: {(tasa_mejora_sbp)*100:.1f}% ({mejoraron_sbp}/{total})")
@@ -331,34 +358,16 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
     graficar_resultados_pacientes(means_true_sbp, means_pred_sbp, maes_sbp, titulo="SBP")
     graficar_resultados_pacientes(means_true_dbp, means_pred_dbp, maes_dbp, titulo="DBP")
 
-    # DICCIONARIO COMPLETO (PRE Y POST PARA COMPARAR)
+    # Retorno
     resultados = {
-        # SBP PRE
-        "mae_pre_sbp": float(avg_pre_SBP[0]),
-        "rmse_pre_sbp": float(avg_pre_SBP[1]),
-        "iso_bias_pre_sbp": float(avg_pre_SBP[2]),
-        "iso_std_pre_sbp": float(avg_pre_SBP[3]),
-        # SBP POST
-        "mae_post_sbp": float(avg_post_SBP[0]),
-        "rmse_post_sbp": float(avg_post_SBP[1]),
-        "iso_bias_post_sbp": float(avg_post_SBP[2]),
-        "iso_std_post_sbp": float(avg_post_SBP[3]),
-        
-        # DBP PRE
-        "mae_pre_dbp": float(avg_pre_DBP[0]),
-        "rmse_pre_dbp": float(avg_pre_DBP[1]),
-        "iso_bias_pre_dbp": float(avg_pre_DBP[2]),
-        "iso_std_pre_dbp": float(avg_pre_DBP[3]),
-        # DBP POST
-        "mae_post_dbp": float(avg_post_DBP[0]),
-        "rmse_post_dbp": float(avg_post_DBP[1]),
-        "iso_bias_post_dbp": float(avg_post_DBP[2]),
-        "iso_std_post_dbp": float(avg_post_DBP[3]),
-
-        # Métricas de Mejora
-        "tasa_mejora_sbp": tasa_mejora_sbp,
-        "tasa_mejora_dbp": tasa_mejora_dbp,
-        "resultados_por_paciente": resultados_por_paciente
+        "mae_global_sbp": mae_post_sbp_global,
+        "rmse_global_sbp": rmse_post_sbp_global,
+        "iso_bias_global_sbp": bias_post_sbp_global,
+        "iso_std_global_sbp": std_post_sbp_global,
+        "mae_global_dbp": mae_post_dbp_global,
+        "rmse_global_dbp": rmse_post_dbp_global,
+        "iso_bias_global_dbp": bias_post_dbp_global,
+        "iso_std_global_dbp": std_post_dbp_global,
     }
     return resultados
 

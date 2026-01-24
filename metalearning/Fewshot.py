@@ -65,67 +65,116 @@ def evaluation(batch, model, criterion, device):
         loss = criterion(preds, labels)
     return preds, loss
 
-def graficar_resultados_pacientes(true_means, pred_means, maes, titulo="Por Paciente"):
+def graficar_resultados_pacientes(true_means, pred_means, maes_post, maes_pre=None, titulo="Por Paciente"):
     """
-    Grafica 1 punto por paciente (Promedio Real vs Promedio Predicho).
-    Ayuda a ver el desempeño poblacional sin el ruido de cada latido.
+    Panel 2x2.
+    MODIFICACIÓN: Etiquetas a, b, c, d DENTRO del gráfico (esquina superior izq)
+    con fondo blanco para evitar solapamiento con los datos.
     """
-    # Convertir a numpy por seguridad
     true_means = np.array(true_means)
     pred_means = np.array(pred_means)
-    maes = np.array(maes)
-    
+    maes_post = np.array(maes_post) 
+    if maes_pre is not None: maes_pre = np.array(maes_pre)
+
     bias_per_patient = pred_means - true_means
     mean_bias = np.mean(bias_per_patient)
     std_bias = np.std(bias_per_patient)
 
-    fig, axs = plt.subplots(1, 3, figsize=(18, 5))
-    fig.suptitle(f'Análisis inter-instancia (N={len(true_means)}): {titulo}', fontsize=16)
-
-    # --- 1. Scatter: Promedio Real vs Promedio Predicho ---
-    # ¿El modelo detecta pacientes hipertensos?
-    axs[0].scatter(true_means, pred_means, alpha=0.5, s=15, c='blue', edgecolors='k', linewidth=0.5)
+    # --- LÓGICA DE EXTREMOS ---
+    mean_pop = np.mean(true_means)
+    std_pop = np.std(true_means)
+    umbral_std = 1.5 
     
-    # Línea ideal
+    is_extreme = (true_means < (mean_pop - umbral_std * std_pop)) | \
+                 (true_means > (mean_pop + umbral_std * std_pop))
+    
+    n_extremos = np.sum(is_extreme)
+    n_normales = len(true_means) - n_extremos
+    # ----------------------------------
+
+    fig, axs = plt.subplots(2, 2, figsize=(16, 12)) 
+
+    # --- 1. Regresión (Arriba Izq) ---
+    axs[0, 0].scatter(true_means[~is_extreme], pred_means[~is_extreme], alpha=0.5, s=15, c='royalblue', label='Rango Medio')
+    axs[0, 0].scatter(true_means[is_extreme], pred_means[is_extreme], alpha=0.6, s=20, c='crimson', marker='x', label='Extremos (>1.5$\sigma$)')
+    
     min_val = min(true_means.min(), pred_means.min())
     max_val = max(true_means.max(), pred_means.max())
-    axs[0].plot([min_val, max_val], [min_val, max_val], 'r--', lw=2, label='Ideal')
-    
-    axs[0].set_title('Regresión: Promedios por Paciente')
-    axs[0].set_xlabel('Promedio Real (mmHg)')
-    axs[0].set_ylabel('Promedio Predicho (mmHg)')
-    axs[0].grid(True, alpha=0.3)
-    axs[0].legend()
+    axs[0, 0].plot([min_val, max_val], [min_val, max_val], 'k--', lw=2, label='Ideal') 
+    axs[0, 0].set_xlabel('Valor real (mmHg)')
+    axs[0, 0].set_ylabel('Predicción (mmHg)')
+    axs[0, 0].grid(True, alpha=0.3)
+    axs[0, 0].legend()
 
-    # --- 2. Bland-Altman de Promedios ---
-    # ¿El error depende de si el paciente es hipertenso?
+    # --- 2. Bland-Altman (Arriba Der) ---
     means = (true_means + pred_means) / 2
-    axs[1].scatter(means, bias_per_patient, alpha=0.5, s=15, c='purple', edgecolors='k', linewidth=0.5)
-    
-    axs[1].axhline(mean_bias, color='k', ls='-', lw=2, label=f'Bias Global: {mean_bias:.2f}')
-    axs[1].axhline(mean_bias + 1.96 * std_bias, color='r', ls='--', label=f'±1.96 SD')
-    axs[1].axhline(mean_bias - 1.96 * std_bias, color='r', ls='--')
-    
-    axs[1].set_title('Bland-Altman (Por Paciente)')
-    axs[1].set_xlabel('Presión Arterial Media del Paciente (mmHg)')
-    axs[1].set_ylabel('Bias del Paciente (Pred - Real)')
-    axs[1].legend()
-    axs[1].grid(True, alpha=0.3)
+    axs[0, 1].scatter(means, bias_per_patient, alpha=0.5, s=15, c='purple', edgecolors='k', linewidth=0.3)
+    axs[0, 1].axhline(mean_bias, color='k', ls='-', lw=2, label=f'Bias: {mean_bias:.2f}')
+    axs[0, 1].axhline(mean_bias + 1.96 * std_bias, color='r', ls='--', label=f'Lim: ±{1.96*std_bias:.1f}')
+    axs[0, 1].axhline(mean_bias - 1.96 * std_bias, color='r', ls='--')
+    axs[0, 1].set_xlabel('Promedio (mmHg)')
+    axs[0, 1].set_ylabel('Diferencia (Pred - Real) (mmHg)')
+    axs[0, 1].legend(loc='upper right')
+    axs[0, 1].grid(True, alpha=0.3)
 
-    # --- 3. Histograma de MAE por Paciente ---
-    # ¿Cuántos pacientes tienen un error inaceptable?
-    axs[2].hist(maes, bins=30, color='orange', edgecolor='black', alpha=0.7)
-    axs[2].axvline(5, color='red', linestyle='dashed', linewidth=2, label='Umbral 5 mmHg')
-    axs[2].set_title('Distribución de MAE por Paciente')
-    axs[2].set_xlabel('MAE del Paciente (mmHg)')
-    axs[2].set_ylabel('Cantidad de Pacientes')
-    axs[2].legend()
+    # --- 3. Scatter Pre vs Post (Abajo Izq) ---
+    if maes_pre is not None:
+        axs[1, 0].scatter(maes_pre[~is_extreme], maes_post[~is_extreme], 
+                          alpha=0.5, s=20, c='green', edgecolors='none', label=f'Rango Medio (n={n_normales})')
+        axs[1, 0].scatter(maes_pre[is_extreme], maes_post[is_extreme], 
+                          alpha=0.8, s=30, c='crimson', edgecolors='k', marker='^', label=f'Extremos (n={n_extremos})')
+
+        limite = max(maes_pre.max(), maes_post.max()) + 2
+        axs[1, 0].plot([0, limite], [0, limite], 'k--', lw=2, label='Sin Cambios')
+        axs[1, 0].fill_between([0, limite], 0, [0, limite], color='green', alpha=0.05, label='Zona de Mejora')
+        axs[1, 0].set_xlabel('MAE Inicial (Pre-Adaptación)')
+        axs[1, 0].set_ylabel('MAE Final (Post-Adaptación)')
+        axs[1, 0].set_xlim(0, limite)
+        axs[1, 0].set_ylim(0, limite)
+        axs[1, 0].legend()
+        axs[1, 0].grid(True, alpha=0.3)
+    else:
+        axs[1, 0].text(0.5, 0.5, "Datos Pre no disponibles", ha='center', transform=axs[1, 0].transAxes)
+
+    # --- 4. Histograma (Abajo Der) ---
+    axs[1, 1].hist(maes_post, bins=30, color='orange', edgecolor='black', alpha=0.7)
+    axs[1, 1].axvline(5, color='red', linestyle='dashed', linewidth=2, label='Umbral 5 mmHg')
+    
+    total_p = len(maes_post)
+    dentro_5 = np.sum(maes_post <= 5)
+    porcentaje = (dentro_5 / total_p) * 100
+    
+    texto_stats = f"Pacientes con MAE < 5mmHg:\n{dentro_5}/{total_p} ({porcentaje:.1f}%)"
+    axs[1, 1].text(0.95, 0.85, texto_stats, transform=axs[1, 1].transAxes, 
+                   fontsize=10, verticalalignment='top', horizontalalignment='right',
+                   bbox=dict(boxstyle="round", facecolor="white", alpha=0.9))
+
+    axs[1, 1].set_xlabel('MAE Final por Paciente (mmHg)')
+    axs[1, 1].set_ylabel('Frecuencia')
+    axs[1, 1].legend()
+
+    # ==================================================================
+    # --- ETIQUETAS A, B, C, D (DENTRO DEL GRÁFICO) ---
+    # ==================================================================
+    # Usamos coordenadas relativas al eje (transAxes): (0,0) es abajo-izq, (1,1) es arriba-der.
+    # Posición: x=0.02 (pegado a la izquierda), y=0.95 (pegado arriba)
+    # bbox: crea una cajita blanca semitransparente detrás de la letra.
+    
+    label_style = dict(fontsize=18, fontweight='bold', color='black', 
+                       va='top', ha='left',  # Alineación vertical top, horizontal left
+                       bbox=dict(facecolor='white', alpha=0.7, edgecolor='none', pad=2))
+
+    axs[0, 0].text(0.02, 0.96, 'a)', transform=axs[0, 0].transAxes, **label_style)
+    axs[0, 1].text(0.02, 0.96, 'b)', transform=axs[0, 1].transAxes, **label_style)
+    axs[1, 0].text(0.02, 0.96, 'c)', transform=axs[1, 0].transAxes, **label_style)
+    axs[1, 1].text(0.02, 0.96, 'd)', transform=axs[1, 1].transAxes, **label_style)
+    # ==================================================================
 
     plt.tight_layout()
     plt.savefig(f'metalearning/pacientes_{titulo}.png', dpi=300)
     print(f"Gráfico guardado: metalearning/pacientes_{titulo}.png")
 
-def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
+def main(n_shots=10, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
     SBP_MEAN = 134.02
     DBP_MEAN = 63.47
     SBP_STD = 22.75
@@ -154,7 +203,7 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
 
     # --- Carga de Modelo ---
     model = Modelo_ConvolucionalV1(in_channels=2, out_channels=2, long_signal=500)
-    path_model = 'models/checkpoints/best_meta_model_patientwise_s10q20_adapt5_PG2.pt'
+    path_model = 'models/checkpoints/best_meta_model_patientwise_s10q20_adapt5_PG2_reducido_2.pt'
     
     print(f"Cargando modelo desde {path_model}...")
     checkpoint = torch.load(path_model, map_location=device, weights_only=False) 
@@ -186,10 +235,12 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
     means_true_sbp = []
     means_pred_sbp = []
     maes_sbp = [] 
+    maes_pre_sbp = []
 
     means_true_dbp = []
     means_pred_dbp = []
     maes_dbp = []
+    maes_pre_dbp = []
 
     mejoraron_sbp = 0
     empeoraron_sbp = 0
@@ -269,10 +320,12 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
         means_true_sbp.append(np.mean(true_SBP))
         means_pred_sbp.append(np.mean(pred_post_SBP))
         maes_sbp.append(m_post_sbp[0]) # MAE del paciente
+        maes_pre_sbp.append(m_pre_sbp[0])
 
         means_true_dbp.append(np.mean(true_DBP))
         means_pred_dbp.append(np.mean(pred_post_DBP))
-        maes_dbp.append(m_post_dbp[0])  
+        maes_dbp.append(m_post_dbp[0])
+        maes_pre_dbp.append(m_pre_dbp[0])  
 
         if m_post_sbp[0] < m_pre_sbp[0]: mejoraron_sbp += 1
         else: empeoraron_sbp += 1
@@ -355,8 +408,8 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
     print(f"Tasa Mejora SBP: {(tasa_mejora_sbp)*100:.1f}% ({mejoraron_sbp}/{total})")
     print(f"Tasa Mejora DBP: {(tasa_mejora_dbp)*100:.1f}% ({mejoraron_dbp}/{total})")
     
-    graficar_resultados_pacientes(means_true_sbp, means_pred_sbp, maes_sbp, titulo="SBP")
-    graficar_resultados_pacientes(means_true_dbp, means_pred_dbp, maes_dbp, titulo="DBP")
+    graficar_resultados_pacientes(means_true_sbp, means_pred_sbp, maes_sbp, maes_pre_sbp, titulo="SBP")
+    graficar_resultados_pacientes(means_true_dbp, means_pred_dbp, maes_dbp, maes_pre_dbp, titulo="DBP")
 
     # Retorno
     resultados = {

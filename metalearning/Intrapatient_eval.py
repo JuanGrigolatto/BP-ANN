@@ -37,7 +37,7 @@ def main(n_shots=5, n_epochs=5, lr = 5e-3, MIN_SEÑALES_REQUERIDAS = 1000, NUM_P
     if torch.cuda.is_available():
         torch.cuda.manual_seed(SEED)
 
-    save_dir_graficas = "resultados_intrapatient/graficas_adaptacion_conv+dense_no_freeze"
+    save_dir_graficas = "resultados_intrapatient/graficas_adaptacion_intrapatient_GAP50_HYBRID_ANNEAL"
     os.makedirs(save_dir_graficas, exist_ok=True)
     
     SBP_MEAN, SBP_STD = 134.02, 22.75
@@ -66,7 +66,7 @@ def main(n_shots=5, n_epochs=5, lr = 5e-3, MIN_SEÑALES_REQUERIDAS = 1000, NUM_P
     print(" Datos cargados.")
 
     model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=500)
-    path_model='models/checkpoints/best_meta_model_patientwise_s10q20_adapt5_PG2.pt'
+    path_model='models/checkpoints/best_meta_intrapatient_GAP50_HYBRID_ANNEAL.pt'
     print(f"Cargando pesos desde {path_model}...")
     checkpoint = torch.load(path_model, map_location=torch.device('cpu'))
     

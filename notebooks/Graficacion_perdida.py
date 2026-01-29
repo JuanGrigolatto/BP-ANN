@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 # 1. Cargar el archivo
 # Asegúrate de que las columnas 'epoch', 'train_loss' y 'valid_loss' existan en tu CSV
-df = pd.read_csv('metalearning/logs/training_log.csv')
+df = pd.read_csv('metalearning/logs/log_meta_DELTA_LEARNING_fast_anneal_k100_alpha90.csv')
 
 # 2. Configuración del gráfico
 plt.figure(figsize=(10, 6)) 

@@ -17,7 +17,8 @@ from src.models.ConvolucionalV1 import Modelo_ConvolucionalV1
 from src.data.data_chargers.MetaDataset import TaskDataset 
 
 # --- CONFIGURACIÓN DE RUTAS ---
-EXPERIMENT_NAME = 'meta_DELTA_LEARNING_fast_anneal_k100_alpha90' 
+EXPERIMENT_NAME = 'meta_DELTA_LEARNING_refine_alpha50'
+PRETRAINED_MODEL_PATH = 'models/checkpoints/checkpoint_meta_DELTA_LEARNING_fast_anneal_k100_alpha90.pt' 
 CHECKPOINT_DIR = 'models/checkpoints'
 LOG_DIR = 'metalearning/logs'
 LATEST_CKPT_PATH = os.path.join(CHECKPOINT_DIR, f'checkpoint_{EXPERIMENT_NAME}.pt')
@@ -115,14 +116,14 @@ def save_checkpoint(state, is_best, filename=LATEST_CKPT_PATH):
 # -----------------------------------------------------------------------------
 # MAIN: BUCLE DE ENTRENAMIENTO PRINCIPAL
 # -----------------------------------------------------------------------------
-def main(shots=10, 
+def main(shots=5, 
          gap=50, 
          tasks_per_batch=4, 
-         adapt_lr=0.001, 
+         adapt_lr=0.005, 
          meta_lr=0.0005, 
          
         
-         adapt_steps_start=10,  
+         adapt_steps_start=5,  
          adapt_steps_end=1,     
          anneal_epochs=100,      
          
@@ -186,12 +187,37 @@ def main(shots=10,
     model = Modelo_ConvolucionalV1(in_channels=2, out_channels=2, long_signal=500).to(device)
     maml = l2l.algorithms.MAML(model, lr=adapt_lr, first_order=True, allow_unused=True)
     opt = optim.Adam(maml.parameters(), meta_lr)
-    lossfn = HybridLoss(alpha=0.5).to(device)
+    lossfn = HybridLoss(alpha=0.75).to(device)
 
     start_epoch = 0
     best_valid_loss = float('inf')
     patience_counter = 0
-
+    
+    if os.path.exists(LATEST_CKPT_PATH):
+        print(f"Reanudando refinamiento desde: {LATEST_CKPT_PATH}")
+        ckpt = torch.load(LATEST_CKPT_PATH)
+        maml.load_state_dict(ckpt['model_state_dict']) 
+        opt.load_state_dict(ckpt['optimizer_state_dict']) 
+        start_epoch = ckpt['epoch'] + 1
+        best_valid_loss = ckpt['best_loss']
+        
+    # B) Si NO existe, cargamos el modelo PRE-ENTRENADO (Fase 1)
+    elif os.path.exists(PRETRAINED_MODEL_PATH):
+        print(f"⚠️ CARGANDO PESOS DE FASE 1: {PRETRAINED_MODEL_PATH}")
+        print("--> Reiniciando optimizador y épocas para Fine-Tuning.")
+        
+        pretrained_ckpt = torch.load(PRETRAINED_MODEL_PATH)
+        
+        # Solo cargamos los pesos del modelo (maml), NO el optimizador
+        maml.load_state_dict(pretrained_ckpt['model_state_dict'])
+        
+        # start_epoch se mantiene en 0
+        # best_valid_loss se mantiene en infinito para forzar nuevos guardados
+        
+    else:
+        print("¡OJO! No se encontró ni checkpoint nuevo ni pre-entrenado. Iniciando desde cero (NO RECOMENDADO).")
+    
+    """
     # Reanudar si existe checkpoint
     if os.path.exists(LATEST_CKPT_PATH):
         ckpt = torch.load(LATEST_CKPT_PATH)
@@ -200,7 +226,7 @@ def main(shots=10,
         start_epoch = ckpt['epoch'] + 1
         best_valid_loss = ckpt['best_loss']
         print(f"Reanudando desde época {start_epoch}")
-
+    """
     # --- BUCLE DE ÉPOCAS ---
     for epoch in range(start_epoch, num_epochs):  
         

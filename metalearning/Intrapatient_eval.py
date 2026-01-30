@@ -66,7 +66,7 @@ def main(n_shots=5, n_epochs=5, lr = 5e-3, MIN_SEÑALES_REQUERIDAS = 1000, NUM_P
     print(" Datos cargados.")
 
     model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=500)
-    path_model='models/checkpoints/best_meta_DELTA_LEARNING_fast_anneal_k100_alpha90.pt'
+    path_model='models/checkpoints/best_meta_DELTA_LEARNING_refine_alpha50.pt'
     print(f"Cargando pesos desde {path_model}...")
     checkpoint = torch.load(path_model, map_location=torch.device('cpu'))
     
@@ -113,7 +113,7 @@ def main(n_shots=5, n_epochs=5, lr = 5e-3, MIN_SEÑALES_REQUERIDAS = 1000, NUM_P
         print(f"PROCESANDO PACIENTE: {id_paciente}")
         
         model.load_state_dict(new_state_dict, strict=False)
-        
+        """
         #  Se congelan todas las capas primero
         for param in model.parameters():
             param.requires_grad = False
@@ -132,10 +132,10 @@ def main(n_shots=5, n_epochs=5, lr = 5e-3, MIN_SEÑALES_REQUERIDAS = 1000, NUM_P
             print("No se descongeló nada")
         else:
             print(f"  Body Freezing activado. Capas entrenables: {capas_activas[0]} ... {capas_activas[-1]}")
-
-        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr)
         
-        #optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr)
+        """
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
         try:
             dataset_paciente_completo = Intrapatientset(
             patient_id=id_paciente,

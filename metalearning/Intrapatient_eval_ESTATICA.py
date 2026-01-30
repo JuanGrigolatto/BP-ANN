@@ -26,7 +26,7 @@ def calcular_metricas_avanzadas(y_true, y_pred):
     
     return mae, rmse, bias, sd
 
-def main(n_shots=5, n_epochs=5, lr = 1e-3, MIN_SEÑALES_REQUERIDAS = 200, NUM_PACIENTES_A_PROBAR = 10):
+def main(n_shots=5, n_epochs=5, lr = 1e-3, MIN_SEÑALES_REQUERIDAS = 1000, NUM_PACIENTES_A_PROBAR = 10):
 
     SEED = 42
     random.seed(SEED)

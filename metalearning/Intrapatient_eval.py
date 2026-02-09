@@ -37,7 +37,7 @@ def main(n_shots=5, n_epochs=5, lr = 5e-3, MIN_SEÑALES_REQUERIDAS = 1000, NUM_P
     if torch.cuda.is_available():
         torch.cuda.manual_seed(SEED)
 
-    save_dir_graficas = "resultados_intrapatient/graficas_adaptacion_intrapatient_DELTA_LEARNING_fast_anneal_k100_alpha90"
+    save_dir_graficas = "resultados_intrapatient/graficas_adaptacion_intrapatient_multy+delta_low_lr"
     os.makedirs(save_dir_graficas, exist_ok=True)
     
     SBP_MEAN, SBP_STD = 134.02, 22.75
@@ -50,8 +50,11 @@ def main(n_shots=5, n_epochs=5, lr = 5e-3, MIN_SEÑALES_REQUERIDAS = 1000, NUM_P
 
     print(f"Intervalo de ajuste cada {intervalo_ajuste} lotes.")
 
-    test_data = torch.load('data/processed/data_UCI/few_shot_patient_data.pt')
+    #test_data = torch.load('data/processed/data_UCI/few_shot_patient_data.pt')
+    experiment_name_to_test = 'STAGE2_DELTA_Specialist_MSL' # O el que hayas corrido
+    path_to_ids = f'data/processed/data_UCI/test_ids_{experiment_name_to_test}.pt'
 
+    test_data = torch.load(path_to_ids, weights_only=False)
     test_patient_ids = test_data['test_patient_ids']
 
     data_paths = [
@@ -66,7 +69,7 @@ def main(n_shots=5, n_epochs=5, lr = 5e-3, MIN_SEÑALES_REQUERIDAS = 1000, NUM_P
     print(" Datos cargados.")
 
     model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=500)
-    path_model='models/checkpoints/best_meta_DELTA_LEARNING_refine_alpha50.pt'
+    path_model='models/checkpoints/best_STAGE2_DELTA_Specialist_MSL_HighLR.pt'
     print(f"Cargando pesos desde {path_model}...")
     checkpoint = torch.load(path_model, map_location=torch.device('cpu'))
     

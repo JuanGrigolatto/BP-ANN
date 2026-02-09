@@ -54,8 +54,8 @@ with open(results_file, mode='w', newline='') as f:
     writer = csv.writer(f)
     writer.writerow([
     "experiment", "learning_rate", "shots", 
-    "mae_pre_sbp", "mae_post_sbp", "delta_mae_sbp",
-    "mae_pre_dbp", "mae_post_dbp", "delta_mae_dbp", 
+    "mae_pre_sbp", "mae_post_sbp", "rmse_post_sbp", "std_post_sbp", "delta_mae_sbp", 
+    "mae_pre_dbp", "mae_post_dbp", "rmse_post_dbp", "std_post_dbp", "delta_mae_dbp", 
     "tasa_mejora_sbp", "tasa_mejora_dbp", "mejoraron_sbp",
     "mejoraron_dbp", "empeoraron_sbp", "empeoraron_dbp"
 ])
@@ -77,6 +77,10 @@ for i, lr in enumerate(learning_rates, start=1):
 
         mae_pre_sbp = resultados["mae_pre_sbp"]
         mae_post_sbp = resultados["mae_post_sbp"]
+
+        rmse_post_sbp = resultados["rmse_post_sbp"]
+        std_post_sbp = resultados["std_post_sbp"]
+
         delta_sbp = mae_post_sbp - mae_pre_sbp
         mejoraron_sbp = resultados["mejoraron sbp"] 
         mejoraron_dbp = resultados["mejoraron dbp"] 
@@ -84,8 +88,13 @@ for i, lr in enumerate(learning_rates, start=1):
         empeoraron_dbp = resultados["empeoraron dbp"]
         tasa_mejora_sbp = resultados["tasa_mejora_sbp"]
         tasa_mejora_dbp = resultados["tasa_mejora_dbp"]
+
         mae_pre_dbp = resultados["mae_pre_dbp"]
         mae_post_dbp = resultados["mae_post_dbp"]
+
+        rmse_post_dbp = resultados["rmse_post_dbp"]
+        std_post_dbp = resultados["std_post_dbp"]
+
         delta_dbp = mae_post_dbp - mae_pre_dbp
         
         resultados_por_paciente = resultados["resultados_por_paciente"]
@@ -97,7 +106,13 @@ for i, lr in enumerate(learning_rates, start=1):
 
         with open(results_file, mode='a', newline='') as f:
             writer = csv.writer(f)
-            writer.writerow([i, lr, num_shots, mae_pre_sbp, mae_post_sbp, delta_sbp, mae_pre_dbp, mae_post_dbp, delta_dbp, tasa_mejora_sbp, tasa_mejora_dbp, mejoraron_sbp, mejoraron_dbp, empeoraron_sbp, empeoraron_dbp])
+            writer.writerow([
+                i, lr, num_shots, 
+                mae_pre_sbp, mae_post_sbp, rmse_post_sbp, std_post_sbp, delta_sbp, 
+                mae_pre_dbp, mae_post_dbp, rmse_post_dbp, std_post_dbp, delta_dbp, 
+                tasa_mejora_sbp, tasa_mejora_dbp, 
+                mejoraron_sbp, mejoraron_dbp, empeoraron_sbp, empeoraron_dbp
+            ])
         
     except Exception as e:
         print(f" Error en experimento {i}: {e}")

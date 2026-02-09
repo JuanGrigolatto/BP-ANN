@@ -1,20 +1,18 @@
-import torch.utils
-from src.data.data_chargers.Clase_UCIDataset import UCIDataset
-from src.data.data_chargers.MetaDataset import TaskDataset
-from src.models.Modelo_conv import Modelo_Convolucional
-from src.models.ConvolucionalV1 import Modelo_ConvolucionalV1
-import numpy as np
-from torch import device, nn, optim
-import matplotlib.pyplot as plt
-import torch.utils.data as data
 import torch
-from src.data.data_chargers.Tuningndataset import TuningNDataset
-import random
-from sklearn.metrics import r2_score
-from sklearn.metrics import mean_absolute_error, mean_squared_error
+import torch.nn as nn
+import torch.optim as optim
+import torch.utils.data as data
+import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import numpy as np
+import os
+import random
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+
+from src.data.data_chargers.Clase_UCIDataset import UCIDataset
+from src.data.data_chargers.MetaDataset import TaskDataset
+from src.models.ConvolucionalV1 import Modelo_ConvolucionalV1
+from src.data.data_chargers.Tuningndataset import TuningNDataset
 
 def promedio_metricas(m_list):
     return np.mean(m_list, axis=0)
@@ -171,8 +169,8 @@ def graficar_resultados_pacientes(true_means, pred_means, maes_post, maes_pre=No
     # ==================================================================
 
     plt.tight_layout()
-    plt.savefig(f'metalearning/pacientes_{titulo}.png', dpi=300)
-    print(f"Gráfico guardado: metalearning/pacientes_{titulo}.png")
+    plt.savefig(f'metalearning/pacientes_{titulo}_delta.png', dpi=300)
+    print(f"Gráfico guardado: metalearningpacientes_{titulo}.png")
 
 def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
     SBP_MEAN = 134.02
@@ -195,15 +193,20 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
         dataset_completo = base_dataset
 
     if test_patient_ids is None:
-        # weights_only=False para evitar warnings
-        test_data = torch.load('data/processed/data_UCI/few_shot_patient_data.pt', weights_only=False)
+        #experiment_name_to_test = 'STAGE2_DELTA_Specialist_MSL_HighLR' # O el que hayas corrido
+        #path_to_ids = f'data/processed/data_UCI/test_ids_{experiment_name_to_test}.pt'
+
+        #test_data = torch.load(path_to_ids, weights_only=False)
+        test_data = torch.load('data/processed/data_UCI/few_shot_patient_data.pt')
         test_patient_ids = test_data['test_patient_ids']
+
+        print(f"Evaluando sobre {len(test_patient_ids)} pacientes reservados.")
     else: 
         test_patient_ids = test_patient_ids
 
     # --- Carga de Modelo ---
     model = Modelo_ConvolucionalV1(in_channels=2, out_channels=2, long_signal=500)
-    path_model = 'models/checkpoints/best_meta_DELTA_LEARNING_refine_alpha50.pt'
+    path_model = 'models/checkpoints/checkpoint_meta_DELTA_LEARNING_fast_anneal_k100_alpha90.pt'
     
     print(f"Cargando modelo desde {path_model}...")
     checkpoint = torch.load(path_model, map_location=device, weights_only=False) 
@@ -335,7 +338,7 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
 
         # Guardar historial completo por paciente
         resultados_por_paciente.append({
-            "paciente": id_paciente,
+            "paciente": int(id_paciente),
             # SBP
             'mae_pre_sbp': float(m_pre_sbp[0]),
             'mae_post_sbp': float(m_post_sbp[0]),
@@ -364,8 +367,10 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
     err_pre_dbp_all = np.array(global_errors_pre_DBP)
     err_post_dbp_all = np.array(global_errors_post_DBP)
 
-    # MAE Global (Coincide generalmente con el promedio de MAEs, pero es más exacto calcularlo global)
+    
+    mae_pre_sbp_global = np.mean(np.abs(err_pre_sbp_all))
     mae_post_sbp_global = np.mean(np.abs(err_post_sbp_all))
+    mae_pre_dbp_global = np.mean(np.abs(err_pre_dbp_all))
     mae_post_dbp_global = np.mean(np.abs(err_post_dbp_all))
 
     # RMSE Global (Raíz del error cuadrático medio de TODOS los latidos)
@@ -384,7 +389,7 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
     total = len(taskset.list_IDs)
     tasa_mejora_sbp = mejoraron_sbp / total
     tasa_mejora_dbp = mejoraron_dbp / total
-
+    """
     print("\n" + "="*60)
     print("       RESULTADOS FINALES GLOBAL (Calculados sobre todos los latidos)")
     print("="*60)
@@ -407,20 +412,29 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
     print("\n--- CONSISTENCIA ---")
     print(f"Tasa Mejora SBP: {(tasa_mejora_sbp)*100:.1f}% ({mejoraron_sbp}/{total})")
     print(f"Tasa Mejora DBP: {(tasa_mejora_dbp)*100:.1f}% ({mejoraron_dbp}/{total})")
-    
+    """
     graficar_resultados_pacientes(means_true_sbp, means_pred_sbp, maes_sbp, maes_pre_sbp, titulo="SBP")
     graficar_resultados_pacientes(means_true_dbp, means_pred_dbp, maes_dbp, maes_pre_dbp, titulo="DBP")
-
-    # Retorno
+    
+ 
     resultados = {
-        "mae_global_sbp": mae_post_sbp_global,
-        "rmse_global_sbp": rmse_post_sbp_global,
-        "iso_bias_global_sbp": bias_post_sbp_global,
-        "iso_std_global_sbp": std_post_sbp_global,
-        "mae_global_dbp": mae_post_dbp_global,
-        "rmse_global_dbp": rmse_post_dbp_global,
-        "iso_bias_global_dbp": bias_post_dbp_global,
-        "iso_std_global_dbp": std_post_dbp_global,
+        "mae_pre_sbp": mae_pre_sbp_global,
+        "mae_post_sbp": mae_post_sbp_global,
+        "rmse_post_sbp": rmse_post_sbp_global, 
+        "std_post_sbp": std_post_sbp_global,    
+        "tasa_mejora_sbp": tasa_mejora_sbp,
+        "mejoraron sbp": mejoraron_sbp,     
+        "empeoraron sbp": empeoraron_sbp,   
+        
+        "mae_pre_dbp": mae_pre_dbp_global,
+        "mae_post_dbp": mae_post_dbp_global,
+        "rmse_post_dbp": rmse_post_dbp_global, 
+        "std_post_dbp": std_post_dbp_global,    
+        "tasa_mejora_dbp": tasa_mejora_dbp,
+        "mejoraron dbp": mejoraron_dbp,
+        "empeoraron dbp": empeoraron_dbp,
+
+        "resultados_por_paciente": resultados_por_paciente
     }
     return resultados
 

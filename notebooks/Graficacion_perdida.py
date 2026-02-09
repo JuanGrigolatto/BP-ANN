@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 # 1. Cargar el archivo
 # Asegúrate de que las columnas 'epoch', 'train_loss' y 'valid_loss' existan en tu CSV
-df = pd.read_csv('metalearning/logs/log_meta_DELTA_LEARNING_fast_anneal_k100_alpha90.csv')
+df = pd.read_csv('metalearning/logs/log_STAGE2_DELTA_Specialist_MSL.csv')
 
 # 2. Configuración del gráfico
 plt.figure(figsize=(10, 6)) 
@@ -29,7 +29,7 @@ plt.plot(df['epoch'], df['valid_loss'],
 
 # 4. Etiquetas y Títulos
 plt.xlabel('Época')             # Tilde agregada
-plt.ylabel('Pérdida (MSE)')     # Asumo MSE porque la imagen dice "Loss (MSE)"
+plt.ylabel('Pérdida')     
 
 # Leyenda
 plt.legend(loc='upper right', frameon=True) # Ubicación y recuadro como en la imagen

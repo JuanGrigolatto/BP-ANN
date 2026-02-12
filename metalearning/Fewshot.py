@@ -169,8 +169,8 @@ def graficar_resultados_pacientes(true_means, pred_means, maes_post, maes_pre=No
     # ==================================================================
 
     plt.tight_layout()
-    plt.savefig(f'metalearning/pacientes_{titulo}_delta.png', dpi=300)
-    print(f"Gráfico guardado: metalearningpacientes_{titulo}.png")
+    plt.savefig(f'metalearning/pacientes_{titulo}_delta_2.png', dpi=300)
+    print(f"Gráfico guardado: metalearning/pacientes_{titulo}_delta_2.png")
 
 def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
     SBP_MEAN = 134.02
@@ -206,7 +206,7 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
 
     # --- Carga de Modelo ---
     model = Modelo_ConvolucionalV1(in_channels=2, out_channels=2, long_signal=500)
-    path_model = 'models/checkpoints/checkpoint_meta_DELTA_LEARNING_fast_anneal_k100_alpha90.pt'
+    path_model = 'models/checkpoints/best_meta_intrapatient_GAP50_HYBRID_ANNEAL_5_epochs.pt'
     
     print(f"Cargando modelo desde {path_model}...")
     checkpoint = torch.load(path_model, map_location=device, weights_only=False) 
@@ -389,7 +389,7 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
     total = len(taskset.list_IDs)
     tasa_mejora_sbp = mejoraron_sbp / total
     tasa_mejora_dbp = mejoraron_dbp / total
-    """
+    
     print("\n" + "="*60)
     print("       RESULTADOS FINALES GLOBAL (Calculados sobre todos los latidos)")
     print("="*60)
@@ -412,7 +412,7 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
     print("\n--- CONSISTENCIA ---")
     print(f"Tasa Mejora SBP: {(tasa_mejora_sbp)*100:.1f}% ({mejoraron_sbp}/{total})")
     print(f"Tasa Mejora DBP: {(tasa_mejora_dbp)*100:.1f}% ({mejoraron_dbp}/{total})")
-    """
+    
     graficar_resultados_pacientes(means_true_sbp, means_pred_sbp, maes_sbp, maes_pre_sbp, titulo="SBP")
     graficar_resultados_pacientes(means_true_dbp, means_pred_dbp, maes_dbp, maes_pre_dbp, titulo="DBP")
     

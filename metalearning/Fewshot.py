@@ -169,8 +169,8 @@ def graficar_resultados_pacientes(true_means, pred_means, maes_post, maes_pre=No
     # ==================================================================
 
     plt.tight_layout()
-    plt.savefig(f'metalearning/pacientes_{titulo}_delta_2.png', dpi=300)
-    print(f"Gráfico guardado: metalearning/pacientes_{titulo}_delta_2.png")
+    plt.savefig(f'metalearning/pacientes_{titulo}_final_convencional.png', dpi=300)
+    print(f"Gráfico guardado: metalearning/pacientes_{titulo}_final_convencional.png")
 
 def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
     SBP_MEAN = 134.02
@@ -206,7 +206,7 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
 
     # --- Carga de Modelo ---
     model = Modelo_ConvolucionalV1(in_channels=2, out_channels=2, long_signal=500)
-    path_model = 'models/checkpoints/best_meta_intrapatient_GAP50_HYBRID_ANNEAL_5_epochs.pt'
+    path_model = 'models/checkpoints/best_meta_model_v1.pt'
     
     print(f"Cargando modelo desde {path_model}...")
     checkpoint = torch.load(path_model, map_location=device, weights_only=False) 

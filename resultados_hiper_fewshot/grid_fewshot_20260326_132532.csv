@@ -1,0 +1,1 @@
+experiment,learning_rate,shots,mae_pre_sbp,mae_post_sbp,rmse_post_sbp,std_post_sbp,delta_mae_sbp,mae_pre_dbp,mae_post_dbp,rmse_post_dbp,std_post_dbp,delta_mae_dbp,tasa_mejora_sbp,tasa_mejora_dbp,mejoraron_sbp,mejoraron_dbp,empeoraron_sbp,empeoraron_dbp

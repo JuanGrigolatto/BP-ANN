@@ -1,19 +1,21 @@
 import torch.utils.data as data
-import numpy as np
 from src.data.data_chargers.MetaDataset import TaskDataset
 
 class TuningNDataset(data.Dataset):
-    #Antes no estaba el import de TaskDataset y ponía 'TaskDataset' entre comillas
     def __init__(self, task_dataset: TaskDataset, patient_id: int, n_shots=5, validation=False):
-        
+        # Extracción de todos los índices primero
+        all_indices = task_dataset.patient_to_indices[patient_id]
 
-        indices = task_dataset.patient_to_indices[patient_id][:n_shots]
-        self.signals = [task_dataset.base_dataset[idx][0] for idx in indices]
-        self.labels  = [task_dataset.base_dataset[idx][1] for idx in indices]
+        if not validation:
+            # Entrenamiento (Support): Solo los primeros n_shots
+            self.indices = all_indices[:n_shots]
+        else:
+            # Evaluación (Query): Todo el RESTO de los latidos después de los primeros n_shots
+            # Esto garantiza que el modelo se evalúe con datos que NUNCA vio.
+            self.indices = all_indices[n_shots:]
 
-        if validation:
-            # For validation, we use all signals from the patient
-            n_shots = len(self.signals)
+        self.signals = [task_dataset.base_dataset[idx][0] for idx in self.indices]
+        self.labels  = [task_dataset.base_dataset[idx][1] for idx in self.indices]
       
         self.total_samples = len(self.signals)
     

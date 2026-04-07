@@ -32,7 +32,7 @@ def calcular_metricas(y_true, y_pred):
 def desnormalizar_zscore(norm_array, media, std):
     return norm_array * std + media
 
-def tuning(sample, optimizer, model, criterion, device):
+def tuning(sample, optimizer, model, criterion, device, bias_norm=None):
     optimizer.zero_grad() 
     data, labels, *_ = sample 
     
@@ -47,11 +47,18 @@ def tuning(sample, optimizer, model, criterion, device):
             layer.bias.requires_grad = False
 
     data, labels = data.to(device), labels.to(device) 
+    
+    # === LA MAGIA DEL DELTA LEARNING AQUÍ ===
+    if bias_norm is not None:
+        # Transformamos el bias en tensor y centramos las etiquetas en cero
+        bias_tensor = torch.tensor(bias_norm, dtype=torch.float32, device=device)
+        labels = labels - bias_tensor
+
     preds = model.forward(data) 
     loss = criterion(preds, labels) 
     loss.backward() 
     optimizer.step() 
-    return loss.item() 
+    return loss.item()
 
 def evaluation(batch, model, criterion, device):
     with torch.no_grad():
@@ -169,10 +176,10 @@ def graficar_resultados_pacientes(true_means, pred_means, maes_post, maes_pre=No
     # ==================================================================
 
     plt.tight_layout()
-    plt.savefig(f'metalearning/pacientes_{titulo}_final_convencional.png', dpi=300)
-    print(f"Gráfico guardado: metalearning/pacientes_{titulo}_final_convencional.png")
+    plt.savefig(f'metalearning/pacientes_{titulo}_final_delta_3.png', dpi=300)
+    print(f"Gráfico guardado: metalearning/pacientes_{titulo}_final_delta_3.png")
 
-def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
+def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None, is_delta_model=False):
     SBP_MEAN = 134.02
     DBP_MEAN = 63.47
     SBP_STD = 22.75
@@ -206,7 +213,7 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
 
     # --- Carga de Modelo ---
     model = Modelo_ConvolucionalV1(in_channels=2, out_channels=2, long_signal=500)
-    path_model = 'models/checkpoints/best_meta_model_v1.pt'
+    path_model = 'models/checkpoints/best_meta_DELTA_LEARNING_refine_alpha50.pt'
     
     print(f"Cargando modelo desde {path_model}...")
     checkpoint = torch.load(path_model, map_location=device, weights_only=False) 
@@ -277,11 +284,17 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
             loss_pre.extend([l.item()]*len(p))
         preds_pre = np.array(preds_pre)
 
+        # Calculamos el bias directamente en el espacio normalizado (como se hizo en el meta-entrenamiento)
+        labels_soporte_norm = [lbls.squeeze().cpu().numpy() for _, lbls, *_ in tuning_loader_TRAIN]
+        labels_soporte_norm = np.array(labels_soporte_norm).reshape(-1, 2)
+        bias_norm = np.mean(labels_soporte_norm, axis=0) # Shape: (2,)
+        
         # 2. Fine-Tuning
         model.train()
         tuning_loss = np.zeros(shape=n_shots)
         for shot_idx, sample in enumerate(tuning_loader_TRAIN):
-            tuning_loss[shot_idx] = tuning(sample, optimizer, model, criterion, device)
+            # Le pasamos el bias_norm SOLO si es el modelo Delta
+            tuning_loss[shot_idx] = tuning(sample, optimizer, model, criterion, device, bias_norm if is_delta_model else None)
     
         # 3. Evaluación POST Fine-Tuning
         model.eval()
@@ -292,17 +305,28 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
             loss_post.extend([l.item()]*len(p))
         preds_post = np.array(preds_post)
 
-        # Desnormalización
+        # ==================================================================
+        # === MODIFICACIÓN 3: RECOMPOSICIÓN DEL OFFSET Y DESNORMALIZACIÓN ==
+        # ==================================================================
         pred_pre_flat = preds_pre.reshape(-1, 2)
         pred_post_flat = preds_post.reshape(-1, 2)
         labels_flat = np.array([l.squeeze().cpu().numpy() for l in tuning_loader_VALID.dataset.labels]).reshape(-1, 2)
 
+        if is_delta_model:
+            # Como la red predijo "deltas", le sumamos el bias del paciente para volver a magnitudes absolutas normalizadas
+            pred_pre_flat += bias_norm
+            pred_post_flat += bias_norm
+
+        # Ahora desnormalizamos (solo escala y media global)
         pred_pre_SBP = desnormalizar_zscore(pred_pre_flat[:,0], SBP_MEAN, SBP_STD)
         pred_pre_DBP = desnormalizar_zscore(pred_pre_flat[:,1], DBP_MEAN, DBP_STD)
+        
         pred_post_SBP = desnormalizar_zscore(pred_post_flat[:,0], SBP_MEAN, SBP_STD)
         pred_post_DBP = desnormalizar_zscore(pred_post_flat[:,1], DBP_MEAN, DBP_STD)
+        
         true_SBP = desnormalizar_zscore(labels_flat[:,0], SBP_MEAN, SBP_STD)
         true_DBP = desnormalizar_zscore(labels_flat[:,1], DBP_MEAN, DBP_STD)
+        # ==================================================================
 
         global_errors_pre_SBP.extend(pred_pre_SBP - true_SBP)
         global_errors_post_SBP.extend(pred_post_SBP - true_SBP)
@@ -328,7 +352,7 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
         means_true_dbp.append(np.mean(true_DBP))
         means_pred_dbp.append(np.mean(pred_post_DBP))
         maes_dbp.append(m_post_dbp[0])
-        maes_pre_dbp.append(m_pre_dbp[0])  
+        maes_pre_dbp.append(m_pre_dbp[0])
 
         if m_post_sbp[0] < m_pre_sbp[0]: mejoraron_sbp += 1
         else: empeoraron_sbp += 1
@@ -439,4 +463,4 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None):
     return resultados
 
 if __name__ == '__main__':
-    main()
+    main(is_delta_model=True)

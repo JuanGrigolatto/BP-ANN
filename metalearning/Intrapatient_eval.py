@@ -1,291 +1,172 @@
-import torch.utils
+import os
+import random
+import numpy as np
+import matplotlib.pyplot as plt
+import torch
+import torch.utils.data as data
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+
 from src.data.data_chargers.Clase_UCIDataset import UCIDataset
 from src.data.data_chargers.MetaDataset import TaskDataset
-from src.models.ConvolucionalV1 import Modelo_ConvolucionalV1
-import numpy as np
-import torch.utils.data as data
-import torch
-import random
-import metalearning.Fewshot as Fewshot
 from src.data.data_chargers.Intrapatientset import Intrapatientset
-from sklearn.metrics import mean_absolute_error, mean_squared_error
-from sklearn.metrics import mean_absolute_error
-import matplotlib.pyplot as plt
-import os
+from src.models.ConvolucionalV1 import Modelo_ConvolucionalV1
+import metalearning.Fewshot as Fewshot
 
+# --- FUNCIONES AUXILIARES ---
 def calcular_metricas_avanzadas(y_true, y_pred):
-
-    y_true = np.array(y_true)
-    y_pred = np.array(y_pred)
+    y_true, y_pred = np.array(y_true), np.array(y_pred)
     errores = y_pred - y_true
-    errores_abs = np.abs(errores)
-    
-    mae = np.mean(errores_abs)
-    mse = np.mean(errores**2)
-    rmse = np.sqrt(mse) 
-    
-    bias = np.mean(errores) 
+    mae = np.mean(np.abs(errores))
+    rmse = np.sqrt(np.mean(errores**2))
+    bias = np.mean(errores)
     sd = np.std(errores)    
-    
     return mae, rmse, bias, sd
-def main(n_shots=5, n_epochs=5, lr = 5e-3, MIN_SEÑALES_REQUERIDAS = 1000, NUM_PACIENTES_A_PROBAR = 10, MINUTOS_DESEADOS = 15):
+
+def main(n_shots=5, n_epochs=5, lr=5e-3, MINUTOS_DESEADOS=15, NUM_PACIENTES_TOTAL=10):
+    
+    # ---------------------------------------------------------
+    # CONFIGURACIÓN DEL EXPERIMENTO
+    # ---------------------------------------------------------
+    IS_DELTA_MODEL = False  # True: Meta-Delta | False: Patient-wise Tradicional
+    PATH_IDS_TEST = 'data/processed/data_UCI/few_shot_patient_data.pt'
+    PACIENTES_INTERES = [101, 2041, 8423, 1126]
+    
+    if IS_DELTA_MODEL:
+        NOMBRE_EXPERIMENTO = f"PERIODICO_PARTIAL_DELTA_{MINUTOS_DESEADOS}min"
+        PATH_MODELO = 'models/checkpoints/best_meta_DELTA_LEARNING_refine_alpha50.pt'
+    else:
+        NOMBRE_EXPERIMENTO = f"PERIODICO_PARTIAL_TRAD_{MINUTOS_DESEADOS}min_tradiciona"
+        PATH_MODELO = 'models/checkpoints/best_meta_model_v1.pt'
+
+    print(f"--- INICIANDO MONITOREO DINÁMICO (Ajuste cada {MINUTOS_DESEADOS} min) ---")
 
     SEED = 42
-    random.seed(SEED)
-    np.random.seed(SEED)
-    torch.manual_seed(SEED)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(SEED)
+    random.seed(SEED); np.random.seed(SEED); torch.manual_seed(SEED)
+    if torch.cuda.is_available(): torch.cuda.manual_seed(SEED)
 
-    save_dir_graficas = "resultados_intrapatient/graficas_adaptacion_intrapatient_multy+delta_low_lr"
-    os.makedirs(save_dir_graficas, exist_ok=True)
+    save_dir = f"resultados_intrapatient/{NOMBRE_EXPERIMENTO}"
+    os.makedirs(save_dir, exist_ok=True)
     
     SBP_MEAN, SBP_STD = 134.02, 22.75
     DBP_MEAN, DBP_STD = 63.47, 23.69
-
     
-    SEGUNDOS_POR_LOTE = (500 / 125) * n_shots   # 500 muestras a 125 Hz
-
+    SEGUNDOS_POR_LOTE = (500 / 125) * n_shots 
     intervalo_ajuste = int((MINUTOS_DESEADOS * 60) / SEGUNDOS_POR_LOTE)
 
-    print(f"Intervalo de ajuste cada {intervalo_ajuste} lotes.")
-
-    #test_data = torch.load('data/processed/data_UCI/few_shot_patient_data.pt')
-    experiment_name_to_test = 'STAGE2_DELTA_Specialist_MSL' # O el que hayas corrido
-    path_to_ids = f'data/processed/data_UCI/test_ids_{experiment_name_to_test}.pt'
-
-    test_data = torch.load(path_to_ids, weights_only=False)
-    test_patient_ids = test_data['test_patient_ids']
-
-    data_paths = [
-        'data/processed/data_UCI/dataset_parte_1_por_picos.pt',
-        'data/processed/data_UCI/dataset_parte_2_por_picos.pt',
-        'data/processed/data_UCI/dataset_parte_3_por_picos.pt',
-        'data/processed/data_UCI/dataset_parte_4_por_picos.pt'
-    ]
-
+    # 1. Carga de datos base
+    data_paths = [f'data/processed/data_UCI/dataset_parte_{i}_por_picos.pt' for i in range(1, 5)]
     dataset_completo = UCIDataset(data_paths)
 
-    print(" Datos cargados.")
+    # 2. Carga de IDs de Test Reales (Evita el TypeError)
+    if not os.path.exists(PATH_IDS_TEST):
+        print(f"ERROR: No se encuentra el archivo de IDs en {PATH_IDS_TEST}")
+        return
+    
+    test_data = torch.load(PATH_IDS_TEST, weights_only=False)
+    ids_disponibles_test = test_data['test_patient_ids'] if isinstance(test_data, dict) else test_data
+    
+    # IMPORTANTE: Convertimos a lista para que TaskDataset pueda iterar
+    ids_list = list(ids_disponibles_test)
 
-    model=Modelo_ConvolucionalV1(in_channels=2,out_channels=2, long_signal=500)
-    path_model='models/checkpoints/best_STAGE2_DELTA_Specialist_MSL_HighLR.pt'
-    print(f"Cargando pesos desde {path_model}...")
-    checkpoint = torch.load(path_model, map_location=torch.device('cpu'))
-    
+    # 3. Carga del Modelo
+    model = Modelo_ConvolucionalV1(in_channels=2, out_channels=2, long_signal=500)
+    checkpoint = torch.load(PATH_MODELO, map_location='cpu', weights_only=False)
     state_dict = checkpoint['model_state_dict']
-    new_state_dict = {}
-    for k, v in state_dict.items():
-        if k.startswith('module.'):
-            name = k[7:] # Quitar 'module.'
-        else:
-            name = k
-        new_state_dict[name] = v
-    
-    # Cargamos el diccionario LIMPIO
+    new_state_dict = {k.replace('module.', ''): v for k, v in state_dict.items()}
     model.load_state_dict(new_state_dict, strict=False)
 
-    criterion = torch.nn.MSELoss()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = model.to(device)  
+    model = model.to(device)
+    criterion = torch.nn.MSELoss()
 
-    taskset = TaskDataset(list_IDs=test_patient_ids, base_dataset=dataset_completo, num_shots=n_shots)
-
-    mapa_indices_pacientes = taskset.patient_to_indices
-
-    # Filtrar pacientes que cumplen con el mínimo de señales
-    pacientes_elegibles = []
-    for pid, indices in mapa_indices_pacientes.items():
-        if len(indices) >= MIN_SEÑALES_REQUERIDAS:
-            pacientes_elegibles.append(pid)
-
-    print(f"Pacientes elegibles (>= {MIN_SEÑALES_REQUERIDAS} señales): {len(pacientes_elegibles)}")
-
-    # Seleccionar aleatoriamente N pacientes de la lista elegible
-    if len(pacientes_elegibles) < NUM_PACIENTES_A_PROBAR:
-        print(f"Advertencia: Se pidieron {NUM_PACIENTES_A_PROBAR} pacientes, pero solo {len(pacientes_elegibles)} son elegibles. Usando {len(pacientes_elegibles)}.")
-        pacientes_seleccionados = pacientes_elegibles
-    else:
-        pacientes_seleccionados = random.sample(pacientes_elegibles, NUM_PACIENTES_A_PROBAR)
-
-    print(f"Pacientes seleccionados para el experimento: {pacientes_seleccionados}")
-
-    resultados_finales_experimento = {}
-
-    for id_paciente in pacientes_seleccionados:
-        print(f"PROCESANDO PACIENTE: {id_paciente}")
-        
-        model.load_state_dict(new_state_dict, strict=False)
-        """
-        #  Se congelan todas las capas primero
-        for param in model.parameters():
-            param.requires_grad = False
-            
-        # Descongelar SOLO las capas 'dense' 
-        capas_activas = []
-        for name, param in model.named_parameters():
-            if 'dense' in name: 
-                param.requires_grad = True
-                capas_activas.append(name)
-            if 'conv4' in name:
-                param.requires_grad = True
-                capas_activas.append(name)
-
-        if not capas_activas:
-            print("No se descongeló nada")
-        else:
-            print(f"  Body Freezing activado. Capas entrenables: {capas_activas[0]} ... {capas_activas[-1]}")
-        
-        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr)
-        """
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-        try:
-            dataset_paciente_completo = Intrapatientset(
-            patient_id=id_paciente,
-            base_dataset=dataset_completo,
-            patient_to_indices_map=mapa_indices_pacientes
-            )
-
-            if len(dataset_paciente_completo) < n_shots:
-                print(f"Error: Paciente {id_paciente} tiene {len(dataset_paciente_completo)} señales, menos que n_shots={n_shots}. Saltando.")
-                continue
-
-            loader_paciente_N_shots = torch.utils.data.DataLoader(
-                dataset_paciente_completo,
-                batch_size=n_shots,
-                shuffle=False, 
-                num_workers=0,
-                drop_last=False
-            )
+    # 4. Selección de Pacientes
+    # Pasamos la lista de IDs para evitar el error 'NoneType' is not iterable
+    taskset = TaskDataset(list_IDs=ids_list, base_dataset=dataset_completo, num_shots=n_shots)
+    mapa_indices = taskset.patient_to_indices
     
-            print(f"Paciente {id_paciente}: Iniciando adaptación online...")
+    pacientes_finales = [p for p in PACIENTES_INTERES if p in mapa_indices]
+    otros_candidatos = [p for p in ids_list if p not in pacientes_finales and p in mapa_indices]
+    
+    n_faltantes = NUM_PACIENTES_TOTAL - len(pacientes_finales)
+    if n_faltantes > 0 and len(otros_candidatos) > 0:
+        pacientes_finales.extend(random.sample(otros_candidatos, min(len(otros_candidatos), n_faltantes)))
 
-            # Listas para métricas
-            resultados_mae_sbp = []
-            resultados_mae_dbp = []
+    print(f"Pacientes seleccionados (Test): {pacientes_finales}")
 
-            ### CAMBIO 6: Historiales separados para SBP y DBP
-            historial_sbp = {'real': [], 'pred': []}
-            historial_dbp = {'real': [], 'pred': []}
+    # 5. Bucle de Procesamiento
+    for id_paciente in pacientes_finales:
+        print(f"\n >> PROCESANDO PACIENTE: {id_paciente}")
+        model.load_state_dict(new_state_dict, strict=False)
+        
+        # Partial Tuning: Congelar Convolucionales, liberar Dense
+        for param in model.parameters(): param.requires_grad = False
+        for name, param in model.named_parameters():
+            if 'dense' in name: param.requires_grad = True
 
-            puntos_de_ajuste_x = []
+        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr)
+        
+        dataset_paciente = Intrapatientset(id_paciente, dataset_completo, mapa_indices)
+        loader = torch.utils.data.DataLoader(dataset_paciente, batch_size=n_shots, shuffle=False)
 
-            for i, (batch_signals, batch_labels) in enumerate(loader_paciente_N_shots):
+        historial_sbp = {'real': [], 'pred': []}
+        historial_dbp = {'real': [], 'pred': []}
+        puntos_ajuste = []
+        bias_norm = None
+
+        for i, (batch_signals, batch_labels) in enumerate(loader):
+            # Ajuste periódico
+            if i == 0 or (i + 1) % intervalo_ajuste == 0:
+                model.train()
+                if IS_DELTA_MODEL:
+                    bias_norm = batch_labels.mean(dim=0, keepdim=True)
+                    labels_tuning = batch_labels - bias_norm
+                else:
+                    labels_tuning = batch_labels
                 
-                # Tupla para pasar a funciones Fewshot
-                batch_data = (batch_signals, batch_labels)
+                for _ in range(n_epochs):
+                    _ = Fewshot.tuning((batch_signals, labels_tuning), optimizer, model, criterion, device)
+                puntos_ajuste.append(i * n_shots)
 
-                # --- 1. EVALUAR (Usando Fewshot.evaluation) ---
-                model.eval()
-                # Fewshot.evaluation retorna (preds, loss)
-                preds, _ = Fewshot.evaluation(batch_data, model, criterion, device) 
-                
-                # --- PROCESAMIENTO DUAL (Separar canales) ---
-                # Asumimos: Col 0 = SBP, Col 1 = DBP
-                pred_sbp_raw = preds[:, 0].detach().cpu().numpy()
-                pred_dbp_raw = preds[:, 1].detach().cpu().numpy()
-                
-                true_sbp_raw = batch_labels[:, 0].numpy()
-                true_dbp_raw = batch_labels[:, 1].numpy()
+            model.eval()
+            preds_raw, _ = Fewshot.evaluation((batch_signals, batch_labels), model, criterion, device)
+            preds_np = preds_raw.detach().cpu().numpy()
 
-                # Desnormalizar
-                pred_sbp = Fewshot.desnormalizar_zscore(pred_sbp_raw, SBP_MEAN, SBP_STD)
-                pred_dbp = Fewshot.desnormalizar_zscore(pred_dbp_raw, DBP_MEAN, DBP_STD)
-                
-                true_sbp = Fewshot.desnormalizar_zscore(true_sbp_raw, SBP_MEAN, SBP_STD)
-                true_dbp = Fewshot.desnormalizar_zscore(true_dbp_raw, DBP_MEAN, DBP_STD)
+            if IS_DELTA_MODEL and bias_norm is not None:
+                preds_final = preds_np + bias_norm.numpy()
+            else:
+                preds_final = preds_np
 
-                mae_lote_sbp = mean_absolute_error(true_sbp, pred_sbp)
-                mae_lote_dbp = mean_absolute_error(true_dbp, pred_dbp)
-                
-                resultados_mae_sbp.append(mae_lote_sbp)
-                resultados_mae_dbp.append(mae_lote_dbp)
+            p_s = Fewshot.desnormalizar_zscore(preds_final[:, 0], SBP_MEAN, SBP_STD)
+            p_d = Fewshot.desnormalizar_zscore(preds_final[:, 1], DBP_MEAN, DBP_STD)
+            t_s = Fewshot.desnormalizar_zscore(batch_labels[:, 0].numpy(), SBP_MEAN, SBP_STD)
+            t_d = Fewshot.desnormalizar_zscore(batch_labels[:, 1].numpy(), DBP_MEAN, DBP_STD)
 
-                historial_sbp['real'].extend(true_sbp)
-                historial_sbp['pred'].extend(pred_sbp)
-                historial_dbp['real'].extend(true_dbp)
-                historial_dbp['pred'].extend(pred_dbp)
+            historial_sbp['real'].extend(t_s); historial_sbp['pred'].extend(p_s)
+            historial_dbp['real'].extend(t_d); historial_dbp['pred'].extend(p_d)
 
-                if i == 0 or (i + 1) % intervalo_ajuste == 0:
-                    model.train()
-                    for _ in range(n_epochs): 
-                        _ = Fewshot.tuning(batch_data, optimizer, model, criterion, device)
-                    muestra_actual = (i + 1) * n_shots
-                    puntos_de_ajuste_x.append(muestra_actual)
+        # Gráficas homogeneizadas
+        mae_s, rmse_s, bias_s, sd_s = calcular_metricas_avanzadas(historial_sbp['real'], historial_sbp['pred'])
+        plt.rcParams.update({'font.size': 12, 'font.family': 'serif'})
+        fig, axs = plt.subplots(2, 1, figsize=(14, 8), sharex=True)
+        x_axis = range(len(historial_sbp['real']))
+        color_p = 'tab:red' if IS_DELTA_MODEL else 'tab:orange'
+        
+        axs[0].plot(x_axis, historial_sbp['real'], 'k', alpha=0.6, label='Real (ABP)')
+        axs[0].plot(x_axis, historial_sbp['pred'], color=color_p, linestyle='--', label='Estimado')
+        for p in puntos_ajuste: axs[0].axvline(x=p, color='green', linestyle=':', alpha=0.5, linewidth=1.5)
+        axs[0].set_title(f"Paciente {id_paciente} - SBP (Ajuste cada {MINUTOS_DESEADOS} min)")
+        axs[0].set_ylabel("mmHg"); axs[0].legend(loc='upper right'); axs[0].grid(True, alpha=0.3)
 
-            resultados_finales_experimento[id_paciente] = {
-                'mae_sbp': resultados_mae_sbp,
-                'mae_dbp': resultados_mae_dbp
-            }
+        axs[1].plot(x_axis, historial_dbp['real'], 'k', alpha=0.6)
+        axs[1].plot(x_axis, historial_dbp['pred'], color='tab:blue', linestyle='--')
+        for p in puntos_ajuste: axs[1].axvline(x=p, color='green', linestyle=':', alpha=0.5, linewidth=1.5)
+        axs[1].set_xlabel("Latidos"); axs[1].set_ylabel("mmHg"); axs[1].grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        plt.savefig(os.path.join(save_dir, f"peri_partial_{id_paciente}.png"), dpi=300)
+        plt.close()
 
-
-            mae_s, rmse_s, bias_s, std_s = calcular_metricas_avanzadas(historial_sbp['real'], historial_sbp['pred'])
-            mae_d, rmse_d, bias_d, std_d = calcular_metricas_avanzadas(historial_dbp['real'], historial_dbp['pred'])
-
-            print(f"--- Resultados Paciente {id_paciente} ---")
-            print(f"[SBP] RMSE: {rmse_s:.2f} | Bias: {bias_s:.2f} | SD: {std_s:.2f}")
-            print(f"[DBP] RMSE: {rmse_d:.2f} | Bias: {bias_d:.2f} | SD: {std_d:.2f}")
-
-            try:
-              
-                fig, axs = plt.subplots(2, 2, figsize=(15, 10), sharex=False)
-                
-               
-                x_axis = range(len(historial_sbp['real']))
-                axs[0, 0].plot(x_axis, historial_sbp['real'], label='Real', color='black', alpha=0.7)
-                axs[0, 0].plot(x_axis, historial_sbp['pred'], label='Estimado', color='tab:red', ls='--', alpha=0.9)
-                for idx, x_pos in enumerate(puntos_de_ajuste_x):
-                    # Solo poner label en la primera para no saturar la leyenda
-                    label = "Ajuste (Tuning)" if idx == 0 else None
-                    if x_pos < len(x_axis): # Verificar límites
-                        axs[0, 0].axvline(x=x_pos, color='green', linestyle=':', alpha=0.6, linewidth=1.5, label=label)
-                axs[0, 0].set_title(f"SBP Tracking (RMSE: {rmse_s:.2f})")
-                axs[0, 0].legend(loc='upper right')
-                axs[0, 0].set_xlim(0, len(x_axis))  
-                axs[0, 0].set_xlabel("Muestras (Tiempo)") 
-                axs[0, 0].grid(True, linestyle='--', alpha=0.5)
-                
-                
-                axs[1, 0].plot(resultados_mae_sbp, marker='o', color='tab:red', markersize=3)
-                axs[1, 0].set_ylabel("MAE SBP [mmHg]")
-                axs[1, 0].set_xlabel("Lotes de Adaptación")
-                axs[1, 0].grid(True, linestyle='--')
-                axs[1, 0].set_xlim(0, len(resultados_mae_sbp))
-                
-
-                
-                axs[0, 1].plot(x_axis, historial_dbp['real'], label='Real', color='black', alpha=0.7)
-                axs[0, 1].plot(x_axis, historial_dbp['pred'], label='Estimado', color='tab:blue', ls='--', alpha=0.9)
-                for idx, x_pos in enumerate(puntos_de_ajuste_x):
-                    if x_pos < len(x_axis):
-                        axs[0, 1].axvline(x=x_pos, color='green', linestyle=':', alpha=0.6, linewidth=1.5)
-                axs[0, 1].set_title(f"DBP Tracking (RMSE: {rmse_d:.2f})")
-                axs[0, 1].legend(loc='upper right')
-                axs[0, 1].grid(True, linestyle='--', alpha=0.5)
-                axs[0, 1].set_xlim(0, len(x_axis)) 
-                axs[0, 1].set_xlabel("Muestras (Tiempo)")
-                
-                
-                axs[1, 1].plot(resultados_mae_dbp, marker='o', color='tab:blue', markersize=3)
-                axs[1, 1].set_ylabel("MAE DBP [mmHg]")
-                axs[1, 1].set_xlabel("Lotes de Adaptación")
-                axs[1, 1].grid(True, linestyle='--')
-                axs[1, 1].set_xlim(0, len(resultados_mae_dbp))
-
-                plt.tight_layout()
-                save_path_grafica = os.path.join(save_dir_graficas, f"dual_adapt_{id_paciente}.png")
-                plt.savefig(save_path_grafica)
-                plt.close() 
-                print(f"Gráfica guardada en: {save_path_grafica}")
-
-            except Exception as e:
-                print(f"Error al generar/guardar la gráfica: {e}")
-        except Exception as e:
-            print(f"Error procesando paciente {id_paciente}: {e}")
-
-    print("\n\n--- EXPERIMENTO FINALIZADO ---")
-    return resultados_finales_experimento
-
+    print(f"\n--- EXPERIMENTO FINALIZADO EN {save_dir} ---")
 
 if __name__ == '__main__':
     main()

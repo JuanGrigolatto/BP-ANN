@@ -26,20 +26,48 @@ def calcular_metricas_avanzadas(y_true, y_pred):
     sd = np.std(errores)    
     return mae, rmse, bias, sd
 
+def tuning(sample, optimizer, model, criterion, device):
+    optimizer.zero_grad() 
+    data, labels, *_ = sample 
+    
+    if isinstance(data, list): data = data[0]
+    if isinstance(labels, list): labels = labels[0]
+        
+    # === PROTECCIÓN CRÍTICA ===
+    # Congelamos las estadísticas poblacionales de Normalización
+    for layer in model.modules():
+        if isinstance(layer, torch.nn.BatchNorm1d) or isinstance(layer, torch.nn.BatchNorm2d):
+            layer.eval()
+
+    data, labels = data.to(device), labels.to(device) 
+
+    preds = model.forward(data) 
+    loss = criterion(preds, labels) 
+    loss.backward() 
+    optimizer.step() 
+    return loss.item()
+
 def main(n_shots=5, n_epochs=5, lr=5e-3, MIN_SEÑALES_REQUERIDAS=500):
     
-    # --- CONFIGURACIÓN DE LA PRUEBA DE ESTRÉS ---
-    MINUTOS_DESEADOS = 60  # <--- ALTO para evitar re-ajustes y ver la respuesta pura
-    PACIENTES_OBJETIVO = [101, 2041, 8423, 1126] # <--- LOS "DIFÍCILES"
-    NOMBRE_EXPERIMENTO = "PRUEBA_ESCALON"
+    # =========================================================================
+    # --- CONFIGURACIÓN PRINCIPAL DEL EXPERIMENTO ---
+    # =========================================================================
+    USE_DELTA_LEARNING = False # <--- CAMBIAR A False PARA MODELOS TRADICIONALES
     
-    # Ruta del modelo REFINADO (Fase 2)
-    PATH_MODELO = 'models/checkpoints/best_meta_DELTA_LEARNING_refine_alpha50.pt'
+    PACIENTES_OBJETIVO = [101, 2041, 8423, 1126] 
+    
+    if USE_DELTA_LEARNING:
+        NOMBRE_EXPERIMENTO = "PRUEBA_AJUSTE_UNICO_DELTA"
+        PATH_MODELO = 'models/checkpoints/best_meta_DELTA_LEARNING_refine_alpha50.pt'
+    else:
+        NOMBRE_EXPERIMENTO = "PRUEBA_AJUSTE_UNICO_tradicional"
+        # Reemplazar con la ruta de tu modelo original que predecía valores absolutos
+        PATH_MODELO = 'models/checkpoints/best_meta_model_v1.pt' 
 
-    print(f"--- INICIANDO PRUEBA DE RESPUESTA AL ESCALÓN ---")
+    print(f"--- INICIANDO PRUEBA CON AJUSTE INICIAL ÚNICO (5 SHOTS) ---")
+    print(f"Modo Delta Learning: {USE_DELTA_LEARNING}")
     print(f"Modelo: {PATH_MODELO}")
-    print(f"Pacientes Objetivo: {PACIENTES_OBJETIVO}")
-
+    
     SEED = 42
     random.seed(SEED); np.random.seed(SEED); torch.manual_seed(SEED)
     if torch.cuda.is_available(): torch.cuda.manual_seed(SEED)
@@ -50,12 +78,8 @@ def main(n_shots=5, n_epochs=5, lr=5e-3, MIN_SEÑALES_REQUERIDAS=500):
     SBP_MEAN, SBP_STD = 134.02, 22.75
     DBP_MEAN, DBP_STD = 63.47, 23.69
     
-    SEGUNDOS_POR_LOTE = (500 / 125) * n_shots 
-    intervalo_ajuste = int((MINUTOS_DESEADOS * 60) / SEGUNDOS_POR_LOTE)
-    print(f"Intervalo de ajuste forzado cada {intervalo_ajuste} lotes (prácticamente nunca).")
-
     # Carga de datos
-    test_data = torch.load('data/processed/data_UCI/few_shot_patient_data.pt')
+    test_data = torch.load('data/processed/data_UCI/few_shot_patient_data.pt', weights_only=False)
     test_patient_ids = test_data['test_patient_ids']
     data_paths = [
         'data/processed/data_UCI/dataset_parte_1_por_picos.pt',
@@ -70,35 +94,34 @@ def main(n_shots=5, n_epochs=5, lr=5e-3, MIN_SEÑALES_REQUERIDAS=500):
     if not os.path.exists(PATH_MODELO):
         print(f"¡ERROR! No encuentro el modelo en {PATH_MODELO}")
         return
-
-    checkpoint = torch.load(PATH_MODELO, map_location=torch.device('cpu'))
+        
+    checkpoint = torch.load(PATH_MODELO, map_location=torch.device('cpu'), weights_only=False)
     state_dict = checkpoint['model_state_dict']
     new_state_dict = {k.replace('module.', ''): v for k, v in state_dict.items()}
     model.load_state_dict(new_state_dict, strict=False)
 
-    criterion = torch.nn.MSELoss() # Usamos MSE para el tuning (mejor para calibrar valores)
+    criterion = torch.nn.MSELoss() 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)  
 
     taskset = TaskDataset(list_IDs=PACIENTES_OBJETIVO, base_dataset=dataset_completo, num_shots=n_shots)
     mapa_indices_pacientes = taskset.patient_to_indices
 
-    # Verificar disponibilidad de los pacientes objetivo
     pacientes_seleccionados = [pid for pid in PACIENTES_OBJETIVO if pid in mapa_indices_pacientes]
-    print(f"Pacientes encontrados y listos para procesar: {pacientes_seleccionados}")
-
-    resultados_finales_experimento = {}
 
     for id_paciente in pacientes_seleccionados:
-        print(f" >> PROCESANDO PACIENTE: {id_paciente}")
+        print(f"\n >> PROCESANDO PACIENTE: {id_paciente}")
         
-        # Reset del modelo al estado base para cada paciente
         model.load_state_dict(new_state_dict, strict=False)
         
-        # Body Freezing (Igual que antes)
-        for param in model.parameters(): param.requires_grad = False
+        # 1. Congelamos toda la red para salvar las convoluciones
+        for param in model.parameters(): 
+            param.requires_grad = False  
+            
+        # 2. Descongelamos solo la etapa final de regresión
         for name, param in model.named_parameters():
-            if 'dense' in name or 'conv4' in name: param.requires_grad = True
+            if 'dense' in name: 
+                param.requires_grad = True 
 
         optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr)
         
@@ -114,59 +137,94 @@ def main(n_shots=5, n_epochs=5, lr=5e-3, MIN_SEÑALES_REQUERIDAS=500):
 
         historial_sbp = {'real': [], 'pred': []}
         historial_dbp = {'real': [], 'pred': []}
-        puntos_de_ajuste_x = []
+        
+        bias_tensor_guardado = None
 
         for i, (batch_signals, batch_labels) in enumerate(loader_paciente):
-            batch_data = (batch_signals, batch_labels)
-
-            # 1. EVALUAR
-            model.eval()
-            preds, _ = Fewshot.evaluation(batch_data, model, criterion, device) 
             
-            # Desnormalizar y guardar
-            pred_sbp = Fewshot.desnormalizar_zscore(preds[:, 0].detach().cpu().numpy(), SBP_MEAN, SBP_STD)
-            pred_dbp = Fewshot.desnormalizar_zscore(preds[:, 1].detach().cpu().numpy(), DBP_MEAN, DBP_STD)
+            # =========================================================
+            # FASE 1: CALIBRACIÓN INICIAL (Solo en el primer lote i==0)
+            # =========================================================
+            if i == 0:
+                if USE_DELTA_LEARNING:
+                    bias_tensor_guardado = batch_labels.mean(dim=0, keepdim=True)
+                    labels_for_tuning = batch_labels - bias_tensor_guardado
+                else:
+                    labels_for_tuning = batch_labels
+
+                batch_data_tune = (batch_signals, labels_for_tuning)
+
+                model.train()
+                for _ in range(n_epochs): 
+                    _ = Fewshot.tuning(batch_data_tune, optimizer, model, criterion, device)
+                
+                print("    -> Ajuste inicial completado.")
+
+            # =========================================================
+            # FASE 2: EVALUACIÓN CONTINUA (Todos los lotes)
+            # =========================================================
+            if USE_DELTA_LEARNING:
+                labels_for_eval = batch_labels - bias_tensor_guardado
+            else:
+                labels_for_eval = batch_labels
+                
+            batch_data_eval = (batch_signals, labels_for_eval)
+
+            # Inferencia de la red
+            model.eval()
+            preds_model, _ = Fewshot.evaluation(batch_data_eval, model, criterion, device) 
+            
+            # Reconstrucción de la presión absoluta
+            if USE_DELTA_LEARNING:
+                preds_absolutas = preds_model.detach().cpu() + bias_tensor_guardado
+            else:
+                preds_absolutas = preds_model.detach().cpu()
+            
+            # Desnormalización
+            pred_sbp = Fewshot.desnormalizar_zscore(preds_absolutas[:, 0].numpy(), SBP_MEAN, SBP_STD)
+            pred_dbp = Fewshot.desnormalizar_zscore(preds_absolutas[:, 1].numpy(), DBP_MEAN, DBP_STD)
             true_sbp = Fewshot.desnormalizar_zscore(batch_labels[:, 0].numpy(), SBP_MEAN, SBP_STD)
             true_dbp = Fewshot.desnormalizar_zscore(batch_labels[:, 1].numpy(), DBP_MEAN, DBP_STD)
 
             historial_sbp['real'].extend(true_sbp); historial_sbp['pred'].extend(pred_sbp)
             historial_dbp['real'].extend(true_dbp); historial_dbp['pred'].extend(pred_dbp)
 
-            # 2. ADAPTAR (Solo al principio o cada MUCHO tiempo)
-            if i == 0 or (i + 1) % intervalo_ajuste == 0:
-                model.train()
-                for _ in range(n_epochs): 
-                    _ = Fewshot.tuning(batch_data, optimizer, model, criterion, device)
-                puntos_de_ajuste_x.append((i + 1) * n_shots)
-
-        # Métricas y Gráficas
+        # --- Métricas y Gráficas ---
         mae_s, rmse_s, bias_s, std_s = calcular_metricas_avanzadas(historial_sbp['real'], historial_sbp['pred'])
         mae_d, rmse_d, bias_d, std_d = calcular_metricas_avanzadas(historial_dbp['real'], historial_dbp['pred'])
 
-        print(f"   [SBP] RMSE: {rmse_s:.2f} | Bias: {bias_s:.2f}")
+        print(f"   [SBP] RMSE: {rmse_s:.2f} | Bias: {bias_s:.2f} | SD: {std_s:.2f}")
         
-        # Plotting simplificado para ver el escalón
-        fig, axs = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
+        modo_str = "Delta" if USE_DELTA_LEARNING else "Absoluto"
+        
+        plt.rcParams.update({'font.size': 12, 'font.family': 'serif'})
+        fig, axs = plt.subplots(2, 1, figsize=(14, 8), sharex=True)
         x_axis = range(len(historial_sbp['real']))
         
         # SBP
-        axs[0].plot(x_axis, historial_sbp['real'], 'k', label='Real', alpha=0.7)
-        axs[0].plot(x_axis, historial_sbp['pred'], 'r--', label='Estimado', alpha=0.9)
-        for x_pos in puntos_de_ajuste_x:
-            axs[0].axvline(x=x_pos, color='g', linestyle=':', alpha=0.5)
-        axs[0].set_title(f"Paciente {id_paciente} - SBP (RMSE: {rmse_s:.2f})")
-        axs[0].legend()
+        axs[0].plot(x_axis, historial_sbp['real'], color='black', linewidth=1.5, label='Invasiva de Referencia (ABP)', alpha=0.8)
+        axs[0].plot(x_axis, historial_sbp['pred'], color='tab:orange', linestyle='--', linewidth=2, label=f'Estimación ({modo_str})', alpha=0.9)
+        axs[0].axvline(x=n_shots, color='red', linestyle=':', linewidth=2.5, alpha=0.8, label='Ajuste')
+        
+        axs[0].set_title(f"Respuesta dinámica con Ajuste Inicial Único ({modo_str}) - SBP", fontweight='bold')
+        axs[0].set_ylabel("Presión Sistólica (mmHg)", fontweight='bold')
+        axs[0].legend(loc='upper right', framealpha=0.9)
         axs[0].grid(True, linestyle='--', alpha=0.5)
 
         # DBP
-        axs[1].plot(x_axis, historial_dbp['real'], 'k', label='Real', alpha=0.7)
-        axs[1].plot(x_axis, historial_dbp['pred'], 'b--', label='Estimado', alpha=0.9)
-        axs[1].set_title(f"Paciente {id_paciente} - DBP (RMSE: {rmse_d:.2f})")
+        axs[1].plot(x_axis, historial_dbp['real'], color='black', linewidth=1.5, label='Invasiva de Referencia (ABP)', alpha=0.8)
+        axs[1].plot(x_axis, historial_dbp['pred'], color='tab:cyan', linestyle='--', linewidth=2, label=f'Estimación ({modo_str})', alpha=0.9)
+        axs[1].axvline(x=n_shots, color='red', linestyle=':', linewidth=2.5, alpha=0.8)
+        
+        axs[1].set_title(f"Respuesta dinámica con Ajuste Inicial Único ({modo_str}) - DBP", fontweight='bold')
+        axs[1].set_xlabel("Muestras", fontweight='bold')
+        axs[1].set_ylabel("Presión Diastólica (mmHg)", fontweight='bold')
+        axs[1].legend(loc='upper right', framealpha=0.9)
         axs[1].grid(True, linestyle='--', alpha=0.5)
         
         plt.tight_layout()
-        save_path = os.path.join(save_dir_graficas, f"step_response_{id_paciente}.png")
-        plt.savefig(save_path)
+        save_path = os.path.join(save_dir_graficas, f"step_response_{modo_str.lower()}_{id_paciente}.png")
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
         plt.close()
         print(f"   Gráfica guardada: {save_path}")
 

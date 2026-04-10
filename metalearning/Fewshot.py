@@ -176,8 +176,8 @@ def graficar_resultados_pacientes(true_means, pred_means, maes_post, maes_pre=No
     # ==================================================================
 
     plt.tight_layout()
-    plt.savefig(f'metalearning/pacientes_{titulo}_final_delta_3.png', dpi=300)
-    print(f"Gráfico guardado: metalearning/pacientes_{titulo}_final_delta_3.png")
+    plt.savefig(f'metalearning/pacientes_{titulo}_final_tradicional_4.png', dpi=300)
+    print(f"Gráfico guardado: metalearning/pacientes_{titulo}_final_tradicional_4.png")
 
 def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None, is_delta_model=False):
     SBP_MEAN = 134.02
@@ -213,7 +213,7 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None, is
 
     # --- Carga de Modelo ---
     model = Modelo_ConvolucionalV1(in_channels=2, out_channels=2, long_signal=500)
-    path_model = 'models/checkpoints/best_meta_DELTA_LEARNING_refine_alpha50.pt'
+    path_model = 'models/checkpoints/best_meta_model_v1.pt'
     
     print(f"Cargando modelo desde {path_model}...")
     checkpoint = torch.load(path_model, map_location=device, weights_only=False) 
@@ -264,9 +264,25 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None, is
     for i in range(len(taskset.list_IDs)):
         id_paciente = taskset.list_IDs[i]
         
-        # Reiniciar modelo y optimizador
+        # Reiniciar modelo 
         model.load_state_dict(base_weights)
-        optimizer = torch.optim.Adam(model.parameters(), lr=base_lr)
+
+        # ==================================================================
+        # === MODIFICACIÓN: BODY FREEZING (PARTIAL TUNING) APLICADO AQUÍ ===
+        # ==================================================================
+        # 1. Congelar todos los parámetros del modelo
+        for param in model.parameters():
+            param.requires_grad = False
+            
+        # 2. Descongelar únicamente las capas densas (la cabeza de regresión)
+        for name, param in model.named_parameters():
+            if 'dense' in name:
+                param.requires_grad = True
+                
+        # 3. Inicializar el optimizador SOLO con los parámetros que requieren gradiente
+        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=base_lr)
+        # ==================================================================
+
         id_patient_for_tuning = taskset.list_IDs[i]
   
         tuningset_for_train = TuningNDataset(taskset, id_patient_for_tuning, n_shots=n_shots, validation=False)
@@ -463,4 +479,4 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None, is
     return resultados
 
 if __name__ == '__main__':
-    main(is_delta_model=True)
+    main(is_delta_model=False)

@@ -1,31 +1,39 @@
-#%% Importación de librerias
+"""
+Módulo: Procesamiento_por_picos.py
+Autor: Juan Marcos Grigolatto
+Descripción: Script principal de procesamiento para la generación de la base de datos 
+             de entrenamiento. Carga archivos crudos (.mat), aplica filtrado, 
+             sincroniza y segmenta las señales de PPG, ECG y ABP latido a latido 
+             basándose en los picos R del ECG. Extrae etiquetas de presión 
+             (Sistólica/Diastólica) y aplica normalización global.
+"""
 
+#--- IMPORTACIONES---
 from src.utils.Tools import Tools
 import matplotlib.pyplot as plt
 
-#%%Carga de señales
-
+#--- CARGA DE SEÑALES ---
+# Extracción de las matrices de datos crudos de PPG, ABP y ECG desde el archivo .mat
 ppg_signal, abp_signal, ecg_signal = Tools.leer_archivos_mat("data/raw/datos/Part_4.mat") 
 
-#%%Filtrado de señales
-
+#--- FILTRADO Y ACONDICIONAMIENTO DE SEÑALES ---
 ppg_signal_filtrada = []
 ecg_signal_filtrada = []
 ecg_signal_filtrada_Q = []
 abp_signal_filtrada = []
 
+# Filtrado secuencial por paciente/registro para eliminar ruido y deriva de línea de base
 for i in range(len(ppg_signal)):
     ppg_signal_filtrada.append(Tools.filtrar_ppg(ppg_signal[i]))
     ecg_signal_filtrada.append(Tools.filtrar_ecg(ecg_signal[i]))
     abp_signal_filtrada.append(Tools.filtrar_abp(abp_signal[i]))
 
+# Acondicionamiento específico del ECG para maximizar la tasa de acierto en la detección del complejo QRS
 for j in range(len(ecg_signal_filtrada)):
     ecg_signal_filtrada_Q.append(Tools.filtrado_para_deteccion_Q(ecg_signal_filtrada[j]))
 
-#Tools.plot_bode()
-
-#%% Detección de picos
-
+#--- DETECCIÓN DE PICOS FIDUCIARIOS ---
+# Identificación de máximos locales/picos en cada señal acondicionada
 picos_ppg = []
 for l in range(len(ppg_signal_filtrada)):
     picos = Tools.detectar_picos_ppg(ppg_signal_filtrada[l])
@@ -40,115 +48,49 @@ picos_abp = []
 for n in range(len(abp_signal)):
     picos = Tools.detectar_picos_abp(abp_signal_filtrada[n])
     picos_abp.append(picos)
-#%%
-"""
-inicio=2078
-plt.figure(figsize=(12, 6))    
-for i in range(10):
-    # Filtrar picos que estén dentro de las primeras 3000 muestras
-    
-    picos_filtrados = [p for p in picos_abp[i+inicio] if p < 3000]
-    plt.subplot(10, 1, i + 1)
-    plt.plot(abp_signal_filtrada[i+inicio][:3000], label='Señal de PPG', color='blue')
-    plt.plot(picos_filtrados, abp_signal_filtrada[i+inicio][:3000][picos_filtrados], 'ro', label='Picos Detectados')
-    plt.title(f'Señal de PPG {i + 1}')
-    plt.xlabel('muestras')
-    plt.ylabel('Amplitud')
-    plt.legend()
-"""
-#%% Segmentación por picos
+
+#--- SEGMENTACIÓN SINCRONIZADA POR PICOS ---
 all_segments_ppg = []
 all_segments_abp = []
 all_segments_ecg = []
 
+# Se utiliza el pico R del ECG como ancla temporal absoluta.
+# Recorta ventanas de longitud fija (500 muestras) garantizando que las ondas 
+# de PPG y ABP correspondan exactamente al mismo ciclo cardíaco que el ECG.
 for h in range(len(ecg_signal_filtrada)):
     segmentos_ppg, segmentos_abp, segmentos_ecg, _ , _ = Tools.recortar_por_picos_sincronizado(ppg_signal_filtrada[h], abp_signal_filtrada[h], ecg_signal_filtrada[h], picos_ecg[h], 0, lenght_segment=500)
     all_segments_ppg.append(segmentos_ppg)
     all_segments_abp.append(segmentos_abp)
     all_segments_ecg.append(segmentos_ecg)
-#%%
-"""
-inicio=0
-plt.figure(figsize=(12, 6))    
-for i in range(5):
-    # Filtrar picos que estén dentro de las primeras 3000 muestras
-    plt.subplot(20, 1, i + 1)
-    plt.plot(all_segments_abp[1000][i+inicio], label='Señal de PPG', color='blue')
-    #plt.title(f'Señal de PPG {i + 1}')
-    plt.xlabel('muestras')
-    plt.ylabel('Amplitud')
-    plt.legend()
-"""
-#%% Obtención de etiquetas
 
+#--- EXTRACCIÓN DE ETIQUETAS Y LIMPIEZA DE DATOS ---
+# 1. Extracción de las etiquetas objetivo (Ground Truth) desde la señal invasiva ABP
 presiones_sistolicas, presiones_diastolicas, indices_sistolicos, indices_diastolicos = Tools.get_abp_labels(all_segments_abp, fs=125)
 
+# 2. Control de calidad: Eliminación de segmentos corruptos o donde no se detectaron picos consistentes
 ppg_dep, abp_dep, ecg_dep, sbp_dep, dbp_dep, sistolicos_dep, diastolicos_dep = Tools.delete_signals_no_peaks(all_segments_ppg, all_segments_abp, all_segments_ecg, presiones_sistolicas, presiones_diastolicas, indices_sistolicos, indices_diastolicos)
 
-#presiones_medias = Tools.get_pam_labels(sbp_dep, dbp_dep)
-
+# Verificación de rangos para asegurar la validez fisiológica de las etiquetas extraídas
 sbp_min, sbp_max, dbp_min, dbp_max = Tools.max_min_pressures(sbp_dep, dbp_dep)
 
 print(f"Presión sistólica mínima: {sbp_min}, máxima: {sbp_max}")
 print(f"Presión diastólica mínima: {dbp_min}, máxima: {dbp_max}")
-#%% Normalización
-"""
-for k in range(len(ppg_signal_filtrada)):
 
-    ppg_norm.append(Tools.z_score_normalization(ppg_dep[k]))
-    abp_norm.append(Tools.z_score_normalization(abp_dep[k]))
-    ecg_norm.append(Tools.z_score_normalization(ecg_dep[k]))
-"""
+#--- NORMALIZACIÓN DE SEÑALES Y ETIQUETAS ---
+# Parámetros estadísticos poblacionales para la normalización Z-score.
 SBP_MEAN = 134.02
 DBP_MEAN = 63.47
 SBP_STD = 22.75
 DBP_STD = 23.69
 
-#ppg_norm, abp_norm, ecg_norm = Tools.signal_normalization(ppg_dep, abp_dep, ecg_dep)
-
+# Normalización Z-score de los tensores de entrada (features) a nivel global
 ppg_norm, abp_norm, ecg_norm, param_norm = Tools.signal_normalization_global(ppg_dep, abp_dep, ecg_dep)
 print(f"Parámetros de normalización de señales de entrada: {param_norm}")
 
+# Normalización de las etiquetas objetivo (targets)
 presiones_sistolicas_norm, presiones_diastolicas_norm= Tools.labels_normalization(sbp_dep, dbp_dep, SBP_MEAN, SBP_STD, DBP_MEAN, DBP_STD)
 
-#%% 
-"""
-inicio=0
-plt.figure(figsize=(12, 6))    
-for i in range(20):
-    # Filtrar picos que estén dentro de las primeras 3000 muestras
-    plt.subplot(20, 1, i + 1)
-    plt.plot(ppg_norm[1041][i+inicio], label='Señal de PPG', color='blue')
-    plt.title(f'Señal de PPG {i + 1}')
-    plt.xlabel('muestras')
-    plt.ylabel('Amplitud')
-    plt.legend()
-"""
-"""
-inicio = 0
-plt.figure(figsize=(12, 10))
-
-for i in range(5):
-    senial = all_segments_abp[1000][i+inicio]
-    
-    # índices de los picos en este segmento
-    peaks_sis = indices_sistolicos[1000][i+inicio]
-    peaks_dia = indices_diastolicos[1000][i+inicio]
-
-    plt.subplot(5, 1, i+1)
-    plt.plot(senial, label="Señal ABP", color="blue")
-    plt.plot(peaks_sis, senial[peaks_sis], "ro", label="Picos sistólicos (SBP)")
-    plt.plot(peaks_dia, senial[peaks_dia], "go", label="Picos diastólicos (DBP)")
-    plt.ylabel("mmHg")
-    plt.xlabel("Muestras")
-    plt.legend(loc="upper right")
-    plt.title(f"Segmento ABP {i+1}")
-
-plt.tight_layout()
-plt.show()
-"""
-#%% Guardado de indice final de paciente
-
+#--- ENSAMBLADO Y GUARDADO DEL DATASET FINAL ---
 index = Tools.save_partial_file(ppg_norm, ecg_norm, presiones_sistolicas_norm, presiones_diastolicas_norm, 8975, 2922776, 'dataset_parte_4_por_picos_global_norm')
 
 num_pacientesIDs = Tools.get_num_patientsIDs(ppg_norm)

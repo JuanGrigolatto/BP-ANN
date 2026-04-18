@@ -1,3 +1,13 @@
+"""
+Módulo: Tools.py
+Autor: Juan Marcos Grigolatto
+Descripción: Librería central de utilidades para el procesamiento de señales 
+             biomédicas. Contiene las funciones core para la carga de datos (HDF5),
+             filtrado digital, detección de picos fiduciarios, segmentación, 
+             normalización y almacenamiento eficiente en disco mediante mapeo 
+             de memoria (memmap) para el entrenamiento de modelos de Deep Learning.
+"""
+# --- IMPORTACIONES ---
 import numpy as np
 from scipy import signal
 from scipy.stats import skew
@@ -9,9 +19,10 @@ import torch
 import h5py
 import matplotlib.pyplot as plt
 
+# --- ANÁLISIS DE ETIQUETAS Y PRESIONES ---
 
 def max_min_pressures(sbp,dbp):
-    
+    """Calcula los valores máximos y mínimos absolutos de presión arterial en el dataset."""
     sbp = np.array([val for sublist in sbp for val in sublist])
     dbp = np.array([val for sublist in dbp for val in sublist])
 
@@ -25,42 +36,38 @@ def max_min_pressures(sbp,dbp):
     
     return SBP_MIN, SBP_MAX, DBP_MIN, DBP_MAX 
 
-
-#Normalización
-
 def min_max_normalization(signal, max, min):
+    """Aplica normalización Min-Max a una señal dada."""
     signal = np.array(signal)
     return (signal - min) / (max - min)
 
 def z_score_normalization(signal, epsilon=1e-8):
+    """Aplica normalización Z-score estandarizando con media 0 y varianza 1."""
     signal = np.array(signal)
     mean = np.mean(signal)
     std = np.std(signal)
     return (signal - mean) / (std + epsilon)
 
 def pressure_normalization_z_score(sbp, dbp, sbp_mean, sbp_std, dbp_mean, dbp_std):
+    """Normaliza las etiquetas de presión utilizando Z-score con parámetros poblacionales."""
     sbp_norm = (sbp - sbp_mean) / sbp_std
     dbp_norm = (dbp - dbp_mean) / dbp_std
     return sbp_norm, dbp_norm
 
 def desnormalizar_zscore(norm_array, media, std):
+    """Revierte la normalización Z-score para obtener los valores originales."""
     return norm_array * std + media
 
 def labels_normalization(matriz_presiones_sistolicas, matriz_presiones_diastolicas, SBP_MEAN, SBP_STD, DBP_MEAN, DBP_STD):
- 
+    """Itera sobre la matriz de etiquetas de presión y les aplica normalización Z-score global."""
     matriz_presiones_sistolicas_norm=[]
     matriz_presiones_diastolicas_norm=[]
     for i in range(len(matriz_presiones_sistolicas)):
         list_sbp=[]
         list_dbp=[]  
-        for j in range(len(matriz_presiones_sistolicas[i])):
-
-            #ps_norm,pd_norm=pressure_normalization(matriz_presiones_sistolicas[i][j], matriz_presiones_diastolicas[i][j],
-            #                         SBP_MIN, SBP_MAX,DBP_MIN,DBP_MAX)
-            
+        for j in range(len(matriz_presiones_sistolicas[i])):          
             ps_norm,pd_norm=pressure_normalization_z_score(matriz_presiones_sistolicas[i][j], matriz_presiones_diastolicas[i][j],
                                                             SBP_MEAN, SBP_STD, DBP_MEAN, DBP_STD)
-            
             if not np.isnan(ps_norm) and not np.isnan(pd_norm):
                 list_sbp.append(ps_norm)
                 list_dbp.append(pd_norm)
@@ -72,6 +79,7 @@ def labels_normalization(matriz_presiones_sistolicas, matriz_presiones_diastolic
     return matriz_presiones_sistolicas_norm, matriz_presiones_diastolicas_norm
 
 def signal_normalization(ppg_signals, abp_signals, ecg_signals):
+    """Aplica normalización Z-score local (por ventana) y filtra segmentos con valores NaN/Inf."""
     ppg_normalized = []
     ecg_normalized = []
     abp_normalized = []
@@ -88,10 +96,6 @@ def signal_normalization(ppg_signals, abp_signals, ecg_signals):
             ppg = ppg_signals[i][j]
             ecg = ecg_signals[i][j]
             abp = abp_signals[i][j]
-            #ppg_n = min_max_normalization(ppg, np.max(ppg), np.min(ppg))
-            #abp_n = min_max_normalization(abp, np.max(abp), np.min(abp))
-            #ecg_n = min_max_normalization(ecg, np.max(ecg), np.min(ecg))
-
             if(np.isnan(ppg).any() or np.isnan(ecg).any() or np.isnan(abp).any() or \
                np.isinf(ppg).any() or np.isinf(ecg).any() or np.isinf(abp).any()):
                 ventanas_eliminadas += 1
@@ -121,7 +125,7 @@ def signal_normalization(ppg_signals, abp_signals, ecg_signals):
 def signal_normalization_global(ppg_signals, abp_signals, ecg_signals):
     """
     Normaliza todas las señales PPG, ABP y ECG usando media y desviación globales
-    (calculadas dentro del archivo actual).
+    (calculadas dentro del archivo actual). Descarta ventanas corruptas
     """
 
     ppg_normalized = []
@@ -200,12 +204,12 @@ def signal_normalization_global(ppg_signals, abp_signals, ecg_signals):
     # Devuelve las señales normalizadas y los parámetros usados 
     return ppg_normalized, abp_normalized, ecg_normalized, (ppg_mean, ppg_std, ecg_mean, ecg_std, abp_mean, abp_std)
 
-#Presión arterial media (PAM)
-
 def calcular_pam(sbp: torch.Tensor, dbp: torch.Tensor) -> torch.Tensor:
+    """Calcula la Presión Arterial Media (PAM) estándar."""
     return (sbp + (2*dbp)) / 3
 
 def get_pam_labels(matriz_presiones_sistolicas, matriz_presiones_diastolicas):
+    """Genera la matriz de etiquetas de PAM a partir de las matrices de SBP y DBP."""
     matriz_presiones_media = []
     for i in range(len(matriz_presiones_sistolicas)):
         presiones_media = []
@@ -219,10 +223,12 @@ def get_pam_labels(matriz_presiones_sistolicas, matriz_presiones_diastolicas):
                 presiones_media.append(np.nan)
         matriz_presiones_media.append(presiones_media)
     return matriz_presiones_media
-#Filtrado
+
+# --- Filtrado ---
 
 def filtrar_ppg(senial_ppg):
-
+    """Aplica filtro pasabanda Butterworth (0.5-21 Hz) y sustrae la media para la señal PPG."""
+    orden = 4
     orden = 4
     frec_sup = 21
     frec_inf = 0.5
@@ -231,32 +237,17 @@ def filtrar_ppg(senial_ppg):
     b, a = signal.butter(orden, frecs_corte, 'bandpass', fs = 125)
 
     ppg_filtrada = signal.filtfilt(b,a, senial_ppg)
-
-     # Línea de base estimada con media móvil
-    #baseline = np.convolve(ppg_filtrada, np.ones(125)/125, mode='same')
     
     #Filtro de media 
     baseline = np.mean(ppg_filtrada)
 
     # Señal sin línea de base
     ppg_filtrada = ppg_filtrada - baseline 
-    """
-    # Ploteo de la magnitud del filtro 
-    w, h = signal.freqz(b, a, worN=2048, fs=125)
-    plt.figure(figsize=(7, 4))
-    plt.plot(w, 20 * np.log10(abs(h)))
-    plt.title("Magnitud del Filtro Pasabanda para PPG")
-    plt.xlabel("Frecuencia [Hz]")
-    plt.ylabel("Magnitud [dB]")
-    plt.grid(which='both', axis='both')
-    plt.axvline(frec_inf, color='red', linestyle='--', label=f"{frec_inf} Hz")
-    plt.axvline(frec_sup, color='red', linestyle='--', label=f"{frec_sup} Hz")
-    plt.legend()
-    plt.show()
-    """
+
     return ppg_filtrada
 
 def filtrar_ecg(senial_ecg):
+    """Aplica filtro pasabanda Butterworth (0.5-40 Hz) y sustrae la media para la señal ECG."""
     orden = 4
     frec_sup = 40
     frec_inf = 0.5
@@ -266,31 +257,16 @@ def filtrar_ecg(senial_ecg):
 
     ecg_filtrada = signal.filtfilt(b,a, senial_ecg)
 
-    # Línea de base estimada con media móvil
-    #baseline = np.convolve(ecg_filtrada, np.ones(125)/125, mode='same')
-
     #Filtro de media 
     baseline = np.mean(ecg_filtrada)
 
     # Señal sin línea de base
     ecg_filtrada = ecg_filtrada - baseline
-    """
-     # Ploteo de la magnitud del filtro 
-    w, h = signal.freqz(b, a, worN=2048, fs=125)
-    plt.figure(figsize=(7, 4))
-    plt.plot(w, 20 * np.log10(abs(h)))
-    plt.title("Magnitud del Filtro Pasabanda para ECG")
-    plt.xlabel("Frecuencia [Hz]")
-    plt.ylabel("Magnitud [dB]")
-    plt.grid(which='both', axis='both')
-    plt.axvline(frec_inf, color='red', linestyle='--', label=f"{frec_inf} Hz")
-    plt.axvline(frec_sup, color='red', linestyle='--', label=f"{frec_sup} Hz")
-    plt.legend()
-    plt.show()
-    """
+
     return ecg_filtrada
 
 def filtrado_para_deteccion_Q(senial_ecg):
+    """Filtro pasabanda ajustado (5-15 Hz) para aislar las frecuencias del complejo QRS."""
     orden = 4
     frec_sup = 15
     frec_inf = 5
@@ -299,48 +275,24 @@ def filtrado_para_deteccion_Q(senial_ecg):
     b, a = signal.butter(orden, frecs_corte, 'bandpass', fs = 125)
 
     ecg_filtrada = signal.filtfilt(b,a, senial_ecg)
-    """
-    # Ploteo de la magnitud del filtro 
-    w, h = signal.freqz(b, a, worN=2048, fs=125)
-    plt.figure(figsize=(7, 4))
-    plt.plot(w, 20 * np.log10(abs(h)))
-    plt.title("Magnitud del Filtro Pasabanda para detección de QRS")
-    plt.xlabel("Frecuencia [Hz]")
-    plt.ylabel("Magnitud [dB]")
-    plt.grid(which='both', axis='both')
-    plt.axvline(frec_inf, color='red', linestyle='--', label=f"{frec_inf} Hz")
-    plt.axvline(frec_sup, color='red', linestyle='--', label=f"{frec_sup} Hz")
-    plt.legend()
-    plt.show()
-    """
+
     return ecg_filtrada
 
 def filtrar_abp(senial_abp):
+    """Aplica filtro pasabajos (21 Hz) para suavizar la señal de presión arterial invasiva."""
     orden = 4
     frec_corte= 21
    
-
     b, a = signal.butter(orden, frec_corte, 'lowpass', fs = 125)
 
     ecg_filtrada = signal.filtfilt(b,a, senial_abp)
-    """
-        # Ploteo de la magnitud del filtro 
-    w, h = signal.freqz(b, a, worN=2048, fs=125)
-    plt.figure(figsize=(7, 4))
-    plt.plot(w, 20 * np.log10(abs(h)))
-    plt.title("Magnitud del Filtro Pasabajos para ABP")
-    plt.xlabel("Frecuencia [Hz]")
-    plt.ylabel("Magnitud [dB]")
-    plt.grid(which='both', axis='both')
-    plt.axvline(frec_corte, color='red', linestyle='--', label=f"{frec_corte} Hz")
-    plt.legend()
-    plt.show()
-    """
+
     return ecg_filtrada
 
-# Detección de picos en PPG y ECG
+# --- Detección de picos en PPG y ECG ---
 
 def detectar_picos_ppg(ppg, fs=125):
+    """Detecta picos sistólicos en la señal de PPG utilizando umbrales de prominencia y distancia."""
     
     max_val = np.max(ppg)
     min_val = np.min(ppg)
@@ -350,12 +302,13 @@ def detectar_picos_ppg(ppg, fs=125):
     height = min_val + 0.5 * rango
     distancia_min = int(0.4 * fs)
 
-    # Detectar picos
+    # Detección de picos
     peaks, _ = signal.find_peaks(ppg, height=height, prominence=prominence, distance=distancia_min)
     
     return peaks
 
 def detectar_picos_ecg(ecg, fs=125, hr_min=40, hr_max=180):
+    """Detecta ondas R en la señal de ECG basado en la frecuencia cardíaca máxima y prominencia."""
     max_val = np.max(ecg)
     min_val = np.min(ecg)
     rango = max_val - min_val
@@ -369,6 +322,9 @@ def detectar_picos_ecg(ecg, fs=125, hr_min=40, hr_max=180):
     return peaks
 
 def detectar_picos_abp(abp, fs=125):
+    """Detecta los picos sistólicos en la señal de presión arterial invasiva (ABP)."""
+    max_val = np.max(abp)
+    min_val = np.min(abp)
     max_val = np.max(abp)
     min_val = np.min(abp)
     rango = max_val - min_val
@@ -382,8 +338,10 @@ def detectar_picos_abp(abp, fs=125):
 
     return peaks
 
-# Ventaneo
+# --- Ventaneo ---
+
 def recortar_por_ventanas_cuadradas(signal, fs, t_window, overlap):
+    """Segmenta la señal en ventanas rectangulares de tiempo fijo con solapamiento."""
     window_size = fs * t_window  # Tamaño de la ventana en muestras
     step = int(window_size * (1 - overlap))  # Paso entre ventanas
     windows = []
@@ -392,6 +350,7 @@ def recortar_por_ventanas_cuadradas(signal, fs, t_window, overlap):
     return np.array(windows)
 
 def recortar_por_ventanas_no_cuadradas(senial, fs = 125, window ='Hamming', t_duration = 10, overlap = 0.7):
+    """Segmenta la señal aplicando ventanas no cuadradas (Hamming, Hanning, blackman)"""
     window_width = t_duration * fs
     
     if window == 'Hamming':
@@ -414,6 +373,7 @@ def recortar_por_ventanas_no_cuadradas(senial, fs = 125, window ='Hamming', t_du
     return segments
 
 def recortar_por_picos(seniales, list_peaks, overlap_peaks=4):
+    """Realiza la segmentación dinámica basándose en los intervalos de los picos fiduciarios detectados."""
     all_segments = []
     all_starts = []
     all_stops = []
@@ -450,6 +410,7 @@ def recortar_por_picos(seniales, list_peaks, overlap_peaks=4):
     return all_segments, all_starts, all_stops
 
 def adjust_window(win, max_len):
+    """Estandariza la longitud del recorte mediante padding o truncado centrado."""
     diff = max_len - len(win)
     if diff > 0:
         # Pad a izquierda y derecha para mantener centrado
@@ -465,7 +426,7 @@ def adjust_window(win, max_len):
         return win
     
 def recortar_por_picos_sincronizado(ppg, abp, ecg, peaks, overlap_peaks=4, lenght_segment=500):
-    
+    """Segmenta múltiples señales de forma síncrona asegurando que correspondan al mismo evento cardíaco."""
     segments_ppg = []
     segments_abp = []
     segments_ecg = []
@@ -481,12 +442,10 @@ def recortar_por_picos_sincronizado(ppg, abp, ecg, peaks, overlap_peaks=4, lengh
         start = peaks[i] - ventana_muestras // 2
         stop = start + ventana_muestras
 
-        # Si el inicio es negativo, correr la ventana hacia adelante
         if start < 0:
             start = 0
             stop = ventana_muestras
 
-        # Si el final se pasa, correr hacia atrás
         if stop > len(ecg):
             stop = len(ecg)
             start = stop - ventana_muestras
@@ -519,8 +478,7 @@ def recortar_por_picos_sincronizado(ppg, abp, ecg, peaks, overlap_peaks=4, lengh
 
         starts.append(start)
         stops.append(stop)
-        # Avanzar al siguiente pico
-        avance = max(1, overlap_peaks)  # avance mínimo de 1 pico
+        avance = max(1, overlap_peaks) 
         i += avance
             
     return segments_ppg, segments_abp, segments_ecg, starts, stops

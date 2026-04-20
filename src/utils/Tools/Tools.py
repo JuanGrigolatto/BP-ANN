@@ -451,16 +451,6 @@ def recortar_por_picos_sincronizado(ppg, abp, ecg, peaks, overlap_peaks=4, lengh
             start = stop - ventana_muestras
             if start < 0:  # si la señal es más corta que la ventana
                 start = 0
-            """
-            intervalo_rr_first = peaks[i+1] - peaks[i]
-            intervalo_rr_last = peaks[i+4] - peaks[i+3] 
-        
-            pre_qrs=int(0.25 * intervalo_rr_first)   # para incluir onda P 
-            post_qrs=int(0.45 *intervalo_rr_last)   # para incluir onda T
-
-            start = max(0, peaks[i] - pre_qrs)
-            stop  = min(len(ecg), peaks[i+4] + post_qrs)
-            """
 
         window_ecg = ecg[start:stop]
         window_ppg = ppg[start:stop]
@@ -484,7 +474,7 @@ def recortar_por_picos_sincronizado(ppg, abp, ecg, peaks, overlap_peaks=4, lengh
     return segments_ppg, segments_abp, segments_ecg, starts, stops
 
 
-# Analisis estadistico de señales
+# --- ANÁLISIS ESTADÍSTICO DE SEÑALES ---
 
 def signal_stats_analisis(signal):
      
@@ -492,7 +482,7 @@ def signal_stats_analisis(signal):
     kurtosis_value = kurtosis(signal)
     #entropy_value = entropy(signal)
      
-    #Entropía de Shannon a partir de histograma
+    # Entropía de Shannon a partir de histograma
     
     hist, _ = np.histogram(signal, bins=50, density=True)
     p = hist + 1e-12
@@ -503,9 +493,10 @@ def signal_stats_analisis(signal):
     #return skewness_value, kurtosis_value, entropy_value
     return skewness_value, kurtosis_value, entropy_value
 
-# Obtener etiquetas de presión
+# --- EXTRACCIÓN DE ETIQUETAS Y LIMPIEZA ---
 
 def get_abp_labels(abp_signals, fs):
+    """Extrae la presión Sistólica y Diastólica de la señal ABP invasiva."""
     matriz_picos_sistolicos = []
     matriz_picos_diastolicos = []
     matriz_presiones_sistolicas = []
@@ -516,11 +507,7 @@ def get_abp_labels(abp_signals, fs):
         picos_diastolicos = []
         presiones_sistolicas = []
         presiones_diastolicas = []
-        """
-        num_plots = min(10, len(abp_signals[i]))
-        fig, axes = plt.subplots(num_plots, 1, figsize=(12, 2*num_plots))
-        fig.suptitle(f"Paciente {i} - Primeras {num_plots} señales ABP", fontsize=14)
-        """
+
         for j in range(len(abp_signals[i])):
             senial = abp_signals[i][j]
             max_val = np.max(senial)
@@ -560,16 +547,7 @@ def get_abp_labels(abp_signals, fs):
             
             presiones_sistolicas.append(ps)
             presiones_diastolicas.append(pd)
-            """
-            if j < 10 and i < 10:
-                ax = axes[j]
-                ax.plot(senial, label='ABP', color='blue')
-                ax.plot(peakss, senial[peakss], 'ro', label='Picos SBP')
-                ax.plot(peaksd, senial[peaksd], 'go', label='Picos DBP')
-                ax.set_ylabel("mmHg")
-                ax.set_xlabel("Muestras")
-                ax.legend(loc='upper right')
-            """
+
         matriz_presiones_sistolicas.append(presiones_sistolicas)
         matriz_presiones_diastolicas.append(presiones_diastolicas)
         matriz_picos_sistolicos.append(picos_sistolicos)
@@ -582,9 +560,8 @@ def get_abp_labels(abp_signals, fs):
         matriz_picos_diastolicos,
     )
 
-#Eliminar señales sin picos
-
 def delete_signals_no_peaks(ppg, abp, ecg, presiones_sbp, presiones_dbp, indices_sistolicos, indices_diastolicos):
+    """Descarta ventanas cuyas etiquetas de presión salen de los rangos fisiológicos coherentes."""
     ppg_filtradas = []
     abp_filtradas = []
     ecg_filtradas = []
@@ -640,24 +617,23 @@ def delete_signals_no_peaks(ppg, abp, ecg, presiones_sbp, presiones_dbp, indices
         sistolicos_filtrados,
         diastolicos_filtrados
     )
-#Leer archivos .mat
+
+# --- CARGA Y ALMACENAMIENTO DE DATOS ---
 
 def leer_archivos_mat(ruta_archivo):
+    """Extrae tensores PPG, ABP y ECG desde el almacenamiento HDF5 """
     with h5py.File(ruta_archivo, 'r') as f:
         claves = list(f.keys())
         print("Claves encontradas:", claves)
 
-        # Asumimos que el dataset principal está en la primera clave
         dataset = f[claves[1]]
 
-        # Convertir referencias internas a arrays
         datos_extraidos = []
         for i in range(dataset.shape[0]):
             ref = dataset[i, 0]  # referencia HDF5
             datos_extraidos.append(np.array(f[ref]))
 
         datos_extraidos = np.array(datos_extraidos, dtype=object)
-
         
         ppg_signal = [registro[:, 0] for registro in datos_extraidos]
         abp_signal = [registro[:, 1] for registro in datos_extraidos]
@@ -665,23 +641,22 @@ def leer_archivos_mat(ruta_archivo):
 
     return ppg_signal, abp_signal, ecg_signal
 
-#Guardar datos en archivo .pt
-
 def save_partial_file(ppg_signals, ecg_signals, sbp_labels, dbp_labels,
                       patient_id_inicial, index_inicial, nombre_archivo):
+    """
+    Guarda los datos procesados utilizando np.memmap para crear tensores en disco.
+    """
     output_dir = 'data/processed/data_UCI'
     os.makedirs(output_dir, exist_ok=True)
 
     num_total = sum(len(ppg) for ppg in ppg_signals)
     long_segmento = len(ppg_signals[0][0])  
 
-    # Rutas de archivos temporales únicos por parte
     data_path = os.path.join(output_dir, f'{nombre_archivo}_data.dat')
     labels_path = os.path.join(output_dir, f'{nombre_archivo}_labels.dat')
     patients_path = os.path.join(output_dir, f'{nombre_archivo}_patients.dat')
     indexs_path = os.path.join(output_dir, f'{nombre_archivo}_indexs.dat')
 
-    # Crear archivos memmap (en disco, no cargan en RAM completa)
     data_mmap = np.memmap(data_path, dtype='float32', mode='w+', shape=(num_total, 2, long_segmento))
     labels_mmap = np.memmap(labels_path, dtype='float32', mode='w+', shape=(num_total, 2))
     patients_mmap = np.memmap(patients_path, dtype='int64', mode='w+', shape=(num_total,))
@@ -703,13 +678,11 @@ def save_partial_file(ppg_signals, ecg_signals, sbp_labels, dbp_labels,
             indexs_mmap[index] = index + index_inicial
             index += 1
 
-    # Flush a disco (importante para que no quede en buffer)
     data_mmap.flush()
     labels_mmap.flush()
     patients_mmap.flush()
     indexs_mmap.flush()
 
-    # Guardar solo metadatos en el .pt
     torch.save({
         'data_path': data_path,
         'labels_path': labels_path,
@@ -723,6 +696,7 @@ def save_partial_file(ppg_signals, ecg_signals, sbp_labels, dbp_labels,
     return index
 
 def get_num_patientsIDs(signals):
+    """Devuelve la cantidad de IDs de pacientes únicos en el dataset"""
     n_ids=0
     for i in range(len(signals)):
         n_ids=n_ids+1

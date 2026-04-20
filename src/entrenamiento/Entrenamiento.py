@@ -1,3 +1,12 @@
+"""
+Módulo: train_model.py
+Autor: Juan Marcos Grigolatto
+Descripción: Script principal de entrenamiento para la red neuronal de estimación 
+             de presión arterial. Gestiona la carga de datasets masivos (memmap), 
+             el ciclo de entrenamiento/validación con precisión mixta (AMP), 
+             el guardado dinámico de los subconjuntos de prueba, y la persistencia 
+             de modelos mediante Checkpoints y Early Stopping.
+"""
 import torch
 from src.data.data_chargers.Clase_UCIDataset import UCIDataset
 import os
@@ -5,9 +14,7 @@ from torch.utils import data
 from torch.utils.data import TensorDataset, random_split
 import numpy as np
 from src.models.InceptionTime import InceptionTime
-#from src.models.Modelo_conv import Modelo_Convolucional
 from src.models.ConvolucionalV1 import Modelo_ConvolucionalV1
-from src.models.ConvolucionalV1_2 import Modelo_ConvolucionalV1_2
 from src.models.ConvolucionalV2 import Modelo_ConvolucionalV2
 from tqdm.auto import tqdm 
 import matplotlib.pyplot as plt

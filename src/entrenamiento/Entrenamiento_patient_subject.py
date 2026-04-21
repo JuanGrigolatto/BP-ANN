@@ -1,3 +1,13 @@
+"""
+Módulo: train_model_ps.py
+Autor: Juan Marcos Grigolatto
+Descripción: Script de entrenamiento avanzado para la red neuronal InceptionTime.
+             Este módulo implementa una división 
+             estricta por pacientes (Patient-Subject Splitting) para evitar el 
+             Data Leakage (fuga de datos). Garantiza que las señales de un mismo 
+             individuo no se mezclen entre los conjuntos de Train, Validation y Test, 
+             evaluando la verdadera capacidad de generalización del modelo.
+"""
 import torch
 from src.data.data_chargers.Clase_UCIDataset import UCIDataset
 import os
@@ -8,7 +18,6 @@ import numpy as np
 from src.models.InceptionTime import InceptionTime
 #from src.models.Modelo_conv import Modelo_Convolucional
 from src.models.ConvolucionalV1 import Modelo_ConvolucionalV1
-from src.models.ConvolucionalV1_2 import Modelo_ConvolucionalV1_2
 from src.models.ConvolucionalV2 import Modelo_ConvolucionalV2
 from tqdm.auto import tqdm 
 import matplotlib.pyplot as plt
@@ -19,6 +28,11 @@ import pandas as pd
 
 
 def set_seed(seed=42):
+    """_summary_ Establece la semilla para todas las operaciones aleatorias en Python, NumPy y PyTorch, asegurando la reproducibilidad de los experimentos. Esta función configura la semilla para el módulo random de Python, el generador de números aleatorios de NumPy, y los generadores de números aleatorios de PyTorch tanto para CPU como para GPU. Además, ajusta las configuraciones de cuDNN para garantizar resultados determinísticos en operaciones convolucionales.
+
+    Args:
+        seed (int, optional): _description_. Por defecto 42. La semilla que se utilizará para inicializar los generadores de números aleatorios en Python, NumPy y PyTorch, asegurando que los experimentos sean reproducibles.
+    """    
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -29,52 +43,49 @@ def set_seed(seed=42):
     torch.backends.cudnn.benchmark = False
 
 def init_worker_fn(worker_id):
-    """
-    Función que el DataLoader ejecutará en cada nuevo proceso worker.
-    """
+    """_summary_ Función de inicialización para los workers del DataLoader que utilizan UCIDataset. Esta función se encarga de obtener la instancia del dataset asociada al worker actual.
+            
+    Args:
+        worker_id (_type_): _description_ Identificador del worker que se está inicializando. 
+    """    
     worker_info = torch.utils.data.get_worker_info()
     dataset = worker_info.dataset
     
-    # Como usas random_split, 'dataset' es un objeto Subset.
-    # Tenemos que bajar hasta encontrar el UCIDataset real.
     while hasattr(dataset, 'dataset'):
         dataset = dataset.dataset
     
-    # Ahora sí, llamamos al método que abre los archivos
     if hasattr(dataset, 'worker_init'):
         dataset.worker_init()
 
 def save_test_dataset(save_dir, prefix, data, labels, patients, indexs):
-    """
-    Guarda los datos de test en formato compatible con UCIDataset.
-    
-    Args:
-        save_dir (str): Carpeta donde guardar los archivos.
-        prefix (str): Prefijo de los archivos (ej: "test").
-        data (np.ndarray): Señales, shape (N, 2, segment_length), dtype float32.
-        labels (np.ndarray): Etiquetas, shape (N, 2), dtype float32.
-        patients (np.ndarray): IDs de pacientes, shape (N,), dtype int64.
-        indexs (np.ndarray): Índices globales, shape (N,), dtype int64.
-    """
+    """_summary_  Guarda los datos de test en formato compatible con UCIDataset, utilizando archivos .dat para las señales, etiquetas, IDs de pacientes e índices globales, y un archivo .pt para la metadata que contiene las rutas a los archivos y la información sobre el número de muestras y la longitud de los segmentos. Esta función asegura que los datos se guarden con los tipos de datos correctos y en la estructura esperada por UCIDataset, facilitando su posterior carga y uso para evaluación del modelo.
 
+    Args:
+        save_dir (_type_): _description_ Carpeta donde se guardarán los archivos generados para el conjunto de test, incluyendo los archivos .dat para las señales, etiquetas, IDs de pacientes e índices, así como el archivo .pt para la metadata.
+        prefix (_type_): _description_ Prefijo para los archivos generados.
+        data (_type_): _description_ Señales de entrada, shape (N, 2, segment_length), dtype float32.
+        labels (_type_): _description_ Etiquetas de presión arterial, shape (N, 2), dtype float32.
+        patients (_type_): _description_ IDs de pacientes, shape (N,), dtype int64.
+        indexs (_type_): _description_ Índices globales, shape (N,), dtype int64.
+
+    Returns:
+        _type_: _description_ Ruta al archivo de metadata (.pt) que contiene la información sobre los archivos de datos y la estructura del conjunto de test guardado.
+    """    
     os.makedirs(save_dir, exist_ok=True)
 
     num_samples, _, segment_length = data.shape
 
-    # Asegurar dtypes correctos
     data = data.astype("float32")
     labels = labels.astype("float32")
     patients = patients.astype("int64")
     indexs = indexs.astype("int64")
 
-    # Paths de los .dat
     data_path    = os.path.join(save_dir, f"{prefix}_data.dat")
     labels_path  = os.path.join(save_dir, f"{prefix}_labels.dat")
     patients_path= os.path.join(save_dir, f"{prefix}_patients.dat")
     indexs_path  = os.path.join(save_dir, f"{prefix}_indexs.dat")
     meta_path    = os.path.join(save_dir, f"{prefix}_meta.pt")
 
-    # Guardar con memmap
     np.memmap(data_path, dtype="float32", mode="w+", shape=data.shape)[:] = data[:]
     np.memmap(labels_path, dtype="float32", mode="w+", shape=labels.shape)[:] = labels[:]
     np.memmap(patients_path, dtype="int64", mode="w+", shape=patients.shape)[:] = patients[:]
@@ -96,10 +107,17 @@ def save_test_dataset(save_dir, prefix, data, labels, patients, indexs):
     return meta_path
 
 def get_patient_split_indices(pt_files, train_ratio=0.7, val_ratio=0.2, seed=42):
-    """
-    Genera índices globales para Train, Val y Test asegurando que 
-    los pacientes NO se mezclen entre conjuntos.
-    """
+    """_summary_  Realiza una división de los datos basada en pacientes (Patient-Subject Splitting) para garantizar que las señales de un mismo individuo no se mezclen entre los conjuntos de Train, Validation y Test. Esta función carga la metadata de cada archivo .pt proporcionado, extrae los IDs de pacientes y sus índices globales, y luego utiliza la función train_test_split de scikit-learn para realizar la división estratificada por pacientes, asegurando que cada paciente completo se asigne a un solo conjunto. Finalmente, devuelve los índices globales correspondientes a cada conjunto (Train, Validation y Test) para su uso en la creación de los DataLoaders.
+
+    Args:
+        pt_files (_type_): _description_ Lista de rutas a los archivos .pt que contienen la metadata de los conjuntos de datos, incluyendo las rutas a los archivos de señales, etiquetas, IDs de pacientes e índices, así como la información sobre el número de muestras y la longitud de los segmentos. Estos archivos se utilizarán para extraer los IDs de pacientes y sus índices globales para realizar la división por pacientes.
+        train_ratio (float, optional): _description_. Por defecto 0.7. Proporción del conjunto de datos que se asignará al conjunto de entrenamiento (Train) durante la división por pacientes. Este valor determina qué porcentaje de los pacientes únicos se incluirán en el conjunto de entrenamiento, mientras que el resto se dividirá entre los conjuntos de validación (Validation) y prueba (Test) según las proporciones especificadas.
+        val_ratio (float, optional): _description_. Por defecto 0.2. Proporción del conjunto de datos que se asignará al conjunto de validación (Validation) durante la división por pacientes.
+        seed (int, optional): _description_. Por defecto 42. Semilla para la generación de números aleatorios, asegurando resultados reproducibles.
+
+    Returns:
+        _type_: _description_ Retorna tres arrays de índices globales correspondientes a los conjuntos de entrenamiento (Train), validación (Validation) y prueba (Test), que se pueden utilizar para crear subconjuntos del dataset completo sin mezclar señales de un mismo paciente entre los conjuntos.
+    """    
     global_indices_map = [] 
     current_offset = 0
     
@@ -138,7 +156,6 @@ def get_patient_split_indices(pt_files, train_ratio=0.7, val_ratio=0.2, seed=42)
     
     print(f"Total pacientes únicos encontrados: {len(unique_patients)}")
     
-    # 1. Separar Test
     test_ratio = 1.0 - train_ratio - val_ratio
    
     if test_ratio < 0: test_ratio = 0
@@ -147,7 +164,6 @@ def get_patient_split_indices(pt_files, train_ratio=0.7, val_ratio=0.2, seed=42)
         unique_patients, test_size=test_ratio, random_state=seed, shuffle=True
     )
     
-    # 2. Separar Train y Val 
     if len(train_val_patients) > 0:
         val_relative = val_ratio / (train_ratio + val_ratio)
         train_patients, val_patients = train_test_split(
@@ -170,6 +186,11 @@ def get_patient_split_indices(pt_files, train_ratio=0.7, val_ratio=0.2, seed=42)
     return train_indices, val_indices, test_indices
 
 def main():
+    """_summary_  Función principal que configura el entorno de entrenamiento, carga los datos utilizando la división por pacientes, define el modelo, el optimizador, la función de pérdida y el scheduler, y luego ejecuta el ciclo de entrenamiento con early stopping basado en la mejora de la pérdida de validación. Además, guarda el mejor modelo encontrado durante el entrenamiento y genera una gráfica de la curva de pérdida para entrenamiento y validación.
+
+    Returns:
+        _type_: _description_   Esta función no retorna ningún valor, pero realiza todo el proceso de entrenamiento del modelo, incluyendo la configuración del entorno, la carga de datos, la definición del modelo y los componentes de entrenamiento, la ejecución del ciclo de entrenamiento con early stopping, y la generación de gráficos para visualizar el progreso del entrenamiento.
+    """    
     # Configuración del dispositivo
     parameters = {
         'batch_size': 256,
@@ -244,9 +265,6 @@ def main():
     indexs=test_indexs      # (N,)
     )
     print("data/processed/data_UCI/test_set_por_pacientes_iso.pt guardado")
-    #Subset para testeo de modelos sin entrenamiento completo
-
-    # Crear el modelo
 
     model=InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32, depth = 6)
     #model=Modelo_Convolucional(in_channels=2,out_channels=2, long_signal=250)
@@ -256,13 +274,11 @@ def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)  # Mueve el modelo a la GPU
-    #optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay= 1e-4)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay= 1e-3)
     scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, min_lr=1e-6, verbose=True)    
     criterion = torch.nn.MSELoss()  # MSELoss para regresión
     scaler = torch.amp.GradScaler('cuda')
 
-    #retomar entrenamiento 
     start_epoch = 0
     log_path = 'graficas/training_log_Time32_ps.csv' 
     os.makedirs('graficas', exist_ok=True)
@@ -279,11 +295,9 @@ def main():
 
     if os.path.exists(log_path):
         try:
-            # Leemos el CSV. Asumimos columnas: epoch, train_loss, valid_loss
             df_log = pd.read_csv(log_path)
             print(f" Historial encontrado con {len(df_log)} registros.")
             
-            # Llenamos el running_loss con lo que ya teniamos
             for _, row in df_log.iterrows():
                 ep = int(row['epoch'])
                 if ep < max_epochs:
@@ -292,75 +306,63 @@ def main():
         except Exception as e:
             print(f" Error leyendo el log anterior: {e}. Se graficará solo lo nuevo.")
     
-    # Si empezamos de cero absoluto, creamos el archivo con cabeceras
     if start_epoch == 0:
         with open(log_path, 'w') as f:
             f.write("epoch,train_loss,valid_loss\n")
 
     # ENTRENAMIENTO
     def train_one_step(batch, l1_lambda=1e-5):
+        """_summary_ Realiza un paso de entrenamiento: procesa un batch de datos, calcula la pérdida, realiza backpropagation y actualiza los pesos del modelo utilizando precisión mixta (AMP) para optimizar el rendimiento en GPU. La función reinicia los gradientes, mueve los datos y etiquetas a la GPU, realiza la predicción y el cálculo de la pérdida dentro del contexto de autocast para aprovechar la precisión mixta, y luego escala la pérdida para realizar backpropagation y actualizar los pesos del modelo.
+
+        Args:
+            batch (_type_): _description_ Batch de datos que contiene las señales de entrada, las etiquetas de presión arterial, los IDs de pacientes y los índices, que se utilizará para realizar un paso de entrenamiento en el modelo.
+            l1_lambda (_type_, optional): _description_. Por defecto 1e-5. Coeficiente de regularización L1 
+
+        Returns:
+            _type_: _description_ Retorna el valor de la pérdida calculada para el batch procesado, que se utilizará para monitorear el rendimiento del modelo durante el entrenamiento.
+        """        
         optimizer.zero_grad(set_to_none=True) # Reinicia los gradientes
         data, labels, _, _ = batch # Obtiene los datos y etiquetas
 
-        #labels_sbp= labels[:,0].unsqueeze(1)
-        #labels_dbp= labels[:,1].unsqueeze(1)
-        #labels_pam = Tools.calcular_pam(labels_sbp, labels_dbp)
-
-        #labels = torch.cat((labels_sbp, labels_dbp, labels_pam), dim=1)
-
         data, labels = data.to(device, non_blocking=True), labels.to(device, non_blocking=True) # Mueve los datos y etiquetas a la GPU
         
-        #print("Rango de datos:", torch.min(data).item(), torch.max(data).item())
-
-        #for name, param in model.named_parameters():
-        #    print(f"{name}: mean={param.mean().item():.4f}, std={param.std().item():.4f}")
         with torch.amp.autocast('cuda'):
             preds = model.forward(data) # Realiza la predicción
-            #print("Preds:", preds[0])
-            #print("Labels:", labels[0])
             loss = criterion(preds, labels) # Calcula la pérdida
-        """
-        if torch.isnan(loss):
-            print("¡Loss con NaN detectado! Abortando...")
-            print("Preds:", preds[0])
-            print("Labels:", labels[0])
-            exit()
-        """
-        # Regularización L1 manual
-        #l1_norm = sum(p.abs().sum() for p in model.parameters())
-        #loss = loss + l1_lambda * l1_norm
 
-        #loss.backward() # Calcula los gradientes mediante backpropagation
         scaler.scale(loss).backward()
-        # Añade gradient clipping (busca evitar explosión de gradiente)
-        #torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-        #optimizer.step() # Actualiza los parámetros del modelo
         scaler.step(optimizer)
         scaler.update()
         return loss.item() # Devuelve la pérdida
 
     def evaluate_one_step(batch):
+        """_summary_ Realiza un paso de evaluación: procesa un batch de datos de validación, calcula la pérdida sin realizar backpropagation ni actualizar los pesos del modelo. La función mueve los datos y etiquetas a la GPU, realiza la predicción y el cálculo de la pérdida.
+
+        Args:
+            batch (_type_): _description_ Batch de datos que contiene las señales de entrada, las etiquetas de presión arterial, los IDs de pacientes y los índices, que se utilizará para realizar un paso de evaluación en el modelo durante la fase de validación.
+
+        Returns:
+            _type_: _description_ Retorna el valor de la pérdida calculada para el batch procesado, que se utilizará para monitorear el rendimiento del modelo durante la validación.
+        """        
         with torch.no_grad():
             data, labels, _, _ = batch
-
-            #labels_sbp= labels[:,0].unsqueeze(1)
-            #labels_dbp= labels[:,1].unsqueeze(1)
-            #labels_pam = Tools.calcular_pam(labels_sbp, labels_dbp)
-            #labels = torch.cat((labels_sbp, labels_dbp, labels_pam), dim=1)
-
             data, labels = data.to(device), labels.to(device)
             preds = model.forward(data)
             loss = criterion(preds, labels)
             return loss.item()
     
     def train_one_epoch():    
+        """_summary_ Realiza un ciclo completo de entrenamiento para una época, procesando todos los batches de entrenamiento y validación, calculando las pérdidas promedio para cada fase, y actualizando el scheduler de aprendizaje en función de la pérdida de validación.
+
+        Returns:
+            _type_: _description_ Retorna dos valores: train_loss, que es la pérdida promedio calculada para todos los batches de entrenamiento procesados durante la época, y valid_loss, que es la pérdida promedio calculada para todos los batches de validación procesados durante la época.
+        """        
         train_loss, valid_loss = 0.0, 0.0
 
         model.train()
       
         loop = tqdm(training_generator, leave=False, desc="Train Step")
         for batch in loop:
-        #for batch in subset_loader:
             loss_batch = train_one_step(batch)
             train_loss += loss_batch
             loop.set_postfix(loss=loss_batch)
@@ -368,7 +370,6 @@ def main():
    
         model.eval()    
         for batch in validation_generator:
-        #for batch in subset_loader:
             valid_loss += evaluate_one_step(batch)
        
 

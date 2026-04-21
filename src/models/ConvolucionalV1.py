@@ -6,7 +6,7 @@ Descripción: Arquitectura de Red Neuronal Convolucional 1D (1D-CNN) para la
              la extracción automática de características de las señales (PPG/ECG) 
              y capas densas con activación ELU para la regresión de los valores 
              de presión (Sistólica y Diastólica).
-"""
+""" 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -82,8 +82,10 @@ class Modelo_ConvolucionalV1(nn.Module):
         self.dense4= nn.Linear(20, out_channels)
 
     def forward(self, x):
-        """
-        Define el flujo de los tensores hacia adelante (Forward Pass).
+        """ Define el flujo de procesamiento de los tensores (Forward Pass) a través de la red.
+            - Entrada 'x': Tensor de forma (batch_size, in_channels, long_signal).
+            - Salida: Tensor de forma (batch_size, out_channels) con las predicciones 
+              de presión arterial.
         """
         # Bloque Conv 1 & 2 + Pool
         x = F.relu(self.bn1(self.conv1(x)))

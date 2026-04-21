@@ -22,7 +22,15 @@ import matplotlib.pyplot as plt
 # --- ANÁLISIS DE ETIQUETAS Y PRESIONES ---
 
 def max_min_pressures(sbp,dbp):
-    """Calcula los valores máximos y mínimos absolutos de presión arterial en el dataset."""
+    """_summary_ Calcula los valores mínimos y máximos de presión sistólica (SBP) y diastólica (DBP) a partir de las matrices de etiquetas. 
+
+    Args:
+        sbp (_type_): _description_ Lista de listas con las presiones sistólicas (SBP) extraídas de las señales ABP invasivas.
+        dbp (_type_): _description_ Lista de listas con las presiones diastólicas (DBP) extraídas de las señales ABP invasivas.
+
+    Returns:
+        _type_: _description_ Retorna los valores mínimos y máximos de presión sistólica (SBP) y diastólica (DBP) a partir de las matrices de etiquetas.
+    """
     sbp = np.array([val for sublist in sbp for val in sublist])
     dbp = np.array([val for sublist in dbp for val in sublist])
 
@@ -37,29 +45,79 @@ def max_min_pressures(sbp,dbp):
     return SBP_MIN, SBP_MAX, DBP_MIN, DBP_MAX 
 
 def min_max_normalization(signal, max, min):
-    """Aplica normalización Min-Max a una señal dada."""
+    """_summary_ Aplica normalización Min-Max a la señal utilizando los valores mínimo y máximo de presión sistólica (SBP) y diastólica (DBP) para escalar los valores al rango [0, 1].
+
+    Args:
+        signal (_type_): _description_ Lista o array con la señal a normalizar.
+        max (_type_): _description_ Valor máximo de la señal.
+        min (_type_): _description_ Valor mínimo de la señal.
+
+    Returns:
+        _type_: _description_ Retorna la señal normalizada utilizando la fórmula de normalización Min-Max, escalando los valores al rango [0, 1].
+    """
     signal = np.array(signal)
     return (signal - min) / (max - min)
 
 def z_score_normalization(signal, epsilon=1e-8):
-    """Aplica normalización Z-score estandarizando con media 0 y varianza 1."""
+    """_summary_ Aplica normalización Z-score a la señal utilizando su media y desviación estándar para centrarla en cero y escalarla a unidades de desviación estándar. Se añade un pequeño valor epsilon para evitar divisiones por cero en caso de que la desviación estándar sea muy pequeña o nula.
+
+    Args:
+        signal (_type_): _description_ Lista o array con la señal a normalizar.
+        epsilon (_type_, optional): _description_. Por defecto 1e-8. Valor pequeño añadido al denominador para evitar divisiones por cero en caso de desviación estándar muy pequeña o nula.
+
+    Returns:
+        _type_: _description_ Retorna la señal normalizada utilizando la fórmula de normalización Z-score, centrando los valores en cero y escalándolos a unidades de desviación estándar. Se añade un pequeño valor epsilon para evitar divisiones por cero en caso de que la desviación estándar sea muy pequeña o nula.
+    """
     signal = np.array(signal)
     mean = np.mean(signal)
     std = np.std(signal)
     return (signal - mean) / (std + epsilon)
 
 def pressure_normalization_z_score(sbp, dbp, sbp_mean, sbp_std, dbp_mean, dbp_std):
-    """Normaliza las etiquetas de presión utilizando Z-score con parámetros poblacionales."""
+    """_summary_ Aplica normalización Z-score a las etiquetas de presión sistólica (SBP) y diastólica (DBP) utilizando sus medias y desviaciones estándar globales para centrar los valores en cero y escalarlos a unidades de desviación estándar. Se añaden pequeños valores epsilon para evitar divisiones por cero en caso de que las desviaciones estándar sean muy pequeñas o nulas.
+
+    Args:
+        sbp (_type_): _description_ Valor de presión sistólica (SBP) a normalizar. 
+        dbp (_type_): _description_ Valor de presión diastólica (DBP) a normalizar.
+        sbp_mean (_type_): _description_ Media global de las presiones sistólicas (SBP) calculada a partir de las etiquetas del dataset.
+        sbp_std (_type_): _description_ Desviación estándar global de las presiones sistólicas (SBP) calculada a partir de las etiquetas del dataset.
+        dbp_mean (_type_): _description_ Media global de las presiones diastólicas (DBP) calculada a partir de las etiquetas del dataset.
+        dbp_std (_type_): _description_ Desviación estándar global de las presiones diastólicas (DBP) calculada a partir de las etiquetas del dataset.
+
+    Returns:
+        _type_: _description_ Retorna los valores normalizados de presión sistólica (SBP) y diastólica (DBP) utilizando la fórmula de normalización Z-score, centrando los valores en cero y escalándolos a unidades de desviación estándar. Se añaden pequeños valores epsilon para evitar divisiones por cero en caso de que las desviaciones estándar sean muy pequeñas o nulas.
+    """    """"""
     sbp_norm = (sbp - sbp_mean) / sbp_std
     dbp_norm = (dbp - dbp_mean) / dbp_std
     return sbp_norm, dbp_norm
 
 def desnormalizar_zscore(norm_array, media, std):
-    """Revierte la normalización Z-score para obtener los valores originales."""
+    """_summary_ Revierte la normalización Z-score para obtener los valores originales de presión sistólica (SBP) y diastólica (DBP) a partir de los valores normalizados, utilizando las medias y desviaciones estándar globales para escalar y centrar los valores de vuelta a su rango original.
+
+    Args:
+        norm_array (_type_): _description_ Array o lista con los valores normalizados de presión sistólica (SBP) o diastólica (DBP) que se desean desnormalizar.
+        media (_type_): _description_ Media global de las presiones sistólicas (SBP) o diastólicas (DBP) calculada a partir de las etiquetas del dataset.
+        std (_type_): _description_ Desviación estándar global de las presiones sistólicas (SBP) o diastólicas (DBP) calculada a partir de las etiquetas del dataset.
+
+    Returns:
+        _type_: _description_ Retorna los valores desnormalizados de presión sistólica (SBP) o diastólica (DBP) utilizando la fórmula de desnormalización Z-score, escalando y centrando los valores de vuelta a su rango original.
+    """   
     return norm_array * std + media
 
 def labels_normalization(matriz_presiones_sistolicas, matriz_presiones_diastolicas, SBP_MEAN, SBP_STD, DBP_MEAN, DBP_STD):
-    """Itera sobre la matriz de etiquetas de presión y les aplica normalización Z-score global."""
+    """_summary_ Aplica normalización Z-score a las matrices de etiquetas de presión sistólica (SBP) y diastólica (DBP) utilizando sus medias y desviaciones estándar globales para centrar los valores en cero y escalarlos a unidades de desviación estándar. 
+
+    Args:
+        matriz_presiones_sistolicas (_type_): _description_ Lista de listas con las presiones sistólicas (SBP) extraídas de las señales ABP invasivas, que se desean normalizar.
+        matriz_presiones_diastolicas (_type_): _description_  Lista de listas con las presiones diastólicas (DBP) extraídas de las señales ABP invasivas, que se desean normalizar.
+        SBP_MEAN (_type_): _description_ Media global de las presiones sistólicas (SBP) calculada a partir de las etiquetas del dataset, que se utilizará para centrar los valores de SBP en la normalización Z-score.
+        SBP_STD (_type_): _description_ Desviación estándar global de las presiones sistólicas (SBP) calculada a partir de las etiquetas del dataset, que se utilizará para escalar los valores de SBP a unidades de desviación estándar en la normalización Z-score.
+        DBP_MEAN (_type_): _description_ Media global de las presiones diastólicas (DBP) calculada a partir de las etiquetas del dataset, que se utilizará para centrar los valores de DBP en la normalización Z-score.
+        DBP_STD (_type_): _description_ Desviación estándar global de las presiones diastólicas (DBP) calculada a partir de las etiquetas del dataset, que se utilizará para escalar los valores de DBP a unidades de desviación estándar en la normalización Z-score.
+
+    Returns:
+        _type_: _description_ Retorna las matrices de etiquetas normalizadas de presión sistólica (SBP) y diastólica (DBP) utilizando la fórmula de normalización Z-score, centrando los valores en cero y escalándolos a unidades de desviación estándar. La función también filtra y descarta cualquier etiqueta que resulte en valores NaN o Inf tras la normalización, asegurando que solo se mantengan etiquetas válidas para el entrenamiento del modelo.
+    """    
     matriz_presiones_sistolicas_norm=[]
     matriz_presiones_diastolicas_norm=[]
     for i in range(len(matriz_presiones_sistolicas)):
@@ -123,10 +181,16 @@ def signal_normalization(ppg_signals, abp_signals, ecg_signals):
     return ppg_normalized, abp_normalized, ecg_normalized
 
 def signal_normalization_global(ppg_signals, abp_signals, ecg_signals):
-    """
-    Normaliza todas las señales PPG, ABP y ECG usando media y desviación globales
-    (calculadas dentro del archivo actual). Descarta ventanas corruptas
-    """
+    """_summary_  Aplica normalización Z-score global a las señales de fotopletismografía (PPG), electrocardiograma (ECG) y presión arterial (ABP) utilizando la media y desviación estándar calculadas a partir de todas las ventanas del dataset para cada tipo de señal. La función también filtra y descarta cualquier ventana que contenga valores NaN o Inf antes de calcular los parámetros de normalización, asegurando que solo se utilicen datos válidos para el cálculo de la media y desviación estándar globales. Finalmente, se aplica la normalización Z-score a cada ventana utilizando los parámetros globales calculados, y se devuelve la lista de señales normalizadas junto con los parámetros utilizados para la normalización.
+
+    Args:
+        ppg_signals (_type_): _description_ Lista de listas con las señales de fotopletismografía (PPG) segmentadas en ventanas, organizadas por paciente.
+        abp_signals (_type_): _description_ Lista de listas con las señales de presión arterial (ABP) segmentadas en ventanas, organizadas por paciente.
+        ecg_signals (_type_): _description_ Lista de listas con las señales de electrocardiograma (ECG) segmentadas en ventanas, organizadas por paciente.
+
+    Returns:
+        _type_: _description_ Retorna las señales normalizadas utilizando normalización Z-score global, calculando la media y desviación estándar a partir de todas las ventanas del dataset para cada tipo de señal (PPG, ECG, ABP). La función también filtra y descarta cualquier ventana que contenga valores NaN o Inf antes de calcular los parámetros de normalización, asegurando que solo se utilicen datos válidos para el cálculo de la media y desviación estándar globales. Finalmente, se aplica la normalización Z-score a cada ventana utilizando los parámetros globales calculados, y se devuelve la lista de señales normalizadas junto con los parámetros utilizados para la normalización.
+    """    
 
     ppg_normalized = []
     ecg_normalized = []
@@ -205,11 +269,27 @@ def signal_normalization_global(ppg_signals, abp_signals, ecg_signals):
     return ppg_normalized, abp_normalized, ecg_normalized, (ppg_mean, ppg_std, ecg_mean, ecg_std, abp_mean, abp_std)
 
 def calcular_pam(sbp: torch.Tensor, dbp: torch.Tensor) -> torch.Tensor:
-    """Calcula la Presión Arterial Media (PAM) estándar."""
+    """_summary_ Calcula la presión arterial media (PAM) a partir de los valores de presión sistólica (SBP) y diastólica (DBP) utilizando la fórmula PAM = (SBP + 2*DBP) / 3.
+
+    Args:
+        sbp (torch.Tensor): _description_ Tensor con los valores de presión sistólica (SBP) para los cuales se desea calcular la presión arterial media (PAM).
+        dbp (torch.Tensor): _description_ Tensor con los valores de presión diastólica (DBP) para los cuales se desea calcular la presión arterial media (PAM).
+
+    Returns:
+        torch.Tensor: _description_ Tensor con los valores de presión arterial media (PAM) calculados.
+    """    
     return (sbp + (2*dbp)) / 3
 
 def get_pam_labels(matriz_presiones_sistolicas, matriz_presiones_diastolicas):
-    """Genera la matriz de etiquetas de PAM a partir de las matrices de SBP y DBP."""
+    """_summary_ Calcula la presión arterial media (PAM) a partir de las matrices de etiquetas de presión sistólica (SBP) y diastólica (DBP). 
+
+    Args:
+        matriz_presiones_sistolicas (_type_): _description_  Lista de listas con las presiones sistólicas (SBP) extraídas de las señales ABP invasivas, que se utilizarán para calcular la presión arterial media (PAM).
+        matriz_presiones_diastolicas (_type_): _description_ Lista de listas con las presiones diastólicas (DBP) extraídas de las señales ABP invasivas, que se utilizarán para calcular la presión arterial media (PAM).
+
+    Returns:
+        _type_: _description_ Retorna una matriz de etiquetas de presión arterial media (PAM) calculada a partir de las matrices de etiquetas de presión sistólica (SBP) y diastólica (DBP).
+    """    
     matriz_presiones_media = []
     for i in range(len(matriz_presiones_sistolicas)):
         presiones_media = []
@@ -227,7 +307,13 @@ def get_pam_labels(matriz_presiones_sistolicas, matriz_presiones_diastolicas):
 # --- Filtrado ---
 
 def filtrar_ppg(senial_ppg):
-    """Aplica filtro pasabanda Butterworth (0.5-21 Hz) y sustrae la media para la señal PPG."""
+    """_summary_ Aplica filtro pasabanda Butterworth (0.5-21 Hz) y sustrae la media para la señal de fotopletismografía (PPG).
+    Args:
+        senial_ppg (_type_): _description_ Lista o array con la señal de fotopletismografía (PPG) que se desea filtrar.
+
+    Returns:
+        _type_: _description_ Retorna la señal de fotopletismografía (PPG) filtrada.
+    """    
     orden = 4
     orden = 4
     frec_sup = 21
@@ -247,7 +333,13 @@ def filtrar_ppg(senial_ppg):
     return ppg_filtrada
 
 def filtrar_ecg(senial_ecg):
-    """Aplica filtro pasabanda Butterworth (0.5-40 Hz) y sustrae la media para la señal ECG."""
+    """_summary_ Aplica filtro pasabanda Butterworth (0.5-40 Hz) y sustrae la media para la señal ECG.
+    Args:
+        senial_ecg (_type_): _description_ Lista o array con la señal ECG que se desea filtrar.
+
+    Returns:
+        _type_: _description_ Retorna la señal ECG filtrada.
+    """
     orden = 4
     frec_sup = 40
     frec_inf = 0.5
@@ -266,7 +358,13 @@ def filtrar_ecg(senial_ecg):
     return ecg_filtrada
 
 def filtrado_para_deteccion_Q(senial_ecg):
-    """Filtro pasabanda ajustado (5-15 Hz) para aislar las frecuencias del complejo QRS."""
+    """_summary_ Aplica filtro pasabanda Butterworth (5-15 Hz) para mejorar la detección de ondas Q en la señal ECG.
+    Args:
+        senial_ecg (_type_): _description_ Lista o array con la señal ECG que se desea filtrar para mejorar la detección de ondas Q.
+
+    Returns:
+        _type_: _description_ Retorna la señal ECG filtrada.
+    """    
     orden = 4
     frec_sup = 15
     frec_inf = 5
@@ -279,7 +377,14 @@ def filtrado_para_deteccion_Q(senial_ecg):
     return ecg_filtrada
 
 def filtrar_abp(senial_abp):
-    """Aplica filtro pasabajos (21 Hz) para suavizar la señal de presión arterial invasiva."""
+    """_summary_ Aplica filtro pasa bajos Butterworth (21 Hz) para la señal de presión arterial invasiva (ABP).
+
+    Args:
+        senial_abp (_type_): _description_ Lista o array con la señal de presión arterial invasiva (ABP) que se desea filtrar.
+
+    Returns:
+        _type_: _description_ Retorna la señal de presión arterial invasiva (ABP) filtrada.
+    """    
     orden = 4
     frec_corte= 21
    
@@ -292,7 +397,15 @@ def filtrar_abp(senial_abp):
 # --- Detección de picos en PPG y ECG ---
 
 def detectar_picos_ppg(ppg, fs=125):
-    """Detecta picos sistólicos en la señal de PPG utilizando umbrales de prominencia y distancia."""
+    """_summary_ Detecta los picos en la señal de fotopletismografía (PPG) utilizando el método de prominencia y altura relativa para identificar los picos fiduciarios correspondientes a los latidos cardíacos. La función ajusta dinámicamente los parámetros de detección de picos en función del rango de amplitud de la señal PPG, estableciendo un umbral de prominencia y altura relativa para garantizar una detección robusta incluso en presencia de ruido o variabilidad en la señal. Además, se establece una distancia mínima entre picos para evitar la detección de falsos positivos debido a artefactos o ruido de alta frecuencia.
+
+    Args:
+        ppg (_type_): _description_ Lista o array con la señal de fotopletismografía (PPG) en la que se desea detectar los picos correspondientes a los latidos cardíacos.
+        fs (int, optional): _description_. Por defecto 125. Frecuencia de muestreo de la señal PPG, que se utiliza para calcular la distancia mínima entre picos en función de la duración esperada de un ciclo cardíaco.
+
+    Returns:
+        _type_: _description_ Retorna un array con los índices de los picos detectados en la señal de fotopletismografía (PPG) que corresponden a los latidos cardíacos.
+    """    
     
     max_val = np.max(ppg)
     min_val = np.min(ppg)
@@ -308,7 +421,17 @@ def detectar_picos_ppg(ppg, fs=125):
     return peaks
 
 def detectar_picos_ecg(ecg, fs=125, hr_min=40, hr_max=180):
-    """Detecta ondas R en la señal de ECG basado en la frecuencia cardíaca máxima y prominencia."""
+    """_summary_ Detecta ondas R en la señal de ECG basado en la frecuencia cardíaca máxima y prominencia.
+
+    Args:
+        ecg (_type_): _description_ Lista o array con la señal de ECG en la que se desea detectar las ondas R.
+        fs (int, optional): _description_. Por defecto 125. Frecuencia de muestreo de la señal ECG.
+        hr_min (int, optional): _description_. Por defecto 40. Frecuencia cardíaca mínima esperada.
+        hr_max (int, optional): _description_. Por defecto 180. Frecuencia cardíaca máxima esperada.
+
+    Returns:
+        _type_: _description_ Retorna un array con los índices de las ondas R detectadas en la señal de ECG.
+    """
     max_val = np.max(ecg)
     min_val = np.min(ecg)
     rango = max_val - min_val
@@ -322,7 +445,15 @@ def detectar_picos_ecg(ecg, fs=125, hr_min=40, hr_max=180):
     return peaks
 
 def detectar_picos_abp(abp, fs=125):
-    """Detecta los picos sistólicos en la señal de presión arterial invasiva (ABP)."""
+    """_summary_ Detecta los picos en la señal de presión arterial invasiva (ABP) utilizando el método de prominencia y altura relativa para identificar los picos fiduciarios correspondientes a los latidos cardíacos. La función ajusta dinámicamente los parámetros de detección de picos en función del rango de amplitud de la señal ABP, estableciendo un umbral de prominencia y altura relativa para garantizar una detección robusta incluso en presencia de ruido o variabilidad en la señal. Además, se establece una distancia mínima entre picos para evitar la detección de falsos positivos debido a artefactos o ruido de alta frecuencia.
+
+    Args:
+        abp (_type_): _description_ Lista o array con la señal de presión arterial invasiva (ABP) en la que se desea detectar los picos correspondientes a los latidos cardíacos.
+        fs (int, optional): _description_. Por defecto 125. Frecuencia de muestreo de la señal ABP.
+
+    Returns:
+        _type_: _description_ Retorna un array con los índices de los picos detectados en la señal de presión arterial invasiva (ABP) que corresponden a los latidos cardíacos.
+    """    
     max_val = np.max(abp)
     min_val = np.min(abp)
     max_val = np.max(abp)
@@ -341,7 +472,17 @@ def detectar_picos_abp(abp, fs=125):
 # --- Ventaneo ---
 
 def recortar_por_ventanas_cuadradas(signal, fs, t_window, overlap):
-    """Segmenta la señal en ventanas rectangulares de tiempo fijo con solapamiento."""
+    """_summary_ Segmenta la señal en ventanas cuadradas de duración fija (t_window) con un porcentaje de solapamiento (overlap) especificado. La función calcula el tamaño de la ventana en muestras a partir de la frecuencia de muestreo (fs) y la duración de la ventana, y luego recorta la señal en segmentos utilizando un bucle que avanza por la señal en pasos determinados por el tamaño de la ventana y el porcentaje de solapamiento. El resultado es un array de ventanas segmentadas que pueden ser utilizadas para análisis posteriores o entrenamiento de modelos de aprendizaje automático.
+
+    Args:
+        signal (_type_): _description_ Lista o array con la señal que se desea segmentar en ventanas cuadradas.
+        fs (_type_): _description_ Frecuencia de muestreo de la señal, que se utiliza para calcular el tamaño de la ventana en muestras a partir de la duración de la ventana en segundos (t_window).
+        t_window (_type_): _description_ Duración de la ventana en segundos.
+        overlap (_type_): _description_ Porcentaje de solapamiento entre ventanas.
+
+    Returns:
+        _type_: _description_ Retorna un array de ventanas segmentadas a partir de la señal original, donde cada ventana tiene una duración fija (t_window) y un porcentaje de solapamiento (overlap) especificado.
+    """    
     window_size = fs * t_window  # Tamaño de la ventana en muestras
     step = int(window_size * (1 - overlap))  # Paso entre ventanas
     windows = []
@@ -350,7 +491,17 @@ def recortar_por_ventanas_cuadradas(signal, fs, t_window, overlap):
     return np.array(windows)
 
 def recortar_por_ventanas_no_cuadradas(senial, fs = 125, window ='Hamming', t_duration = 10, overlap = 0.7):
-    """Segmenta la señal aplicando ventanas no cuadradas (Hamming, Hanning, blackman)"""
+    """_summary_ Segmenta la señal en ventanas no cuadradas de duración fija (t_duration) con un porcentaje de solapamiento (overlap) especificado, aplicando una ventana de tipo especificado (window) a cada segmento para reducir los efectos de borde. La función calcula el tamaño de la ventana en muestras a partir de la frecuencia de muestreo (fs) y la duración de la ventana, y luego recorta la señal en segmentos utilizando un bucle que avanza por la señal en pasos determinados por el tamaño de la ventana y el porcentaje de solapamiento. Para cada segmento recortado, se aplica una ventana del tipo especificado (Hamming, Hanning, Blackman o Rectangular) para suavizar los bordes del segmento y reducir los efectos de discontinuidad. El resultado es una lista de segmentos segmentados y suavizados que pueden ser utilizados para análisis posteriores o entrenamiento de modelos de aprendizaje automático.
+
+    Args:
+        senial (_type_): _description_ Lista o array con la señal que se desea segmentar en ventanas no cuadradas.
+        fs (int, optional): _description_. Por defecto 125. Frecuencia de muestreo de la señal, que se utiliza para calcular el tamaño de la ventana en muestras a partir de la duración de la ventana en segundos (t_duration). 
+        window (str, optional): _description_. Por defecto 'Hamming'. Tipo de ventana a aplicar a cada segmento recortado para reducir los efectos de borde. Las opciones disponibles son 'Hamming', 'Hanning', 'Blackman' y 'Rectangular'.
+        overlap (float, optional): _description_. Por defecto 0.7. Porcentaje de solapamiento entre ventanas.
+
+    Returns:
+        _type_: _description_ Retorna una lista de segmentos segmentados y suavizados a partir de la señal original, donde cada segmento tiene una duración fija (t_duration) y un porcentaje de solapamiento (overlap) especificado, y se ha aplicado una ventana del tipo especificado (window) para reducir los efectos de borde.
+    """    
     window_width = t_duration * fs
     
     if window == 'Hamming':
@@ -373,7 +524,16 @@ def recortar_por_ventanas_no_cuadradas(senial, fs = 125, window ='Hamming', t_du
     return segments
 
 def recortar_por_picos(seniales, list_peaks, overlap_peaks=4):
-    """Realiza la segmentación dinámica basándose en los intervalos de los picos fiduciarios detectados."""
+    """_summary_ Segmenta la señal en ventanas no cuadradas centradas en los picos detectados, utilizando un número específico de picos para definir el inicio y el final de cada segmento. La función recorta segmentos de la señal que comienzan un número determinado de picos antes del pico actual y terminan un número determinado de picos después del pico actual, asegurando que cada segmento capture un ciclo cardíaco completo. El parámetro overlap_peaks permite controlar el solapamiento entre segmentos consecutivos, avanzando por la señal en pasos determinados por el número de picos especificado. El resultado es una lista de segmentos segmentados a partir de la señal original, donde cada segmento está centrado en un pico detectado y captura un ciclo cardíaco completo.
+
+    Args:
+        seniales (_type_): _description_ Lista de listas con las señales que se desean segmentar en ventanas no cuadradas centradas en los picos detectados, organizadas por paciente.
+        list_peaks (_type_): _description_ Lista de listas con los índices de los picos detectados en cada señal, organizados por paciente, que se utilizarán para definir el inicio y el final de cada segmento recortado.
+        overlap_peaks (int, optional): _description_. Por defecto 4. Número de picos antes y después del pico actual que se utilizarán para definir el inicio y el final de cada segmento recortado, respectivamente. Este parámetro controla el solapamiento entre segmentos consecutivos, avanzando por la señal en pasos determinados por el número de picos especificado.
+
+    Returns:
+        _type_: _description_
+    """    
     all_segments = []
     all_starts = []
     all_stops = []
@@ -410,7 +570,15 @@ def recortar_por_picos(seniales, list_peaks, overlap_peaks=4):
     return all_segments, all_starts, all_stops
 
 def adjust_window(win, max_len):
-    """Estandariza la longitud del recorte mediante padding o truncado centrado."""
+    """_summary_ Ajusta una ventana de señal a una longitud específica (max_len) mediante padding o recorte centrado. Si la ventana es más corta que max_len, se agrega padding a ambos lados para mantenerla centrada. Si la ventana es más larga que max_len, se recorta desde el centro para conservar la parte central de la señal. Si la ventana ya tiene la longitud deseada, se devuelve sin cambios.
+
+    Args:
+        win (_type_): _description_ Lista o array con la ventana de señal que se desea ajustar a una longitud específica (max_len).
+        max_len (_type_): _description_ Longitud deseada para la ventana de señal.
+
+    Returns:
+        _type_: _description_ Retorna la ventana de señal ajustada a la longitud específica (max_len) mediante padding o recorte centrado, dependiendo de si la ventana original es más corta o más larga que max_len. Si la ventana ya tiene la longitud deseada, se devuelve sin cambios.
+    """    
     diff = max_len - len(win)
     if diff > 0:
         # Pad a izquierda y derecha para mantener centrado
@@ -426,7 +594,19 @@ def adjust_window(win, max_len):
         return win
     
 def recortar_por_picos_sincronizado(ppg, abp, ecg, peaks, overlap_peaks=4, lenght_segment=500):
-    """Segmenta múltiples señales de forma síncrona asegurando que correspondan al mismo evento cardíaco."""
+    """_summary_ Segmenta las señales de fotopletismografía (PPG), presión arterial invasiva (ABP) y electrocardiograma (ECG) en ventanas no cuadradas centradas en los picos detectados en la señal ECG, utilizando un número específico de picos para definir el inicio y el final de cada segmento. La función recorta segmentos de las señales que comienzan un número determinado de picos antes del pico actual y terminan un número determinado de picos después del pico actual, asegurando que cada segmento capture un ciclo cardíaco completo. El parámetro overlap_peaks permite controlar el solapamiento entre segmentos consecutivos, avanzando por las señales en pasos determinados por el número de picos especificado. Además, se ajusta cada segmento a una longitud específica (lenght_segment) mediante padding o recorte centrado para garantizar que todas las ventanas tengan la misma longitud, lo que facilita su uso para análisis posteriores o entrenamiento de modelos de aprendizaje automático.
+
+    Args:
+        ppg (_type_): _description_ Lista o array con la señal de fotopletismografía (PPG) que se desea segmentar en ventanas no cuadradas centradas en los picos detectados en la señal ECG.
+        abp (_type_): _description_ Lista o array con la señal de presión arterial invasiva (ABP) que se desea segmentar en ventanas no cuadradas centradas en los picos detectados en la señal ECG.
+        ecg (_type_): _description_ Lista o array con la señal de electrocardiograma (ECG) que se desea segmentar en ventanas no cuadradas centradas en los picos detectados en la señal ECG.
+        peaks (_type_): _description_ Lista o array con los índices de los picos detectados en la señal ECG, que se utilizarán para definir el inicio y el final de cada segmento recortado.
+        overlap_peaks (int, optional): _description_ Número de picos que se solapan entre segmentos consecutivos. Por defecto 4.
+        lenght_segment (int, optional): _description_ Longitud deseada para cada segmento de señal. Por defecto 500.
+
+    Returns:
+        _type_: _description_ Retorna tres listas de segmentos segmentados a partir de las señales de fotopletismografía (PPG), presión arterial invasiva (ABP) y electrocardiograma (ECG), donde cada segmento está centrado en un pico detectado en la señal ECG y captura un ciclo cardíaco completo. 
+    """    
     segments_ppg = []
     segments_abp = []
     segments_ecg = []
@@ -496,7 +676,15 @@ def signal_stats_analisis(signal):
 # --- EXTRACCIÓN DE ETIQUETAS Y LIMPIEZA ---
 
 def get_abp_labels(abp_signals, fs):
-    """Extrae la presión Sistólica y Diastólica de la señal ABP invasiva."""
+    """_summary_ Extrae las etiquetas de presión sistólica (SBP) y diastólica (DBP) de las señales de presión arterial invasiva (ABP) utilizando la detección de picos para identificar los picos sistólicos y diastólicos en cada ventana de señal. La función recorre cada ventana de señal ABP, detecta los picos correspondientes a los latidos cardíacos utilizando el método de prominencia y altura relativa, y luego extrae los valores de presión sistólica (SBP) y diastólica (DBP) asociados a esos picos. Se aplican criterios fisiológicos para validar las etiquetas extraídas, asegurando que solo se consideren válidas aquellas ventanas donde la presión sistólica sea mayor que la presión diastólica. Las etiquetas extraídas se organizan en matrices separadas para SBP y DBP, junto con las matrices de índices de picos sistólicos y diastólicos correspondientes.
+
+    Args:
+        abp_signals (_type_): _description_ Lista de listas con las señales de presión arterial invasiva (ABP) organizadas por paciente y ventana, de las cuales se desea extraer las etiquetas de presión sistólica (SBP) y diastólica (DBP) utilizando la detección de picos.
+        fs (_type_): _description_  Frecuencia de muestreo de las señales ABP, que se utiliza para calcular la distancia mínima entre picos en función de la duración esperada de un ciclo cardíaco.
+
+    Returns:
+        _type_: _description_ Retorna cuatro matrices: matriz_presiones_sistolicas, matriz_presiones_diastolicas, matriz_picos_sistolicos y matriz_picos_diastolicos. La matriz_presiones_sistolicas contiene las etiquetas de presión sistólica (SBP) extraídas de las señales ABP, la matriz_presiones_diastolicas contiene las etiquetas de presión diastólica (DBP) extraídas de las señales ABP, la matriz_picos_sistolicos contiene los índices de los picos sistólicos detectados en cada ventana de señal ABP, y la matriz_picos_diastolicos contiene los índices de los picos diastólicos detectados en cada ventana de señal ABP.
+    """    
     matriz_picos_sistolicos = []
     matriz_picos_diastolicos = []
     matriz_presiones_sistolicas = []
@@ -561,7 +749,20 @@ def get_abp_labels(abp_signals, fs):
     )
 
 def delete_signals_no_peaks(ppg, abp, ecg, presiones_sbp, presiones_dbp, indices_sistolicos, indices_diastolicos):
-    """Descarta ventanas cuyas etiquetas de presión salen de los rangos fisiológicos coherentes."""
+    """_summary_ Elimina las ventanas de señal que no tienen picos detectados en la señal de presión arterial invasiva (ABP) o que tienen etiquetas de presión sistólica (SBP) y diastólica (DBP) no válidas. La función recorre cada ventana de señal, verificando si se han detectado picos válidos en la señal ABP y si las etiquetas de presión sistólica y diastólica cumplen con criterios fisiológicos. Si una ventana no cumple con estos criterios, se elimina de las matrices de señales y etiquetas correspondientes. Al final del proceso, se devuelve un conjunto filtrado de señales y etiquetas que solo incluye aquellas ventanas que tienen picos válidos y etiquetas de presión arterial coherentes.
+
+    Args:
+        ppg (_type_): _description_ Lista de listas con las señales de fotopletismografía (PPG) organizadas por paciente y ventana, que se filtrarán para eliminar aquellas ventanas que no tienen picos detectados en la señal de presión arterial invasiva (ABP) o que tienen etiquetas de presión sistólica (SBP) y diastólica (DBP) no válidas.
+        abp (_type_): _description_ Lista de listas con las señales de presión arterial invasiva (ABP) organizadas por paciente y ventana, que se utilizarán para extraer las etiquetas de presión sistólica (SBP) y diastólica (DBP).
+        ecg (_type_): _description_ Lista de listas con las señales de electrocardiograma (ECG) organizadas por paciente y ventana, que se utilizarán para el análisis cardíaco.
+        presiones_sbp (_type_): _description_ Matriz con las etiquetas de presión sistólica (SBP) extraídas de las señales ABP.
+        presiones_dbp (_type_): _description_ Matriz con las etiquetas de presión diastólica (DBP) extraídas de las señales ABP.
+        indices_sistolicos (_type_): _description_ Matriz con los índices de los picos sistólicos detectados en cada ventana de señal ABP.
+        indices_diastolicos (_type_): _description_ Matriz con los índices de los picos diastólicos detectados en cada ventana de señal ABP.
+
+    Returns:
+        _type_: _description_ Retorna un conjunto filtrado de señales y etiquetas que solo incluye aquellas ventanas que tienen picos válidos en la señal de presión arterial invasiva (ABP) y etiquetas de presión sistólica (SBP) y diastólica (DBP) coherentes, eliminando aquellas ventanas que no cumplen con estos criterios.
+    """    
     ppg_filtradas = []
     abp_filtradas = []
     ecg_filtradas = []
@@ -621,7 +822,14 @@ def delete_signals_no_peaks(ppg, abp, ecg, presiones_sbp, presiones_dbp, indices
 # --- CARGA Y ALMACENAMIENTO DE DATOS ---
 
 def leer_archivos_mat(ruta_archivo):
-    """Extrae tensores PPG, ABP y ECG desde el almacenamiento HDF5 """
+    """_summary_ Lee un archivo MAT utilizando la biblioteca h5py, extrae las señales de fotopletismografía (PPG), presión arterial invasiva (ABP) y electrocardiograma (ECG) organizadas en un formato específico, y devuelve estas señales como listas de arrays. La función abre el archivo MAT en modo lectura, identifica las claves presentes en el archivo para localizar el dataset que contiene las referencias a las señales, y luego recorre cada referencia para extraer las señales correspondientes a PPG, ABP y ECG. Las señales extraídas se almacenan en listas separadas y se devuelven al final del proceso.
+
+    Args:
+        ruta_archivo (_type_): _description_ Ruta del archivo MAT que se desea leer y del cual se extraerán las señales de fotopletismografía (PPG), presión arterial invasiva (ABP) y electrocardiograma (ECG).
+
+    Returns:
+        _type_: _description_ Retorna tres listas de arrays: ppg_signal, abp_signal y ecg_signal. La lista ppg_signal contiene las señales de fotopletismografía (PPG) extraídas del archivo MAT, la lista abp_signal contiene las señales de presión arterial invasiva (ABP) extraídas del archivo MAT, y la lista ecg_signal contiene las señales de electrocardiograma (ECG) extraídas del archivo MAT.
+    """    
     with h5py.File(ruta_archivo, 'r') as f:
         claves = list(f.keys())
         print("Claves encontradas:", claves)
@@ -643,9 +851,20 @@ def leer_archivos_mat(ruta_archivo):
 
 def save_partial_file(ppg_signals, ecg_signals, sbp_labels, dbp_labels,
                       patient_id_inicial, index_inicial, nombre_archivo):
-    """
-    Guarda los datos procesados utilizando np.memmap para crear tensores en disco.
-    """
+    """_summary_  Guarda las señales de fotopletismografía (PPG) y electrocardiograma (ECG), junto con las etiquetas de presión sistólica (SBP) y diastólica (DBP), en archivos separados utilizando la técnica de memoria mapeada (memmap) para manejar grandes volúmenes de datos sin cargar todo en memoria. La función crea un directorio de salida si no existe, calcula el número total de muestras y la longitud de cada segmento, y luego guarda las señales y etiquetas en archivos memmap separados para datos, etiquetas, IDs de pacientes e índices. Finalmente, se guarda un archivo .pt con las rutas a los archivos memmap y la información sobre el número de muestras y la longitud de los segmentos.
+
+    Args:
+        ppg_signals (_type_): _description_ Lista de listas con las señales de fotopletismografía (PPG) organizadas por paciente y ventana, que se guardarán en archivos separados utilizando la técnica de memoria mapeada (memmap).
+        ecg_signals (_type_): _description_ Lista de listas con las señales de electrocardiograma (ECG) organizadas por paciente y ventana, que se guardarán en archivos separados utilizando la técnica de memoria mapeada (memmap).
+        sbp_labels (_type_): _description_ Lista de listas con las etiquetas de presión sistólica (SBP) organizadas por paciente y ventana, que se guardarán en archivos separados utilizando la técnica de memoria mapeada (memmap).
+        dbp_labels (_type_): _description_ Lista de listas con las etiquetas de presión diastólica (DBP) organizadas por paciente y ventana, que se guardarán en archivos separados utilizando la técnica de memoria mapeada (memmap).
+        patient_id_inicial (_type_): _description_ ID inicial del paciente para el archivo de salida.
+        index_inicial (_type_): _description_ Índice inicial para el archivo de salida.
+        nombre_archivo (_type_): _description_ Nombre del archivo de salida.
+
+    Returns:
+        _type_: _description_ Retorna el número de muestras guardadas en los archivos memmap, que corresponde a la cantidad de ventanas de señal válidas que se han procesado y almacenado en los archivos separados utilizando la técnica de memoria mapeada (memmap).
+    """    
     output_dir = 'data/processed/data_UCI'
     os.makedirs(output_dir, exist_ok=True)
 
@@ -696,7 +915,13 @@ def save_partial_file(ppg_signals, ecg_signals, sbp_labels, dbp_labels,
     return index
 
 def get_num_patientsIDs(signals):
-    """Devuelve la cantidad de IDs de pacientes únicos en el dataset"""
+    """ Devuelve la cantidad de IDs de pacientes únicos en el dataset
+    Args:
+        signals (_type_): Lista de señales segmentadas por paciente, donde cada elemento corresponde a un paciente y contiene sus ventanas segmentadas.
+
+    Returns:
+        _type_: _description_ retorna la cantidad de IDs de pacientes únicos en el dataset, que se corresponde con la cantidad de elementos en la lista de señales.
+    """
     n_ids=0
     for i in range(len(signals)):
         n_ids=n_ids+1

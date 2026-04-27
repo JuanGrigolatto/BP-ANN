@@ -1,3 +1,14 @@
+"""
+Módulo: Busqueda_Hiperparametros.py
+Autor: Juan Marcos Grigolatto
+Descripción: Implementación del experimento para la búsqueda exhaustiva de hiperparámetros 
+             aplicada al algoritmo MAML en modo Patient-wise. Itera sobre múltiples 
+             combinaciones de tasas de aprendizaje (meta y adaptativas), pasos de 
+             adaptación (k_steps) y tamaños de grupo. Registra los resultados de 
+             cada experimento en formato JSON y CSV, y genera gráficos comparativos 
+             para justificar empíricamente la selección de la configuración óptima 
+             del modelo fundacional.
+"""
 import itertools
 import torch
 import matplotlib.pyplot as plt
@@ -12,6 +23,8 @@ from src.data.data_chargers.Clase_UCIDataset import UCIDataset
 import random
 
 def experiment_patientwise():
+    """_summary_   Realiza una búsqueda exhaustiva de hiperparámetros para el algoritmo MAML. 
+    """    
     # === Crear carpeta de resultados ===
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     results_dir = os.path.join("results", f"exp_{timestamp}")
@@ -150,33 +163,5 @@ def experiment_patientwise():
 
 if __name__ == "__main__":
     experiment_patientwise()
-"""
-    # Ordena por menor pérdida
-    results = sorted(results, key=lambda x: x['loss'])
-    
-    print("\n=== Resultados ordenados por menor pérdida ===")
-    for r in results:
-        print(f"Loss={r['loss']:.4f} | adapt_lr={r['adapt_lr']}, meta_lr={r['meta_lr']}, "
-              f"k_adapt_steps={r['k_adapt_steps']}, N_group={r['N_patient_group']}, query_set={r['query_set']}, suport_set={r['suport_set']}")
-    
-    
-    plt.figure(figsize=(8,4))
-    losses = [r['loss'] for r in results if np.isfinite(r['loss'])]
-    labels = [f"adapt={r['adapt_lr']}, meta={r['meta_lr']}, k={r['k_adapt_steps']}" for r in results if np.isfinite(r['loss'])]
-    plt.bar(range(len(losses)), losses)
-    plt.xticks(range(len(losses)), labels, rotation=45, ha='right')
-    plt.ylabel("Meta Loss Final")
-    plt.title("Comparación de hiperparámetros - MAML Patient-wise")
-    plt.tight_layout()
-    plt.savefig("metalearning/hparam_comparison.png")
-    plt.show()
 
-    # Mejor configuración
-    best = results[0]
-    print(f"\n Mejor configuración encontrada:")
-    print(best)
-
-if __name__ == "__main__":
-    experiment_patientwise()           
-"""
 

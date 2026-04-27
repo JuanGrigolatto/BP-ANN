@@ -1,3 +1,15 @@
+"""
+Módulo: Fewshot.py
+Autor: Juan Marcos Grigolatto
+Descripción: Script central para la fase de adaptación rápida intra-paciente 
+             (Few-Shot Fine-Tuning / Delta Learning). Toma el modelo fundacional 
+             pre-entrenado mediante MAML y lo calibra a la fisiología específica 
+             de pacientes no vistos, utilizando un conjunto mínimo de latidos 
+             (Support Set). Evalúa y compara el error de estimación de presión 
+             arterial (SBP y DBP) antes y después de la adaptación sobre los 
+             latidos futuros (Query Set), cuantificando la ganancia de precisión 
+             y la capacidad de personalización del modelo para uso clínico.
+"""
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -15,9 +27,30 @@ from src.models.ConvolucionalV1 import Modelo_ConvolucionalV1
 from src.data.data_chargers.Tuningndataset import TuningNDataset
 
 def promedio_metricas(m_list):
+    """_summary_ Realiza el promedio de una lista de métricas, donde cada métrica es una tupla (mae, rmse, bias, std).  
+
+    Args:
+        m_list (_type_): _description_ Lista de tuplas con métricas por paciente.
+
+    Returns:
+        _type_: _description_ Tupla con el promedio de cada métrica (mae, rmse, bias, std) a nivel global.
+    """    
     return np.mean(m_list, axis=0)
 
 def calcular_metricas(y_true, y_pred):
+    """_summary_ Calcula las métricas de error (MAE, RMSE) y las métricas clínicas ISO (Bias y STD) para un conjunto de predicciones vs valores reales.
+
+    Args:
+        y_true (_type_): _description_ Valores reales de presión arterial (SBP o DBP) para un paciente específico.
+        y_pred (_type_): _description_ Valores predichos por el modelo para ese mismo paciente, después de la adaptación few-shot.
+
+    Returns:
+        _type_: _description_ Tupla con las métricas calculadas: (MAE, RMSE, Bias, STD), donde:
+            - MAE: Error absoluto medio entre predicciones y valores reales.
+            - RMSE: Raíz del error cuadrático medio, que penaliza más los errores grandes.
+            - Bias: Promedio de los errores (pred - real), que indica si el modelo tiende a sobreestimar o subestimar.
+            - STD: Desviación estándar de los errores, que refleja la variabilidad o consistencia de las predicciones.
+    """    
     errores = y_pred - y_true
     mae = mean_absolute_error(y_true, y_pred)
     rmse = np.sqrt(mean_squared_error(y_true, y_pred))    
@@ -30,16 +63,38 @@ def calcular_metricas(y_true, y_pred):
     return mae, rmse, bias, std
 
 def desnormalizar_zscore(norm_array, media, std):
+    """_summary_ Desnormaliza un array que fue normalizado con z-score, utilizando la media y desviación estándar globales del entrenamiento. Esto es crucial para interpretar las predicciones en unidades reales (mmHg) y calcular métricas clínicas significativas.
+
+    Args:
+        norm_array (_type_): _description_ Array de predicciones normalizadas (z-score) que se desea desnormalizar.
+        media (_type_): _description_ Media global utilizada para la normalización z-score durante el entrenamiento (por ejemplo, media de SBP o DBP en el dataset de entrenamiento).
+        std (_type_): _description_ Desviación estándar global utilizada para la normalización z-score durante el entrenamiento (por ejemplo, desviación estándar de SBP o DBP en el dataset de entrenamiento).
+
+    Returns:
+        _type_: _description_  Array de predicciones desnormalizadas, en las mismas unidades que los valores reales (mmHg), listo para evaluación clínica y cálculo de métricas.
+    """    
     return norm_array * std + media
 
 def tuning(sample, optimizer, model, criterion, device, bias_norm=None):
+    """_summary_ Realiza un paso de fine-tuning (adaptación) del modelo para un paciente específico, utilizando un solo batch de datos de soporte (Support Set). Si se proporciona bias_norm, el modelo se entrenará para predecir "deltas" respecto a ese bias, lo que puede mejorar la estabilidad y rapidez de la adaptación en escenarios few-shot.
+
+    Args:
+        sample (_type_): _description_ Batch de datos de soporte para un paciente específico, que incluye las señales de entrada y las etiquetas correspondientes (SBP y DBP normalizados).
+        optimizer (_type_): _description_ Optimizador para actualizar los parámetros del modelo.
+        model (_type_): _description_ Modelo a adaptar.
+        criterion (_type_): _description_ Función de pérdida para calcular el error.
+        device (_type_): _description_ Dispositivo en el que se ejecuta el modelo (CPU o GPU).
+        bias_norm (_type_, optional): _description_ Bias normalizado para calcular deltas. Por defecto None.
+
+    Returns:
+        _type_: _description_ Valor de la pérdida después de realizar el paso de adaptación con el batch dado. 
+    """    
     optimizer.zero_grad() 
     data, labels, *_ = sample 
     
     if isinstance(data, list): data = data[0]
     if isinstance(labels, list): labels = labels[0]
         
-    # Congelar capas BatchNorm para estabilidad en few-shot
     for layer in model.modules():
         if isinstance(layer, torch.nn.BatchNorm1d):
             layer.eval()
@@ -48,9 +103,7 @@ def tuning(sample, optimizer, model, criterion, device, bias_norm=None):
 
     data, labels = data.to(device), labels.to(device) 
     
-    # === LA MAGIA DEL DELTA LEARNING AQUÍ ===
     if bias_norm is not None:
-        # Transformamos el bias en tensor y centramos las etiquetas en cero
         bias_tensor = torch.tensor(bias_norm, dtype=torch.float32, device=device)
         labels = labels - bias_tensor
 
@@ -61,6 +114,17 @@ def tuning(sample, optimizer, model, criterion, device, bias_norm=None):
     return loss.item()
 
 def evaluation(batch, model, criterion, device):
+    """_summary_  Realiza la evaluación del modelo en un batch de datos de validación (Query Set) para un paciente específico, calculando las predicciones y la pérdida correspondiente. Esta función se utiliza tanto antes como después del fine-tuning para cuantificar la mejora en la precisión de las predicciones.
+
+    Args:
+        batch (_type_): _description_  Batch de datos de evaluación.
+        model (_type_): _description_ Modelo a evaluar.
+        criterion (_type_): _description_ Función de pérdida para calcular el error.
+        device (_type_): _description_ Dispositivo en el que se ejecuta el modelo (CPU o GPU).
+
+    Returns:
+        _type_: _description_ Tupla con las predicciones del modelo para el batch dado y el valor de la pérdida calculada, ambos necesarios para el análisis posterior de métricas y visualizaciones.
+    """    
     with torch.no_grad():
         data, labels, *_ = batch
         if isinstance(data, list): data = data[0]
@@ -71,11 +135,19 @@ def evaluation(batch, model, criterion, device):
     return preds, loss
 
 def graficar_resultados_pacientes(true_means, pred_means, maes_post, maes_pre=None, titulo="Por Paciente"):
-    """
-    Panel 2x2.
-    MODIFICACIÓN: Etiquetas a, b, c, d DENTRO del gráfico (esquina superior izq)
-    con fondo blanco para evitar solapamiento con los datos.
-    """
+    """_summary_ Genera un conjunto de gráficos para visualizar los resultados de la adaptación few-shot a nivel de paciente, incluyendo:
+    a) Gráfico de dispersión de valores reales vs predichos, destacando pacientes con valores extremos.
+    b) Gráfico de Bland-Altman para analizar el bias y la variabilidad de las predicciones.
+    c) Gráfico de dispersión comparando MAE pre y post adaptación, resaltando mejoras y fallas.
+    d) Histograma de MAE post-adaptación con anotación del porcentaje de pacientes
+    
+    Args:
+        true_means (_type_): _description_ Lista o array con los valores reales promedio de presión arterial (SBP o DBP) para cada paciente, calculados a partir de los latidos del Query Set.
+        pred_means (_type_): _description_ Lista o array con los valores predichos promedio de presión arterial para cada paciente, después de la adaptación few-shot.
+        maes_post (_type_): _description_ Lista o array con los valores de MAE post-adaptación para cada paciente, que reflejan la precisión final del modelo después de la personalización.
+        maes_pre (_type_, optional): _description_ Lista o array con los valores de MAE pre-adaptación para cada paciente, que reflejan la precisión inicial del modelo antes de la personalización. Defaults to None.
+        titulo (str, optional): _description_ Título del conjunto de gráficos. Por defecto "Por Paciente".
+    """   
     true_means = np.array(true_means)
     pred_means = np.array(pred_means)
     maes_post = np.array(maes_post) 
@@ -85,7 +157,6 @@ def graficar_resultados_pacientes(true_means, pred_means, maes_post, maes_pre=No
     mean_bias = np.mean(bias_per_patient)
     std_bias = np.std(bias_per_patient)
 
-    # --- LÓGICA DE EXTREMOS ---
     mean_pop = np.mean(true_means)
     std_pop = np.std(true_means)
     umbral_std = 1.5 
@@ -95,11 +166,9 @@ def graficar_resultados_pacientes(true_means, pred_means, maes_post, maes_pre=No
     
     n_extremos = np.sum(is_extreme)
     n_normales = len(true_means) - n_extremos
-    # ----------------------------------
 
     fig, axs = plt.subplots(2, 2, figsize=(16, 12)) 
 
-    # --- 1. Regresión (Arriba Izq) ---
     axs[0, 0].scatter(true_means[~is_extreme], pred_means[~is_extreme], alpha=0.5, s=15, c='royalblue', label='Rango Medio')
     axs[0, 0].scatter(true_means[is_extreme], pred_means[is_extreme], alpha=0.6, s=20, c='crimson', marker='x', label='Extremos (>1.5$\sigma$)')
     
@@ -111,7 +180,6 @@ def graficar_resultados_pacientes(true_means, pred_means, maes_post, maes_pre=No
     axs[0, 0].grid(True, alpha=0.3)
     axs[0, 0].legend()
 
-    # --- 2. Bland-Altman (Arriba Der) ---
     means = (true_means + pred_means) / 2
     axs[0, 1].scatter(means, bias_per_patient, alpha=0.5, s=15, c='purple', edgecolors='k', linewidth=0.3)
     axs[0, 1].axhline(mean_bias, color='k', ls='-', lw=2, label=f'Bias: {mean_bias:.2f}')
@@ -122,7 +190,6 @@ def graficar_resultados_pacientes(true_means, pred_means, maes_post, maes_pre=No
     axs[0, 1].legend(loc='upper right')
     axs[0, 1].grid(True, alpha=0.3)
 
-    # --- 3. Scatter Pre vs Post (Abajo Izq) ---
     if maes_pre is not None:
         axs[1, 0].scatter(maes_pre[~is_extreme], maes_post[~is_extreme], 
                           alpha=0.5, s=20, c='green', edgecolors='none', label=f'Rango Medio (n={n_normales})')
@@ -141,7 +208,6 @@ def graficar_resultados_pacientes(true_means, pred_means, maes_post, maes_pre=No
     else:
         axs[1, 0].text(0.5, 0.5, "Datos Pre no disponibles", ha='center', transform=axs[1, 0].transAxes)
 
-    # --- 4. Histograma (Abajo Der) ---
     axs[1, 1].hist(maes_post, bins=30, color='orange', edgecolor='black', alpha=0.7)
     axs[1, 1].axvline(5, color='red', linestyle='dashed', linewidth=2, label='Umbral 5 mmHg')
     
@@ -157,13 +223,6 @@ def graficar_resultados_pacientes(true_means, pred_means, maes_post, maes_pre=No
     axs[1, 1].set_xlabel('MAE Final por Paciente (mmHg)')
     axs[1, 1].set_ylabel('Frecuencia')
     axs[1, 1].legend()
-
-    # ==================================================================
-    # --- ETIQUETAS A, B, C, D (DENTRO DEL GRÁFICO) ---
-    # ==================================================================
-    # Usamos coordenadas relativas al eje (transAxes): (0,0) es abajo-izq, (1,1) es arriba-der.
-    # Posición: x=0.02 (pegado a la izquierda), y=0.95 (pegado arriba)
-    # bbox: crea una cajita blanca semitransparente detrás de la letra.
     
     label_style = dict(fontsize=18, fontweight='bold', color='black', 
                        va='top', ha='left',  # Alineación vertical top, horizontal left
@@ -173,13 +232,24 @@ def graficar_resultados_pacientes(true_means, pred_means, maes_post, maes_pre=No
     axs[0, 1].text(0.02, 0.96, 'b)', transform=axs[0, 1].transAxes, **label_style)
     axs[1, 0].text(0.02, 0.96, 'c)', transform=axs[1, 0].transAxes, **label_style)
     axs[1, 1].text(0.02, 0.96, 'd)', transform=axs[1, 1].transAxes, **label_style)
-    # ==================================================================
 
     plt.tight_layout()
     plt.savefig(f'metalearning/pacientes_{titulo}_final_tradicional_4.png', dpi=300)
     print(f"Gráfico guardado: metalearning/pacientes_{titulo}_final_tradicional_4.png")
 
 def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None, is_delta_model=False):
+    """_summary_ Función principal para ejecutar la evaluación few-shot fine-tuning del modelo de presión arterial. Carga el modelo pre-entrenado, prepara los datos de soporte y consulta para cada paciente, realiza la adaptación del modelo utilizando un número limitado de latidos (n_shots) y evalúa la mejora en la precisión de las predicciones antes y después de la adaptación. Además, calcula métricas globales y por paciente, y genera visualizaciones para analizar los resultados.
+
+    Args:
+        n_shots (int, optional): _description_. Por defecto 5. Indica el número de muestras de soporte (Support Set) utilizados para la adaptación few-shot de cada paciente. 
+        base_lr (_type_, optional): _description_. Por defecto 5e-3. Tasa de aprendizaje utilizada durante el proceso de fine-tuning para adaptar el modelo a cada paciente específico.
+        base_dataset (_type_, optional): _description_. Por defecto None. Dataset base que contiene los datos completos, necesario si se desea especificar un conjunto de pacientes de prueba personalizado. Si es None, se cargará el dataset completo desde las rutas predefinidas.
+        test_patient_ids (_type_, optional): _description_. Por defecto None. Lista de IDs de pacientes reservados para la evaluación few-shot. Si es None, se cargarán los IDs desde un archivo preprocesado específico. Si se proporciona una lista personalizada, se utilizará esa lista para la evaluación.
+        is_delta_model (bool, optional): _description_. Por defecto False. Indica si el modelo está configurado para predecir "deltas" respecto a un bias específico del paciente, lo que puede mejorar la estabilidad y rapidez de la adaptación en escenarios few-shot. Si es True, durante el fine-tuning se restará el bias normalizado de las etiquetas, y durante la evaluación se sumará nuevamente para obtener las predicciones finales en unidades reales.
+
+    Returns:
+        _type_: _description_ Diccionario con los resultados globales de la evaluación few-shot, incluyendo métricas de error (MAE, RMSE), métricas clínicas (Bias, STD), tasa de mejora por paciente, y un resumen detallado por paciente con sus respectivas métricas pre y post adaptación.
+    """    
     SBP_MEAN = 134.02
     DBP_MEAN = 63.47
     SBP_STD = 22.75
@@ -187,7 +257,6 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None, is
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # --- Carga de Datos ---
     if base_dataset is None:
         data_paths = [
         'data/processed/data_UCI/dataset_parte_1_por_picos.pt',
@@ -200,10 +269,6 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None, is
         dataset_completo = base_dataset
 
     if test_patient_ids is None:
-        #experiment_name_to_test = 'STAGE2_DELTA_Specialist_MSL_HighLR' # O el que hayas corrido
-        #path_to_ids = f'data/processed/data_UCI/test_ids_{experiment_name_to_test}.pt'
-
-        #test_data = torch.load(path_to_ids, weights_only=False)
         test_data = torch.load('data/processed/data_UCI/few_shot_patient_data.pt')
         test_patient_ids = test_data['test_patient_ids']
 
@@ -211,7 +276,6 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None, is
     else: 
         test_patient_ids = test_patient_ids
 
-    # --- Carga de Modelo ---
     model = Modelo_ConvolucionalV1(in_channels=2, out_channels=2, long_signal=500)
     path_model = 'models/checkpoints/best_meta_model_v1.pt'
     
@@ -219,7 +283,6 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None, is
     checkpoint = torch.load(path_model, map_location=device, weights_only=False) 
     state_dict = checkpoint['model_state_dict']
 
-    # Limpieza de prefijos 'module.'
     new_state_dict = {}
     for k, v in state_dict.items():
         if k.startswith('module.'):
@@ -238,7 +301,6 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None, is
     global_errors_post_SBP = []
     global_errors_pre_DBP = []
     global_errors_post_DBP = []
-    # Listas globales
     global_metrics_pre_SBP, global_metrics_post_SBP = [], []
     global_metrics_pre_DBP, global_metrics_post_DBP = [], []
 
@@ -264,24 +326,15 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None, is
     for i in range(len(taskset.list_IDs)):
         id_paciente = taskset.list_IDs[i]
         
-        # Reiniciar modelo 
         model.load_state_dict(base_weights)
-
-        # ==================================================================
-        # === MODIFICACIÓN: BODY FREEZING (PARTIAL TUNING) APLICADO AQUÍ ===
-        # ==================================================================
-        # 1. Congelar todos los parámetros del modelo
         for param in model.parameters():
             param.requires_grad = False
             
-        # 2. Descongelar únicamente las capas densas (la cabeza de regresión)
         for name, param in model.named_parameters():
             if 'dense' in name:
                 param.requires_grad = True
                 
-        # 3. Inicializar el optimizador SOLO con los parámetros que requieren gradiente
         optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=base_lr)
-        # ==================================================================
 
         id_patient_for_tuning = taskset.list_IDs[i]
   
@@ -291,7 +344,6 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None, is
         tuning_loader_TRAIN = torch.utils.data.DataLoader(tuningset_for_train, batch_size=1, shuffle=False)
         tuning_loader_VALID = torch.utils.data.DataLoader(tuningset_for_valid, batch_size=1, shuffle=False)
 
-        # 1. Evaluación PRE Fine-Tuning
         model.eval()
         preds_pre, loss_pre = [], []
         for batch in tuning_loader_VALID:
@@ -300,19 +352,15 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None, is
             loss_pre.extend([l.item()]*len(p))
         preds_pre = np.array(preds_pre)
 
-        # Calculamos el bias directamente en el espacio normalizado (como se hizo en el meta-entrenamiento)
         labels_soporte_norm = [lbls.squeeze().cpu().numpy() for _, lbls, *_ in tuning_loader_TRAIN]
         labels_soporte_norm = np.array(labels_soporte_norm).reshape(-1, 2)
         bias_norm = np.mean(labels_soporte_norm, axis=0) # Shape: (2,)
         
-        # 2. Fine-Tuning
         model.train()
         tuning_loss = np.zeros(shape=n_shots)
         for shot_idx, sample in enumerate(tuning_loader_TRAIN):
-            # Le pasamos el bias_norm SOLO si es el modelo Delta
             tuning_loss[shot_idx] = tuning(sample, optimizer, model, criterion, device, bias_norm if is_delta_model else None)
     
-        # 3. Evaluación POST Fine-Tuning
         model.eval()
         preds_post, loss_post = [], []
         for batch in tuning_loader_VALID:
@@ -321,19 +369,14 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None, is
             loss_post.extend([l.item()]*len(p))
         preds_post = np.array(preds_post)
 
-        # ==================================================================
-        # === MODIFICACIÓN 3: RECOMPOSICIÓN DEL OFFSET Y DESNORMALIZACIÓN ==
-        # ==================================================================
         pred_pre_flat = preds_pre.reshape(-1, 2)
         pred_post_flat = preds_post.reshape(-1, 2)
         labels_flat = np.array([l.squeeze().cpu().numpy() for l in tuning_loader_VALID.dataset.labels]).reshape(-1, 2)
 
         if is_delta_model:
-            # Como la red predijo "deltas", le sumamos el bias del paciente para volver a magnitudes absolutas normalizadas
             pred_pre_flat += bias_norm
             pred_post_flat += bias_norm
 
-        # Ahora desnormalizamos (solo escala y media global)
         pred_pre_SBP = desnormalizar_zscore(pred_pre_flat[:,0], SBP_MEAN, SBP_STD)
         pred_pre_DBP = desnormalizar_zscore(pred_pre_flat[:,1], DBP_MEAN, DBP_STD)
         
@@ -342,14 +385,12 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None, is
         
         true_SBP = desnormalizar_zscore(labels_flat[:,0], SBP_MEAN, SBP_STD)
         true_DBP = desnormalizar_zscore(labels_flat[:,1], DBP_MEAN, DBP_STD)
-        # ==================================================================
 
         global_errors_pre_SBP.extend(pred_pre_SBP - true_SBP)
         global_errors_post_SBP.extend(pred_post_SBP - true_SBP)
         global_errors_pre_DBP.extend(pred_pre_DBP - true_DBP)
         global_errors_post_DBP.extend(pred_post_DBP - true_DBP)
         
-        # Métricas (mae, rmse, bias, std)
         m_pre_sbp = calcular_metricas(true_SBP, pred_pre_SBP)
         m_post_sbp = calcular_metricas(true_SBP, pred_post_SBP)
         m_pre_dbp = calcular_metricas(true_DBP, pred_pre_DBP)
@@ -376,10 +417,8 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None, is
         if m_post_dbp[0] < m_pre_dbp[0]: mejoraron_dbp += 1
         else: empeoraron_dbp += 1
 
-        # Guardar historial completo por paciente
         resultados_por_paciente.append({
             "paciente": int(id_paciente),
-            # SBP
             'mae_pre_sbp': float(m_pre_sbp[0]),
             'mae_post_sbp': float(m_post_sbp[0]),
             'rmse_pre_sbp': float(m_pre_sbp[1]),
@@ -388,7 +427,6 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None, is
             'iso_bias_post_sbp': float(m_post_sbp[2]), 
             'iso_std_pre_sbp': float(m_pre_sbp[3]),
             'iso_std_post_sbp': float(m_post_sbp[3]),
-            # DBP
             'mae_pre_dbp': float(m_pre_dbp[0]),
             'mae_post_dbp': float(m_post_dbp[0]),
             'rmse_pre_dbp': float(m_pre_dbp[1]),
@@ -401,31 +439,25 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None, is
 
         print(f"Paciente {id_patient_for_tuning} | SBP MAE: {m_pre_sbp[0]:.2f}->{m_post_sbp[0]:.2f} | RMSE: {m_pre_sbp[1]:.2f}->{m_post_sbp[1]:.2f} | ISO: {m_pre_sbp[2]:.2f}±{m_pre_sbp[3]:.2f} -> {m_post_sbp[2]:.2f}±{m_post_sbp[3]:.2f}")
 
-    # --- REPORTE GLOBAL ---
     err_pre_sbp_all = np.array(global_errors_pre_SBP)
     err_post_sbp_all = np.array(global_errors_post_SBP)
     err_pre_dbp_all = np.array(global_errors_pre_DBP)
     err_post_dbp_all = np.array(global_errors_post_DBP)
-
     
     mae_pre_sbp_global = np.mean(np.abs(err_pre_sbp_all))
     mae_post_sbp_global = np.mean(np.abs(err_post_sbp_all))
     mae_pre_dbp_global = np.mean(np.abs(err_pre_dbp_all))
     mae_post_dbp_global = np.mean(np.abs(err_post_dbp_all))
 
-    # RMSE Global (Raíz del error cuadrático medio de TODOS los latidos)
     rmse_post_sbp_global = np.sqrt(np.mean(np.square(err_post_sbp_all)))
     rmse_post_dbp_global = np.sqrt(np.mean(np.square(err_post_dbp_all)))
 
-    # ISO STD Global (La desviación estándar de TODOS los errores concatenados)
     std_post_sbp_global = np.std(err_post_sbp_all)
     std_post_dbp_global = np.std(err_post_dbp_all)
 
-    # ISO BIAS Global
     bias_post_sbp_global = np.mean(err_post_sbp_all)
     bias_post_dbp_global = np.mean(err_post_dbp_all)
     
-    # Tasas
     total = len(taskset.list_IDs)
     tasa_mejora_sbp = mejoraron_sbp / total
     tasa_mejora_dbp = mejoraron_dbp / total
@@ -434,16 +466,14 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None, is
     print("       RESULTADOS FINALES GLOBAL (Calculados sobre todos los latidos)")
     print("="*60)
     
-    # SBP REPORT
     print("\n--- SISTÓLICA (SBP) ---")
     print(f"Ingeniería (MAE)   : {mae_post_sbp_global:.2f} mmHg")
     print(f"Ingeniería (RMSE)  : {rmse_post_sbp_global:.2f} mmHg")
     print(f"RESUMEN ISO FINAL  : {bias_post_sbp_global:.2f} ± {std_post_sbp_global:.2f} mmHg (Meta: <= 5 ± 8)")
-    # Verificación matemática rápida para tu paz mental
+    
     check_rmse = np.sqrt(bias_post_sbp_global**2 + std_post_sbp_global**2)
     print(f"  [Chequeo: sqrt(Bias^2 + STD^2) = {check_rmse:.2f} vs RMSE = {rmse_post_sbp_global:.2f}] -> ¡Cuadran!")
 
-    # DBP REPORT
     print("\n--- DIASTÓLICA (DBP) ---")
     print(f"Ingeniería (MAE)   : {mae_post_dbp_global:.2f} mmHg")
     print(f"Ingeniería (RMSE)  : {rmse_post_dbp_global:.2f} mmHg")
@@ -455,8 +485,7 @@ def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None, is
     
     graficar_resultados_pacientes(means_true_sbp, means_pred_sbp, maes_sbp, maes_pre_sbp, titulo="SBP")
     graficar_resultados_pacientes(means_true_dbp, means_pred_dbp, maes_dbp, maes_pre_dbp, titulo="DBP")
-    
- 
+     
     resultados = {
         "mae_pre_sbp": mae_pre_sbp_global,
         "mae_post_sbp": mae_post_sbp_global,

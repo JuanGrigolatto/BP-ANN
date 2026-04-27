@@ -1,3 +1,14 @@
+"""
+Módulo: Respuesta_escalon.py
+Autor: Juan Marcos Grigolatto
+Descripción: Simulación de uso clínico en entorno real (Monitoreo Continuo). 
+             Evalúa la "respuesta al escalón" del modelo tras aplicar un Ajuste 
+             Inicial Único (Few-Shot Fine-Tuning) utilizando solo las primeras 
+             N muestras del paciente. Congela las capas convolucionales (extracción 
+             de características) y estadísticas de normalización (BatchNorm) para 
+             evitar el sobreajuste del modelo, actualizando únicamente los pesos del 
+             regresor final. 
+"""
 import torch.utils
 from src.data.data_chargers.Clase_UCIDataset import UCIDataset
 from src.data.data_chargers.MetaDataset import TaskDataset
@@ -12,8 +23,16 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 import matplotlib.pyplot as plt
 import os
 
-# --- FUNCIONES AUXILIARES ---
 def calcular_metricas_avanzadas(y_true, y_pred):
+    """_summary_ Calcula métricas avanzadas de error: MAE, RMSE, Bias y Desviación Estándar de los errores.
+
+    Args: 
+        y_true (_type_): _description_ Valores reales de presión arterial (mmHg)
+        y_pred (_type_): _description_ Valores predichos por el modelo (mmHg)
+
+    Returns:
+        _type_: _description_ Tupla con las métricas: (MAE, RMSE, Bias, SD)
+    """    
     y_true = np.array(y_true)
     y_pred = np.array(y_pred)
     errores = y_pred - y_true
@@ -27,14 +46,24 @@ def calcular_metricas_avanzadas(y_true, y_pred):
     return mae, rmse, bias, sd
 
 def tuning(sample, optimizer, model, criterion, device):
+    """_summary_ Realiza un paso de ajuste (tuning) del modelo sobre un batch de datos, actualizando únicamente los pesos del regresor final, mientras mantiene congeladas las capas convolucionales y estadísticas de normalización.
+
+    Args:
+        sample (_type_): _description_ Batch de datos que contiene señales y etiquetas (SBP, DBP) normalizadas.
+        optimizer (_type_): _description_ Optimizador utilizado para actualizar los pesos del regresor final.
+        model (_type_): _description_ Modelo de red neuronal previamente entrenado y cargado.
+        criterion (_type_): _description_ Función de pérdida utilizada para calcular el error.
+        device (_type_): _description_ Dispositivo de cómputo (CPU o GPU) donde se realizará el ajuste.
+
+    Returns:
+        _type_: _description_ Pérdida calculada durante el ajuste.
+    """    
     optimizer.zero_grad() 
     data, labels, *_ = sample 
     
     if isinstance(data, list): data = data[0]
     if isinstance(labels, list): labels = labels[0]
         
-    # === PROTECCIÓN CRÍTICA ===
-    # Congelamos las estadísticas poblacionales de Normalización
     for layer in model.modules():
         if isinstance(layer, torch.nn.BatchNorm1d) or isinstance(layer, torch.nn.BatchNorm2d):
             layer.eval()
@@ -48,11 +77,15 @@ def tuning(sample, optimizer, model, criterion, device):
     return loss.item()
 
 def main(n_shots=5, n_epochs=5, lr=5e-3, MIN_SEÑALES_REQUERIDAS=500):
+    """_summary_ Función principal que ejecuta la simulación de respuesta al escalón con ajuste inicial único. Permite configurar el número de shots, épocas de ajuste, tasa de aprendizaje y el mínimo de señales requeridas para evaluar la respuesta.
+
+    Args:
+        n_shots (int, optional): _description_. Por defecto 5. Número de muestras (shots) utilizadas para la evaluación intrapatient, aunque el modelo no se ajusta con ellas (zero-shot), se muestran en las gráficas para referencia. 
+        n_epochs (int, optional): _description_. Por defecto 5. Número de épocas de ajuste (fine-tuning) realizadas sobre el paciente utilizando solo las primeras N muestras (shots).
+        lr (_type_, optional): _description_. Por defecto 5e-3. Tasa de aprendizaje utilizada para el optimizador durante el ajuste inicial.
+    """    
     
-    # =========================================================================
-    # --- CONFIGURACIÓN PRINCIPAL DEL EXPERIMENTO ---
-    # =========================================================================
-    USE_DELTA_LEARNING = False # <--- CAMBIAR A False PARA MODELOS TRADICIONALES
+    USE_DELTA_LEARNING = False 
     
     PACIENTES_OBJETIVO = [101, 2041, 8423, 1126] 
     
@@ -61,7 +94,6 @@ def main(n_shots=5, n_epochs=5, lr=5e-3, MIN_SEÑALES_REQUERIDAS=500):
         PATH_MODELO = 'models/checkpoints/best_meta_DELTA_LEARNING_refine_alpha50.pt'
     else:
         NOMBRE_EXPERIMENTO = "PRUEBA_AJUSTE_UNICO_tradicional"
-        # Reemplazar con la ruta de tu modelo original que predecía valores absolutos
         PATH_MODELO = 'models/checkpoints/best_meta_model_v1.pt' 
 
     print(f"--- INICIANDO PRUEBA CON AJUSTE INICIAL ÚNICO (5 SHOTS) ---")
@@ -77,8 +109,7 @@ def main(n_shots=5, n_epochs=5, lr=5e-3, MIN_SEÑALES_REQUERIDAS=500):
     
     SBP_MEAN, SBP_STD = 134.02, 22.75
     DBP_MEAN, DBP_STD = 63.47, 23.69
-    
-    # Carga de datos
+
     test_data = torch.load('data/processed/data_UCI/few_shot_patient_data.pt', weights_only=False)
     test_patient_ids = test_data['test_patient_ids']
     data_paths = [
@@ -89,7 +120,6 @@ def main(n_shots=5, n_epochs=5, lr=5e-3, MIN_SEÑALES_REQUERIDAS=500):
     ]
     dataset_completo = UCIDataset(data_paths)
 
-    # Carga del Modelo
     model = Modelo_ConvolucionalV1(in_channels=2, out_channels=2, long_signal=500)
     if not os.path.exists(PATH_MODELO):
         print(f"¡ERROR! No encuentro el modelo en {PATH_MODELO}")
@@ -114,11 +144,9 @@ def main(n_shots=5, n_epochs=5, lr=5e-3, MIN_SEÑALES_REQUERIDAS=500):
         
         model.load_state_dict(new_state_dict, strict=False)
         
-        # 1. Congelamos toda la red para salvar las convoluciones
         for param in model.parameters(): 
             param.requires_grad = False  
             
-        # 2. Descongelamos solo la etapa final de regresión
         for name, param in model.named_parameters():
             if 'dense' in name: 
                 param.requires_grad = True 
@@ -142,9 +170,6 @@ def main(n_shots=5, n_epochs=5, lr=5e-3, MIN_SEÑALES_REQUERIDAS=500):
 
         for i, (batch_signals, batch_labels) in enumerate(loader_paciente):
             
-            # =========================================================
-            # FASE 1: CALIBRACIÓN INICIAL (Solo en el primer lote i==0)
-            # =========================================================
             if i == 0:
                 if USE_DELTA_LEARNING:
                     bias_tensor_guardado = batch_labels.mean(dim=0, keepdim=True)
@@ -160,9 +185,6 @@ def main(n_shots=5, n_epochs=5, lr=5e-3, MIN_SEÑALES_REQUERIDAS=500):
                 
                 print("    -> Ajuste inicial completado.")
 
-            # =========================================================
-            # FASE 2: EVALUACIÓN CONTINUA (Todos los lotes)
-            # =========================================================
             if USE_DELTA_LEARNING:
                 labels_for_eval = batch_labels - bias_tensor_guardado
             else:
@@ -170,17 +192,14 @@ def main(n_shots=5, n_epochs=5, lr=5e-3, MIN_SEÑALES_REQUERIDAS=500):
                 
             batch_data_eval = (batch_signals, labels_for_eval)
 
-            # Inferencia de la red
             model.eval()
             preds_model, _ = Fewshot.evaluation(batch_data_eval, model, criterion, device) 
             
-            # Reconstrucción de la presión absoluta
             if USE_DELTA_LEARNING:
                 preds_absolutas = preds_model.detach().cpu() + bias_tensor_guardado
             else:
                 preds_absolutas = preds_model.detach().cpu()
             
-            # Desnormalización
             pred_sbp = Fewshot.desnormalizar_zscore(preds_absolutas[:, 0].numpy(), SBP_MEAN, SBP_STD)
             pred_dbp = Fewshot.desnormalizar_zscore(preds_absolutas[:, 1].numpy(), DBP_MEAN, DBP_STD)
             true_sbp = Fewshot.desnormalizar_zscore(batch_labels[:, 0].numpy(), SBP_MEAN, SBP_STD)
@@ -189,7 +208,6 @@ def main(n_shots=5, n_epochs=5, lr=5e-3, MIN_SEÑALES_REQUERIDAS=500):
             historial_sbp['real'].extend(true_sbp); historial_sbp['pred'].extend(pred_sbp)
             historial_dbp['real'].extend(true_dbp); historial_dbp['pred'].extend(pred_dbp)
 
-        # --- Métricas y Gráficas ---
         mae_s, rmse_s, bias_s, std_s = calcular_metricas_avanzadas(historial_sbp['real'], historial_sbp['pred'])
         mae_d, rmse_d, bias_d, std_d = calcular_metricas_avanzadas(historial_dbp['real'], historial_dbp['pred'])
 
@@ -201,7 +219,6 @@ def main(n_shots=5, n_epochs=5, lr=5e-3, MIN_SEÑALES_REQUERIDAS=500):
         fig, axs = plt.subplots(2, 1, figsize=(14, 8), sharex=True)
         x_axis = range(len(historial_sbp['real']))
         
-        # SBP
         axs[0].plot(x_axis, historial_sbp['real'], color='black', linewidth=1.5, label='Invasiva de Referencia (ABP)', alpha=0.8)
         axs[0].plot(x_axis, historial_sbp['pred'], color='tab:orange', linestyle='--', linewidth=2, label=f'Estimación ({modo_str})', alpha=0.9)
         axs[0].axvline(x=n_shots, color='red', linestyle=':', linewidth=2.5, alpha=0.8, label='Ajuste')
@@ -211,7 +228,6 @@ def main(n_shots=5, n_epochs=5, lr=5e-3, MIN_SEÑALES_REQUERIDAS=500):
         axs[0].legend(loc='upper right', framealpha=0.9)
         axs[0].grid(True, linestyle='--', alpha=0.5)
 
-        # DBP
         axs[1].plot(x_axis, historial_dbp['real'], color='black', linewidth=1.5, label='Invasiva de Referencia (ABP)', alpha=0.8)
         axs[1].plot(x_axis, historial_dbp['pred'], color='tab:cyan', linestyle='--', linewidth=2, label=f'Estimación ({modo_str})', alpha=0.9)
         axs[1].axvline(x=n_shots, color='red', linestyle=':', linewidth=2.5, alpha=0.8)

@@ -1,3 +1,13 @@
+"""
+Módulo: Hiperparametros_fewshot.py
+Autor: Juan Marcos Grigolatto
+Descripción: Este script realiza la búsqueda de hiperparámetros en la fase de 
+             adaptación rápida (Few-Shot Fine-Tuning). Evalúa el impacto de 
+             diferentes Tasas de Aprendizaje (Learning Rates) durante la calibración 
+             intra-paciente. Mide métricas clínicas (MAE, RMSE) antes y después 
+             de la adaptación, y calcula la Tasa de Mejora poblacional para 
+             encontrar el punto óptimo.
+"""
 import os
 import csv
 import json
@@ -8,7 +18,8 @@ from src.data.data_chargers.Clase_UCIDataset import UCIDataset
 from metalearning.Fewshot import main
 import random
 import numpy as np
-
+"""_summary_   Este módulo se centra en la búsqueda de hiperparámetros para la fase de adaptación rápida (Few-Shot Fine-Tuning) del modelo MAML. 
+"""
 def set_all_seeds(seed=42):
     random.seed(seed)
     np.random.seed(seed)
@@ -46,7 +57,7 @@ else:
 learning_rates = [1e-5, 1e-4, 5e-4, 1e-3, 5e-3, 1e-2, 5e-2]
 num_shots = 5 
 SEED_FIJA = 42
-# Archivo de resultados con timestamp
+
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 results_file = os.path.join(RESULTS_DIR, f"grid_fewshot_{timestamp}.csv")
 

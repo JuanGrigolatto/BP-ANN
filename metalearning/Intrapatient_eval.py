@@ -1,3 +1,14 @@
+"""
+Módulo: Monitoreo_Periodico.py
+Autor: Juan Marcos Grigolatto
+Descripción: Simulación de uso clínico en entorno real (Monitoreo Ambulatorio 
+             Prolongado). Evalúa la degradación del error de estimación a lo largo 
+             del tiempo e implementa una estrategia de Calibración Periódica Dinámica 
+             (Few-Shot Fine-Tuning recurrente cada X minutos). 
+             Analiza la efectividad del recalibrado parcial (congelando la red 
+             y actualizando solo el regresor final) para mantener la precisión 
+             clínica dentro de los estándares de la normativa AAMI/ISO.
+"""
 import os
 import random
 import numpy as np
@@ -12,8 +23,16 @@ from src.data.data_chargers.Intrapatientset import Intrapatientset
 from src.models.ConvolucionalV1 import Modelo_ConvolucionalV1
 import metalearning.Fewshot as Fewshot
 
-# --- FUNCIONES AUXILIARES ---
 def calcular_metricas_avanzadas(y_true, y_pred):
+    """_summary_ Calcula métricas avanzadas de error: MAE, RMSE, Bias y Desviación Estándar de los errores.
+
+    Args:
+        y_true (_type_): _description_ Valores reales de presión arterial (mmHg)
+        y_pred (_type_): _description_ Valores predichos por el modelo (mmHg)
+
+    Returns:
+        _type_: _description_ Tupla con las métricas: (MAE, RMSE, Bias, SD)
+    """    
     y_true, y_pred = np.array(y_true), np.array(y_pred)
     errores = y_pred - y_true
     mae = np.mean(np.abs(errores))
@@ -23,11 +42,16 @@ def calcular_metricas_avanzadas(y_true, y_pred):
     return mae, rmse, bias, sd
 
 def main(n_shots=5, n_epochs=5, lr=5e-3, MINUTOS_DESEADOS=15, NUM_PACIENTES_TOTAL=10):
-    
-    # ---------------------------------------------------------
-    # CONFIGURACIÓN DEL EXPERIMENTO
-    # ---------------------------------------------------------
-    IS_DELTA_MODEL = True  # True: Meta-Delta | False: Patient-wise Tradicional
+    """_summary_ Función principal que ejecuta la simulación de monitoreo periódico prolongado con calibración dinámica. Permite configurar el número de shots para el ajuste, épocas de fine-tuning, tasa de aprendizaje, intervalo deseado entre ajustes (en minutos) y el número total de pacientes a evaluar.
+ 
+    Args:
+        n_shots (int, optional): _description_. Por defecto 5. Número de muestras (shots) utilizadas para el ajuste recurrente del modelo cada X minutos. Estas muestras se utilizan para recalibrar el modelo periódicamente, aunque el modelo también se evalúa en modo zero-shot sobre los lotes intermedios para analizar la degradación del error a lo largo del tiempo.
+        n_epochs (int, optional): _description_. Por defecto 5. Número de épocas de ajuste (fine-tuning) realizadas sobre el paciente utilizando solo las muestras del lote actual cada vez que se alcanza el intervalo de ajuste deseado.
+        lr (_type_, optional): _description_. Por defecto 5e-3. Tasa de aprendizaje utilizada para el optimizador durante cada proceso de recalibrado del modelo.
+        MINUTOS_DESEADOS (int, optional): _description_. Por defecto 15. Intervalo deseado entre cada proceso de ajuste/recalibrado del modelo, expresado en minutos. El script calculará automáticamente cuántos lotes de datos corresponden a este intervalo en función del número de shots y la frecuencia de muestreo, y realizará el fine-tuning cada vez que se alcance este umbral durante la iteración sobre los datos del paciente.
+        NUM_PACIENTES_TOTAL (int, optional): _description_. Por defecto 10. Número total de pacientes a evaluar en la simulación. El script seleccionará pacientes específicos de interés (si están disponibles) y completará el resto con pacientes aleatorios del conjunto de test para alcanzar este número total.
+    """    
+    IS_DELTA_MODEL = True  
     PATH_IDS_TEST = 'data/processed/data_UCI/few_shot_patient_data.pt'
     PACIENTES_INTERES = [745, 10667, 550, 3124]
     
@@ -53,11 +77,9 @@ def main(n_shots=5, n_epochs=5, lr=5e-3, MINUTOS_DESEADOS=15, NUM_PACIENTES_TOTA
     SEGUNDOS_POR_LOTE = (500 / 125) * n_shots 
     intervalo_ajuste = int((MINUTOS_DESEADOS * 60) / SEGUNDOS_POR_LOTE)
 
-    # 1. Carga de datos base
     data_paths = [f'data/processed/data_UCI/dataset_parte_{i}_por_picos.pt' for i in range(1, 5)]
     dataset_completo = UCIDataset(data_paths)
 
-    # 2. Carga de IDs de Test Reales
     if not os.path.exists(PATH_IDS_TEST):
         print(f"ERROR: No se encuentra el archivo de IDs en {PATH_IDS_TEST}")
         return
@@ -66,7 +88,6 @@ def main(n_shots=5, n_epochs=5, lr=5e-3, MINUTOS_DESEADOS=15, NUM_PACIENTES_TOTA
     ids_disponibles_test = test_data['test_patient_ids'] if isinstance(test_data, dict) else test_data
     ids_list = list(ids_disponibles_test)
 
-    # 3. Carga del Modelo
     model = Modelo_ConvolucionalV1(in_channels=2, out_channels=2, long_signal=500)
     checkpoint = torch.load(PATH_MODELO, map_location='cpu', weights_only=False)
     state_dict = checkpoint['model_state_dict']
@@ -77,7 +98,6 @@ def main(n_shots=5, n_epochs=5, lr=5e-3, MINUTOS_DESEADOS=15, NUM_PACIENTES_TOTA
     model = model.to(device)
     criterion = torch.nn.MSELoss()
 
-    # 4. Selección de Pacientes
     taskset = TaskDataset(list_IDs=ids_list, base_dataset=dataset_completo, num_shots=n_shots)
     mapa_indices = taskset.patient_to_indices
     
@@ -90,7 +110,6 @@ def main(n_shots=5, n_epochs=5, lr=5e-3, MINUTOS_DESEADOS=15, NUM_PACIENTES_TOTA
 
     print(f"Pacientes seleccionados (Test): {pacientes_finales}")
 
-    # 5. Bucle de Procesamiento
     for id_paciente in pacientes_finales:
         print(f"\n >> PROCESANDO PACIENTE: {id_paciente}")
         model.load_state_dict(new_state_dict, strict=False)
@@ -147,30 +166,22 @@ def main(n_shots=5, n_epochs=5, lr=5e-3, MINUTOS_DESEADOS=15, NUM_PACIENTES_TOTA
             historial_mae_sbp_lote.append(mae_lote_s)
             historial_mae_dbp_lote.append(mae_lote_d)
 
-        # ### ------------------------------------------------------------- ###
-        # ### --- NUEVO: CONVERSIÓN A ESCALA DE TIEMPO (MINUTOS) --- ###
-        # ### ------------------------------------------------------------- ###
-        # 1 ventana de señal = 500 muestras / 125 Hz = 4.0 segundos
         segundos_por_senal = 500 / 125.0
         minutos_por_senal = segundos_por_senal / 60.0
         minutos_por_lote = minutos_por_senal * n_shots
 
-        # Arrays para el eje X en minutos
         x_tiempo_muestras = [i * minutos_por_senal for i in range(len(historial_sbp['real']))]
         x_tiempo_lotes = [j * minutos_por_lote for j in range(len(historial_mae_sbp_lote))]
         puntos_ajuste_min = [p * minutos_por_senal for p in puntos_ajuste]
 
-        # Gráficas homogeneizadas
         mae_s, rmse_s, _, _ = calcular_metricas_avanzadas(historial_sbp['real'], historial_sbp['pred'])
         mae_d, rmse_d, _, _ = calcular_metricas_avanzadas(historial_dbp['real'], historial_dbp['pred'])
         
         plt.rcParams.update({'font.size': 10, 'font.family': 'serif'})
-        # sharex='col' asegura que los gráficos de arriba y abajo compartan el mismo eje de tiempo
         fig, axs = plt.subplots(2, 2, figsize=(16, 10), sharex='col')
         
         color_p = 'tab:red' if IS_DELTA_MODEL else 'tab:orange'
         
-        # --- Fila 1, Columna 1: Tracking SBP ---
         axs[0, 0].plot(x_tiempo_muestras, historial_sbp['real'], 'k', alpha=0.6, label='Real')
         axs[0, 0].plot(x_tiempo_muestras, historial_sbp['pred'], color=color_p, linestyle='--', label='Estimado')
         for p in puntos_ajuste_min: 
@@ -180,7 +191,6 @@ def main(n_shots=5, n_epochs=5, lr=5e-3, MINUTOS_DESEADOS=15, NUM_PACIENTES_TOTA
         axs[0, 0].legend(loc='upper right')
         axs[0, 0].grid(True, alpha=0.3, linestyle='--')
 
-        # --- Fila 1, Columna 2: Tracking DBP ---
         axs[0, 1].plot(x_tiempo_muestras, historial_dbp['real'], 'k', alpha=0.6, label='Real')
         axs[0, 1].plot(x_tiempo_muestras, historial_dbp['pred'], color='tab:blue', linestyle='--', label='Estimado')
         for p in puntos_ajuste_min: 
@@ -190,13 +200,11 @@ def main(n_shots=5, n_epochs=5, lr=5e-3, MINUTOS_DESEADOS=15, NUM_PACIENTES_TOTA
         axs[0, 1].legend(loc='upper right')
         axs[0, 1].grid(True, alpha=0.3, linestyle='--')
 
-        # --- Fila 2, Columna 1: MAE SBP por Lote ---
         axs[1, 0].plot(x_tiempo_lotes, historial_mae_sbp_lote, color=color_p, marker='.', linestyle='-', markersize=6, alpha=0.8)
         axs[1, 0].set_xlabel("Tiempo (Minutos)")
         axs[1, 0].set_ylabel("MAE SBP [mmHg]")
         axs[1, 0].grid(True, alpha=0.5, linestyle='--')
 
-        # --- Fila 2, Columna 2: MAE DBP por Lote ---
         axs[1, 1].plot(x_tiempo_lotes, historial_mae_dbp_lote, color='tab:blue', marker='.', linestyle='-', markersize=6, alpha=0.8)
         axs[1, 1].set_xlabel("Tiempo (Minutos)")
         axs[1, 1].set_ylabel("MAE DBP [mmHg]")

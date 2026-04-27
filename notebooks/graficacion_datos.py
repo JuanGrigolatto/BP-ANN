@@ -1,3 +1,14 @@
+"""
+Módulo: graficacion_datos.py
+Autor: Juan Marcos Grigolatto
+Descripción: Script de  validación estadística sobre la totalidad de 
+             la base de datos (sin filtros restrictivos de Meta-Learning). Realiza 
+             un Patient-Subject Split (70/15/15) sobre todos los sujetos disponibles 
+             y genera histogramas de distribución para las etiquetas de presión 
+             (SBP y DBP). Su objetivo es establecer la "Línea Base" poblacional 
+             para confirmar que no existen sesgos severos o fugas de datos 
+             antes del entrenamiento de los modelos fundacionales.
+"""
 import random
 import torch
 import numpy as np
@@ -8,17 +19,29 @@ import matplotlib.pyplot as plt
 import os
 from tqdm import tqdm
 
-# ========================
-# Configuración general
-# ========================
 SBP_MEAN, SBP_STD = 134.02, 22.75
 DBP_MEAN, DBP_STD = 63.47, 23.69
 SEED = 42
 
 def desnormalizar_zscore(norm_tensor, media, std):
+    """_summary_ Desnormaliza un tensor z-score a su valor original.
+
+    Args:
+        norm_tensor (_type_): _description_ Tensor normalizado (z-score).
+        media (_type_): _description_ Media utilizada para la normalización.
+        std (_type_): _description_ _descripcion_ Desviación estándar utilizada para la normalización.
+
+    Returns:
+        _type_: _description_ Tensor desnormalizado.
+    """
     return norm_tensor * std + media
 
 def set_seed(seed=42):
+    """_summary_ Establece la semilla para reproducibilidad en random, numpy y torch.
+
+    Args:
+        seed (int, optional): _description_. Por defecto 42. Valor de la semilla a utilizar.
+    """
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -29,7 +52,17 @@ def set_seed(seed=42):
 set_seed(SEED)
 
 def obtener_datos_por_pids(dataset, pids, mapping):
-    """Extrae SBP y DBP de todos los registros de los pacientes indicados."""
+    """_summary_ Obtiene las etiquetas de SBP y DBP para una lista de pacientes especificados.
+
+    Args:
+        dataset (_type_): _description_ Dataset completo del cual se extraerán las etiquetas.
+        pids (_type_): _description_ Lista de IDs de pacientes para los cuales se desean obtener las etiquetas.
+        mapping (_type_): _description_ Diccionario que mapea cada PID a una lista de índices en el dataset donde ese PID está presente.
+
+    Returns:
+        _type_: _description_ Dos arrays de numpy: el primero con las etiquetas de SBP desnormalizadas y el segundo con las etiquetas de DBP desnormalizadas para los pacientes especificados.
+    """
+    
     sbp_list, dbp_list = [], []
     for pid in pids:
         for idx in mapping[pid]:
@@ -39,6 +72,8 @@ def obtener_datos_por_pids(dataset, pids, mapping):
     return np.array(sbp_list), np.array(dbp_list)
 
 def main():
+    """_summary_ Función principal que ejecuta el proceso de carga del dataset, división por pacientes, extracción de etiquetas y generación de histogramas para SBP y DBP en los conjuntos de entrenamiento, validación y prueba.
+    """
     data_paths = [
         'data/processed/data_UCI/dataset_parte_1_por_picos.pt',
         'data/processed/data_UCI/dataset_parte_2_por_picos.pt',
@@ -49,18 +84,15 @@ def main():
     print("Cargando dataset base completo...")
     dataset_completo = UCIDataset(data_paths)
 
-    # 1. Mapeo total de pacientes (Sin filtros)
     print("Caracterizando todos los registros por paciente...")
     temp_indices = defaultdict(list)
     for i in tqdm(range(len(dataset_completo)), desc="Procesando dataset"):
         pid = int(dataset_completo[i][2])
         temp_indices[pid].append(i)
 
-    # Todos los pacientes presentes en el dataset
     all_patients = list(temp_indices.keys())
     random.shuffle(all_patients) 
     
-    # Split de pacientes (70/15/15) para caracterizar subgrupos independientes
     n_train = int(len(all_patients) * 0.70)
     n_val = int(len(all_patients) * 0.15)
     
@@ -72,13 +104,11 @@ def main():
     print(f"Total de Registros (ventanas): {len(dataset_completo)}")
     print(f"Distribución: Train {len(train_pids)} ptes | Val {len(val_pids)} ptes | Test {len(test_pids)} ptes")
 
-    # 2. Extracción masiva
     print("Extrayendo etiquetas desnormalizadas para histogramas...")
     sbp_train, dbp_train = obtener_datos_por_pids(dataset_completo, train_pids, temp_indices)
     sbp_val, dbp_val = obtener_datos_por_pids(dataset_completo, val_pids, temp_indices)
     sbp_test, dbp_test = obtener_datos_por_pids(dataset_completo, test_pids, temp_indices)
 
-    # 3. Ploteo Concatenado
     fig, axes = plt.subplots(3, 2, figsize=(14, 16))
     
     config = [
@@ -89,18 +119,15 @@ def main():
     labels_abc = ["a)", "b)", "c)"]
 
     for i, (sbp, dbp, nombre, c1, c2) in enumerate(config):
-        # SBP
         axes[i, 0].hist(sbp, bins=70, color=c1, edgecolor='black', alpha=0.7)
         axes[i, 0].set_title(f"SBP - {nombre}", fontsize=12)
         axes[i, 0].set_ylabel("Frecuencia")
         axes[i, 0].grid(alpha=0.3)
         
-        # DBP
         axes[i, 1].hist(dbp, bins=70, color=c2, edgecolor='black', alpha=0.7)
         axes[i, 1].set_title(f"DBP - {nombre}", fontsize=12)
         axes[i, 1].grid(alpha=0.3)
 
-        # Referencia a), b), c)
         axes[i, 0].text(-0.15, 1.15, labels_abc[i], transform=axes[i, 0].transAxes, 
                         fontsize=20, va='top', ha='right')
 
@@ -108,7 +135,7 @@ def main():
     
     os.makedirs("figures/", exist_ok=True)
     plt.savefig("figures/caracterizacion_total_dataset.png", dpi=300, bbox_inches='tight')
-    print("¡Caracterización completa! Imagen guardada en figures/caracterizacion_total_dataset.png")
+    print("Imagen guardada en figures/caracterizacion_total_dataset.png")
     plt.show()
 
 if __name__ == "__main__":

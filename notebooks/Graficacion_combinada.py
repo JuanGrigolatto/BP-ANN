@@ -1,19 +1,15 @@
 import matplotlib.pyplot as plt
 import numpy as np
 """
-Visualización de Resultados de Búsqueda de Hiperparámetros (Few-Shot Learning)
-------------------------------------------------------------------------------
-Este script genera un gráfico de doble eje para analizar el impacto de la 
-tasa de aprendizaje (Learning Rate) en la adaptación intra-paciente de la 
-Presión Arterial Diastólica (DBP).
-
-Eje Izquierdo (Barras): Muestra el RMSE global post-ajuste. Evalúa la precisión.
-Eje Derecho (Línea): Muestra la Tasa de Mejora (%). Evalúa la estabilidad poblacional.
-
-Objetivo: Justificar metodológicamente la elección del hiperparámetro óptimo 
-evidenciando el punto de quiebre donde una tasa muy alta genera sobreajuste 
-(overfitting) en el conjunto de soporte, reduciendo el error promedio pero 
-perjudicando la estimación en la mayoría de los pacientes individuales.
+Módulo: Graficacion_combinada.py
+Autor: Juan Marcos Grigolatto
+Descripción: Visualización de resultados de búsqueda de hiperparámetros para la 
+             adaptación intra-paciente (Few-Shot Learning). Genera un gráfico de 
+             doble eje que contrasta la precisión (RMSE global post-ajuste en barras) 
+             vs. la estabilidad poblacional (Tasa de Mejora en línea) en función 
+             del Learning Rate. El objetivo es justificar metodológicamente el 
+             hiperparámetro óptimo y evidenciar los puntos de sobreajuste (overfitting) 
+             sobre el conjunto de soporte.
 """
 variable_a_graficar = 'DBP' 
 
@@ -68,7 +64,6 @@ ax2 = ax1.twinx()
 linea = ax2.plot(x_pos, imp_actual, color=color_linea, marker='o', 
                  linewidth=3, markersize=8, label='Tasa de Mejora', zorder=2)
 
-# --- FLECHA (Apunta a la caída de estabilidad en 5.0E-03) ---
 ax2.annotate('Caída de estabilidad', 
              xy=(x_pos[4], imp_actual[4]),         
              xytext=(x_pos[4], imp_actual[4] + offset),  

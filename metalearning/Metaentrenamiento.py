@@ -1,9 +1,22 @@
+"""
+Módulo: train_meta_learning.py
+Autor: Juan Marcos Grigolatto
+Descripción: Script principal de Meta-Entrenamiento utilizando el algoritmo 
+             MAML (Model-Agnostic Meta-Learning). Implementa dos paradigmas de 
+             construcción de tareas (episodios) para evaluar la generalización:
+             1. Modo 'traditional': Tareas formadas por ventanas aleatorias 
+                sin distinción de sujeto (Línea Base / Baseline).
+             2. Modo 'patient_wise': Tareas estrictamente separadas por paciente. 
+                Obliga a la red a optimizar su inicialización para adaptarse 
+                rápidamente a la fisiología de un nuevo individuo utilizando 
+                pocos latidos de calibración (Support Set) y generalizar sobre 
+                sus latidos futuros (Query Set).
+"""
 import os  
 import csv 
 import pandas as pd 
 from src.data.data_chargers.MetaDataset import TaskDataset
 from src.data.data_chargers.PatientWiseSet import PatientWiseDataset
-#from src.models.Modelo_conv import Modelo_Convolucional
 #from src.models.InceptionTime import InceptionTime
 from src.models.ConvolucionalV1 import Modelo_ConvolucionalV1
 #from src.models.ConvolucionalV2 import Modelo_ConvolucionalV2
@@ -20,7 +33,6 @@ from src.data.data_chargers.Clase_UCIDataset import UCIDataset
 CHECKPOINT_DIR = 'models/checkpoints'
 LOG_DIR = 'metalearning/logs'
 
-# CAMBIO: Nombres específicos para este experimento
 LATEST_CKPT_PATH = os.path.join(CHECKPOINT_DIR, 'checkpoint_latest_patientwise_s10q20_adapt5_PG2_reducido_2.pt')
 BEST_CKPT_PATH = os.path.join(CHECKPOINT_DIR, 'best_meta_model_patientwise_s10q20_adapt5_PG2_reducido_2.pt')
 CSV_LOG_PATH = os.path.join(LOG_DIR, 'training_log_patientwise_s10q20_adapt5_PG2_reducido_2.csv')
@@ -29,18 +41,30 @@ os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 os.makedirs(LOG_DIR, exist_ok=True)
 
 def validate_meta_epoch(maml, val_loader, lossfn, adapt_steps, shots, device, mode='traditional'):
+    """_summary_ Validación del modelo meta-entrenado al finalizar cada época. Se evalúa la capacidad de adaptación rápida a nuevas tareas (pacientes) utilizando un Support Set pequeño y generalizando sobre un Query Set.  
+
+    Args:
+        maml (_type_): _description_ es el meta-modelo que se va a evaluar. Se clona para cada tarea de validación y se adapta con el Support Set antes de evaluar en el Query Set.    
+        val_loader (_type_): _description_ es el DataLoader que proporciona las tareas de validación. Cada batch contiene un conjunto de tareas (episodios) formados por Support Set y Query Set.  
+        lossfn (_type_): _description_ es la función de pérdida utilizada para calcular el error en el Support Set durante la adaptación y en el Query Set durante la evaluación. En este caso, se utiliza MSELoss para regresión. 
+        adapt_steps (_type_): _description_ es el número de pasos de adaptación (inner loop) que se realizan en cada tarea de validación. Durante estos pasos, el modelo se adapta utilizando el Support Set antes de evaluar en el Query Set.
+        shots (_type_): _description_ es el número de muestras en el Support Set.
+        device (_type_): _description_ es el dispositivo en el que se ejecuta el modelo (CPU o CUDA).
+        mode (str, optional): _description_. Por defecto 'traditional'. Determina la forma en que se construyen las tareas de validación. En 'traditional', las tareas se forman por ventanas aleatorias de un único paciente. En 'patient_wise', las tareas se forman mezclando datos de diferentes pacientes, tanto en Support Set y como enQuery Set.
+
+    Returns:
+        _type_: _description_  
+    """    
     meta_val_loss = 0.0
     num_batches = 0
     
     for batch in val_loader:
-        # Lógica de desempaquetado según el modo
         if mode == 'traditional':
             x_batch, y_batch = batch
             if device.type == 'cuda':
                 x_batch, y_batch = x_batch.to(device, non_blocking=True), y_batch.to(device, non_blocking=True)
             effective_batch_size = x_batch.size(0)
-        else: # patient_wise
-            # AQUÍ ESTÁ LA CLAVE: Recibir 4 tensores
+        else: 
             x_support_batch, y_support_batch, x_query_batch, y_query_batch = batch
             if device.type == 'cuda':
                 x_support_batch = x_support_batch.to(device, non_blocking=True)

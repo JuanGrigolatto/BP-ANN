@@ -1,46 +1,46 @@
+"""
+Módulo: Graficacion_perdida.py
+Autor: Juan Marcos Grigolatto
+Descripción: Script para la generación de gráficas de Meta-Entrenamiento (MAML). Lee los archivos de log (.csv) 
+             y plotea las curvas de Meta-Pérdida (Meta-Loss) para los conjuntos 
+             de Entrenamiento y Validación, permitiendo evaluar el aprendizaje 
+             de la inicialización óptima y detectar posible sobreajuste.
+"""
 import pandas as pd
 import matplotlib.pyplot as plt
 
 # 1. Cargar el archivo
-# Asegúrate de que las columnas 'epoch', 'train_loss' y 'valid_loss' existan en tu CSV
 df = pd.read_csv('metalearning/logs/log_STAGE2_DELTA_Specialist_MSL.csv')
 
 # 2. Configuración del gráfico
 plt.figure(figsize=(10, 6)) 
 
 # 3. Graficar las líneas
-# Entrenamiento: En la imagen es azul con puntos pequeños
 plt.plot(df['epoch'], df['train_loss'], 
-         label='Meta Pérdida Entrenamiento',  # Ajustado al contexto "Meta" de la imagen
-         color='#1f77b4',       # Azul estándar
-         marker='.',            # Punto pequeño
-         linestyle='-',         # Línea sólida
-         linewidth=1,           # Grosor fino para no tapar los datos
-         alpha=0.8)             # Ligera transparencia
+         label='Meta Pérdida Entrenamiento',  
+         color='#1f77b4',      
+         marker='.',            
+         linestyle='-',         
+         linewidth=1,           
+         alpha=0.8)             
 
 # Validación: En la imagen es naranja con puntos grandes y sólidos
 plt.plot(df['epoch'], df['valid_loss'], 
          label='Meta Pérdida Validación', 
-         color='#ff7f0e',       # Naranja estándar
-         marker='o',            # Círculo grande (como en la imagen)
+         color='#ff7f0e',       
+         marker='o',            
          linestyle='-',
-         linewidth=2,           # Línea un poco más gruesa para resaltar validación
-         markersize=6)          # Tamaño del marcador visible
+         linewidth=2,          
+         markersize=6)         
 
 # 4. Etiquetas y Títulos
-plt.xlabel('Época')             # Tilde agregada
+plt.xlabel('Época')             
 plt.ylabel('Pérdida')     
 
-# Leyenda
-plt.legend(loc='upper right', frameon=True) # Ubicación y recuadro como en la imagen
+plt.legend(loc='upper right', frameon=True) 
 
-# 5. Ajustes finales (Críticos para replicar el estilo)
-# La grilla es fundamental para leer valores exactos, la descomenté y estilicé
+# 5. Ajustes finales 
 plt.grid(True, which='both', linestyle='--', linewidth=0.5, color='gray', alpha=0.5)
-
-# Opcional: Si quieres que el eje X sea solo enteros (ya que son épocas)
-# from matplotlib.ticker import MaxNLocator
-# plt.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
 
 # 6. Mostrar y Guardar
 plt.tight_layout() 

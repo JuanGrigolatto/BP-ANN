@@ -1,2 +1,0 @@
-experiment,learning_rate,shots,mae_pre_sbp,mae_post_sbp,delta_mae_sbp,mae_pre_dbp,mae_post_dbp,delta_mae_dbp
-1,1e-05,5,14.577355477809906,14.525895180702209,-0.05146029710769717,6.314496520757675,6.2989542710781095,-0.015542249679565856

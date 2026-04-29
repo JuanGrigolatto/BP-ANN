@@ -38,22 +38,27 @@ BP-ANN/
 │   │   └── 📁 data_chargers/       # Dataset classes and loaders
 │   │       ├── Clase_UCIDataset.py # UCI dataset class
 │   │       ├── MetaDataset.py      # Meta-learning dataset (few-shot)
-│   │       └── TuningDataset.py    # Fine-tuning dataset class
+│   │       ├── TuningDataset.py    # Fine-tuning dataset class
+│   │       ├── IntrapatientSet.py  # Intra-patient dataset for fine-tuning
+│   │       └── PatientWiseSet.py   # Patient-wise split dataset
 │   │
 │   ├── 📁 models/                  # Neural network architectures
-│   │   ├── standard_nn.py          # Standard fully-connected networks
-│   │   ├── meta_learning.py        # Meta-learning models (MAML, etc)
+│   │   ├── ConvolucionalV1.py      # 1D-CNN with ReLU & Dropout regularization
+│   │   ├── ConvolucionalV2.py      # Lightweight 1D-CNN with reduced regularization
+│   │   ├── InceptionTime.py        # InceptionTime architecture with residual connections
 │   │   └── utils.py                # Model utility functions
 │   │
 │   ├── 📁 utils/                   # General utilities
 │   │   │
 │   │   ├── 📁 Tools/               # General helper tools
+│   │   │   └── Tools.py            # Utility functions and helpers
+│   │   │
 │   │   ├── Visualizador_datos.py   # Data visualization utilities
 │   │   └── metrics.py              # Evaluation metrics (MAE, RMSE, R²)
 │   │
 │   └── 📁 entrenamiento/           # Training orchestration
-│       ├── train.py                # Main training script
-│       ├── evaluate.py             # Model evaluation script
+│       ├── Entrenamiento.py        # Main training script with random split
+│       ├── Entrenamiento_patient_subject.py  # Training with patient-wise splitting
 │       └── config.py               # Configuration management
 │
 ├── 📁 models/                      # Trained model checkpoints
@@ -64,7 +69,7 @@ BP-ANN/
 │   │   └── metadata.json           # Training metadata & hyperparameters
 │   │
 │   ├── model_v1.pt                 # Version history of models
-│   └── model_v2.pt
+��   └── model_v2.pt
 │
 ├── 📁 notebooks/                   # Jupyter notebooks for analysis
 │   ├── Analisis_error.ipynb        # Error analysis and visualization
@@ -124,10 +129,11 @@ peaks = detector.detect(raw_signal)
 
 #### Components:
 - **Clase_UCIDataset.py**
-  - Loads UCI PPG dataset
+  - Loads UCI PPG dataset from multiple .pt files
+  - Memory-mapped arrays for efficient large-scale data loading
   - Implements PyTorch Dataset interface
-  - Handles train/val/test splits
-  - Features: Caching, augmentation options
+  - Returns: (signal, labels, patient_id, index)
+  - Features: Worker initialization, batch prefetching
 
 - **MetaDataset.py**
   - Creates episodic tasks for meta-learning
@@ -140,69 +146,107 @@ peaks = detector.detect(raw_signal)
   - Stratified sampling
   - Balanced label distribution
 
+- **IntrapatientSet.py**
+  - Intra-patient dataset for personalized model adaptation
+  - Supports leave-one-out cross-validation
+  - Use case: Patient-specific model fine-tuning
+
+- **PatientWiseSet.py**
+  - Implements patient-wise data splitting
+  - Prevents data leakage by ensuring patient signals don't cross train/val/test
+  - Supports episodic patient-based sampling
+  - Use case: Rigorous evaluation of generalization to new patients
+
 **Example Usage**:
 ```python
-from src.data.data_chargers import Clase_UCIDataset, MetaDataset
+from src.data.data_chargers import Clase_UCIDataset, PatientWiseSet
 import torch
 
-# Standard dataset
+# Standard dataset with UCIDataset
 dataset = Clase_UCIDataset(
-    path='data/raw/datos/',
-    split='train',
-    normalize=True
+    pt_files=['data/processed/data_UCI/dataset_parte_1.pt',
+              'data/processed/data_UCI/dataset_parte_2.pt']
 )
-dataloader = torch.utils.data.DataLoader(dataset, batch_size=32, shuffle=True)
+dataloader = torch.utils.data.DataLoader(dataset, batch_size=256, shuffle=True)
 
-# Meta-learning dataset
-meta_dataset = MetaDataset(
-    n_way=5,
-    k_shot=5,
-    n_query=15,
-    episodes=1000
+# Patient-wise dataset splitting
+patient_dataset = PatientWiseSet(
+    pt_files=['data/processed/data_UCI/dataset_parte_1.pt'],
+    train_ratio=0.7,
+    val_ratio=0.2,
+    seed=42
 )
 ```
 
 ---
 
 ### 🧠 src/models/
-**Purpose**: Neural network architectures for BP estimation
+**Purpose**: Neural network architectures for BP estimation from PPG/ECG signals
 
 #### Components:
-- **standard_nn.py**
-  - Fully-connected neural networks
-  - Architectures: 1-layer, 2-layer, 3-layer MLPs
-  - Activation functions: ReLU, Tanh
-  - Regularization: Dropout, BatchNorm
+- **ConvolucionalV1.py** - `Modelo_ConvolucionalV1`
+  - Standard 1D-CNN architecture
+  - 4 convolutional layers with BatchNorm
+  - 4 dense layers with Dropout (0.5) for regularization
+  - Activations: ReLU (convolutional), ELU (dense)
+  - Output: 2 values (Systolic and Diastolic BP)
+  - Configuration: Input window = 250 or 500 samples
 
-- **meta_learning.py**
-  - Meta-learning implementations
-  - Algorithms: MAML (Model-Agnostic Meta-Learning)
-  - Fast adaptation to new tasks
-  - Inner and outer loop optimization
+- **ConvolucionalV2.py** - `Modelo_ConvolucionalV2`
+  - Lightweight 1D-CNN variant
+  - Reduced regularization compared to V1
+  - Eliminates Dropout in dense block
+  - Replaces ELU with ReLU for regression
+  - 4 convolutional layers (reduced BatchNorm)
+  - Suitable for embedded systems and real-time inference
+
+- **InceptionTime.py** - `InceptionTime`
+  - Advanced architecture with Inception modules
+  - Multiple parallel convolutional branches (3 conv + 1 maxpool)
+  - Residual connections every 3 modules for gradient flow
+  - Global Average Pooling (GAP) for feature reduction
+  - Depth: 6 inception blocks with n_filters=32
+  - State-of-the-art performance on time series tasks
 
 - **utils.py**
-  - Model initialization
+  - Model initialization utilities
   - Weight management
   - Parameter counting
 
 **Example Usage**:
 ```python
-from src.models.standard_nn import MLPRegressor
-from src.models.meta_learning import MAML
+from src.models.ConvolucionalV1 import Modelo_ConvolucionalV1
+from src.models.ConvolucionalV2 import Modelo_ConvolucionalV2
+from src.models.InceptionTime import InceptionTime
+import torch
 
-# Standard model
-model = MLPRegressor(
-    input_size=128,
-    hidden_sizes=[256, 128, 64],
-    output_size=2  # SBP, DBP
+# ConvolucionalV1 - Standard CNN
+model_v1 = Modelo_ConvolucionalV1(
+    in_channels=2,      # PPG + ECG
+    out_channels=2,     # SBP + DBP
+    long_signal=250     # window size
 )
 
-# Meta-learning model
-meta_model = MAML(
-    model=model,
-    inner_lr=0.01,
-    outer_lr=0.001
+# ConvolucionalV2 - Lightweight variant
+model_v2 = Modelo_ConvolucionalV2(
+    in_channels=2,
+    out_channels=2,
+    long_signal=500
 )
+
+# InceptionTime - Advanced architecture
+inception_model = InceptionTime(
+    c_in=2,           # input channels
+    c_out=2,          # output channels
+    n_filters=32,     # filters per inception module
+    depth=6           # number of inception blocks
+)
+
+# Training example
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = inception_model.to(device)
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+criterion = torch.nn.MSELoss()
 ```
 
 ---
@@ -211,6 +255,11 @@ meta_model = MAML(
 **Purpose**: Utility functions and general helpers
 
 #### Components:
+- **Tools/Tools.py**
+  - Helper functions for data manipulation
+  - Configuration utilities
+  - Path management
+
 - **Visualizador_datos.py**
   - Signal visualization
   - Plot PPG signals with annotations
@@ -222,11 +271,6 @@ meta_model = MAML(
   - RMSE (Root Mean Squared Error)
   - R² (Coefficient of Determination)
   - Correlation analysis
-
-- **Tools/**
-  - Helper functions
-  - Data utilities
-  - Configuration management
 
 **Example Usage**:
 ```python
@@ -245,31 +289,66 @@ plot_signal(raw_signal, processed_signal, predictions)
 **Purpose**: Training orchestration and model optimization
 
 #### Components:
-- **train.py**
-  - Main training loop
-  - Loss computation
-  - Gradient updates
-  - Model checkpointing
+- **Entrenamiento.py** - Random Split Training
+  - Main training loop with mixed precision (AMP)
+  - Random train/val/test split (70/20/10)
+  - Early stopping based on validation loss improvement
+  - Checkpoint saving for best models
+  - Dynamic test dataset saving to memory-mapped files
+  - Scheduler: ReduceLROnPlateau with min_lr threshold
+  - Features:
+    - Gradient accumulation with GradScaler
+    - Persistent workers for efficient data loading
+    - Prefetch factor for batch optimization
+    - Comprehensive logging to CSV
 
-- **evaluate.py**
-  - Model evaluation on test set
-  - Metric computation
-  - Result logging
+- **Entrenamiento_patient_subject.py** - Patient-Wise Split Training
+  - Advanced training with Patient-Subject Splitting (PSS)
+  - Prevents data leakage by isolating patient samples
+  - Uses scikit-learn's train_test_split for stratified patient division
+  - Train/Val/Test split by unique patients (not samples)
+  - Same optimization features as Entrenamiento.py
+  - Better evaluation of model generalization to new patients
+  - Includes patient ID tracking and metadata logging
+  - Recommended for clinical validation
 
 - **config.py**
   - Hyperparameter management
-  - Training configuration
+  - Training configuration templates
   - Dataset configuration
+
+**Key Features (Both Training Scripts)**:
+- Mixed precision training (torch.amp.autocast)
+- Gradient scaling for numerical stability
+- Early stopping with patience mechanism
+- Model checkpointing with best validation loss tracking
+- Training logs saved to CSV for analysis
+- Reproducible results with seed management
+- GPU acceleration with CUDA support
+- ReduceLROnPlateau scheduler for adaptive learning rates
 
 **Example Usage**:
 ```bash
-# From command line
-python -m src.entrenamiento.train --config config.yaml
+# Random split training
+python -m src.entrenamiento.Entrenamiento
 
-# From Python
-from src.entrenamiento.train import train_model
-train_model(config='configs/train_config.yaml')
+# Patient-wise split training (recommended)
+python -m src.entrenamiento.Entrenamiento_patient_subject.py
+
+# Training with specific model
+# Edit Entrenamiento.py and uncomment desired model:
+# model = InceptionTime(c_in=2, c_out=2, seq_len=None, n_filters=32, depth=6)
+# model = Modelo_ConvolucionalV1(in_channels=2, out_channels=2, long_signal=250)
+# model = Modelo_ConvolucionalV2(in_channels=2, out_channels=2, long_signal=500)
 ```
+
+**Training Parameters**:
+- Batch size: 256
+- Optimizer: Adam (lr=1e-3, weight_decay=1e-4)
+- Loss: MSELoss
+- Epochs: 200 (with early stopping)
+- Patience: 8 epochs
+- Min improvement delta: 0.0001
 
 ---
 
@@ -285,10 +364,11 @@ train_model(config='configs/train_config.yaml')
 ```
 models/
 ├── best_models/
-│   ├── best_model.pt              # Best overall model
-│   ├── best_meta_model.pt         # Best meta-learning model
-│   └── metadata.json              # Training details
-└── checkpoints/                   # All saved checkpoints
+│   ├── best_model.pt                              # Best overall model
+│   ├── best_model_conv_time32_200_epocas_picos_def_early8.pt
+│   ├── best_model_conv_time32_200_epocas_picos_def_early8_ps.pt
+│   └── metadata.json                              # Training details
+└── checkpoints/                                   # All saved checkpoints
     ├── epoch_10.pt
     ├── epoch_20.pt
     └── ...
@@ -353,27 +433,31 @@ pytest tests/test_models.py::test_forward_pass
 ## Data Flow Diagram
 
 ```
-Raw PPG Signal
+Raw PPG Signal (2 channels: PPG + ECG)
       ↓
 ┌─────────────────────────────────────┐
 │  src/features/                      │
 │  • Detector_de_picos.py            │
 │  • data_processing/                 │
+│    (Various preprocessing methods)  │
 └─────────────────────────────────────┘
       ↓
 Processed Features
       ↓
 ┌─────────────────────────────────────┐
 │  src/data/                          │
-│  • Dataset Classes                  │
-│  • DataLoaders                      │
+│  • UCIDataset (memory-mapped)       │
+│  • PatientWiseSet (no data leakage) │
+│  • IntrapatientSet (personalized)   │
 └─────────────────────────────────────┘
       ↓
-Batched Data
+Batched Data (batch_size=256)
       ↓
 ┌─────────────────────────────────────┐
 │  src/models/                        │
-│  • Neural Network Forward Pass      │
+│  • ConvolucionalV1/V2 (1D-CNN)     │
+│  • InceptionTime (Advanced)         │
+│  • Forward Pass                     │
 └─────────────────────────────────────┘
       ↓
 Predictions (SBP, DBP)
@@ -381,7 +465,7 @@ Predictions (SBP, DBP)
 ┌─────────────────────────────────────┐
 │  src/utils/                         │
 │  • Metrics Computation              │
-│  • Visualization                    │
+│  • Visualization & Analysis         │
 └─────────────────────────────────────┘
       ↓
 Results & Analysis
@@ -399,6 +483,7 @@ Results & Analysis
 | Constants | UPPER_CASE | `WINDOW_SIZE = 128`, `LEARNING_RATE = 0.001` |
 | Directories | snake_case | `data_processing/`, `best_models/` |
 | Models (Spanish) | Snake_Case_Spanish | `Procesamiento_ventana_fija.py` |
+| Model Classes | PascalCase_Spanish | `Modelo_ConvolucionalV1`, `Detector_de_picos` |
 
 ---
 
@@ -413,16 +498,21 @@ Results & Analysis
 - Inherit from `torch.utils.data.Dataset`
 - Implement `__len__()` and `__getitem__()`
 - Include data validation
+- Handle memory-mapped arrays for large datasets
 
 ### 3. Models
 - Add docstrings with architecture description
 - Include input/output shape documentation
 - Implement `forward()` method
+- Test with small batches before full training
 
 ### 4. Training
-- Log metrics at regular intervals
+- Log metrics at regular intervals (CSV format)
 - Save checkpoints periodically
 - Validate on separate set
+- Use mixed precision (torch.amp) for efficiency
+- Implement early stopping for robustness
+- Use Patient-Subject Splitting when evaluating generalization
 
 ### 5. Utilities
 - Add type hints
@@ -433,87 +523,133 @@ Results & Analysis
 
 ## Common Workflows
 
-### 1. Training a Standard Model
+### 1. Training with Random Split
 ```
-src/entrenamiento/train.py
-  ├── Load config
-  ├── Create dataset → src/data/
-  ├── Initialize model → src/models/
-  ├── Training loop
-  │   ├── Get batch
-  │   ├── Forward pass
-  │   ├── Compute loss
-  │   ├── Backward pass
-  │   └── Update weights
-  ├── Validate on val_set
-  └── Save best model → models/
+src/entrenamiento/Entrenamiento.py
+  ├── Load dataset (multiple .pt files)
+  ├── Random split: 70% train, 20% val, 10% test
+  ├── Create UCIDataset from memory-mapped files
+  ├── Initialize model (Inception/ConvV1/ConvV2)
+  ├── Training loop per epoch:
+  │   ├── Forward pass with mixed precision
+  │   ├── Compute MSELoss
+  │   ├── Backward pass with GradScaler
+  │   ├── Update weights
+  │   └── Validate on validation set
+  ├── Early stopping if no improvement
+  ├── Save best model checkpoint
+  └── Generate loss curve plot
 ```
 
-### 2. Meta-Learning Pipeline
+### 2. Training with Patient-Subject Split (Recommended)
 ```
-MetaDataset (src/data/)
-  ├── Sample N-way k-shot task
-  ├── Split to support/query sets
-  ├── Inner loop: Adapt on support set
-  ├── Outer loop: Update on query set
-  └── Repeat for multiple episodes
+src/entrenamiento/Entrenamiento_patient_subject.py
+  ├── Load dataset (multiple .pt files)
+  ├── Extract unique patient IDs
+  ├── Stratified patient-level split:
+  │   ├── Split patients: 70% train, 20% val, 10% test
+  │   └── No overlap of same patient across splits
+  ├── Map patient indices to sample indices
+  ├── Create subsets using torch.utils.data.Subset
+  ├── Training loop with same optimization as random split
+  ├── Better evaluation of true generalization
+  └── Save test set metadata for analysis
 ```
 
 ### 3. Model Evaluation
 ```
-src/entrenamiento/evaluate.py
-  ├── Load trained model
-  ├── Create test dataset
-  ├── Get predictions
-  ├── Compute metrics → src/utils/metrics.py
-  └── Generate plots → src/utils/Visualizador_datos.py
+Evaluation workflow:
+  ├── Load trained model checkpoint
+  ├── Load test dataset (isolated samples)
+  ├── Perform inference on test samples
+  ├── Compute metrics (MAE, RMSE, R²)
+  ├── Analyze error distribution
+  ├── Generate visualization plots
+  └── Save results to CSV
 ```
+
+---
+
+## Training vs Patient-Subject Split
+
+### Random Split (Entrenamiento.py)
+- ✅ Fast training
+- ✅ Larger batches per split
+- ❌ Data leakage: same patient in train/val/test
+- ❌ Optimistic performance metrics
+- **Use case**: Proof-of-concept, benchmarking
+
+### Patient-Subject Split (Entrenamiento_patient_subject.py)
+- ✅ Prevents data leakage
+- ✅ True generalization to new patients
+- ✅ Clinically relevant evaluation
+- ❌ Smaller batches per patient
+- ❌ More realistic but lower metrics
+- **Use case**: Clinical validation, model selection, final evaluation
 
 ---
 
 ## Troubleshooting
 
 ### Data Issues
-- Ensure data files are in correct format (.mat, .dat, .npy)
-- Check file paths in config
-- Verify data normalization
+- Ensure data files are in correct format (.pt with metadata)
+- Check file paths in configuration
+- Verify data normalization and shape (N, 2, segment_length)
+- Use `UCIDataset.worker_init()` for multi-worker DataLoaders
 
 ### Model Issues
 - Check input/output dimensions match
-- Verify gradient flow with small dataset
-- Inspect model parameters count
+- Verify gradient flow with small batch
+- Inspect model parameters count with `print(model)`
+- Ensure mixed precision compatibility with model architecture
 
 ### Training Issues
 - Adjust learning rate if training diverges
-- Check for GPU memory issues
-- Verify loss decreases over epochs
+- Check GPU memory with `torch.cuda.memory_allocated()`
+- Verify loss decreases over epochs (check CSV log)
+- Use early stopping to prevent overfitting
+- For Patient-Subject Split: expect slightly higher loss than random split
+
+### Memory Issues
+- Use memory-mapped arrays (np.memmap) for large datasets
+- Reduce batch_size if GPU runs out of memory
+- Use persistent_workers=True for DataLoader efficiency
+- Enable gradient checkpointing for very deep models
 
 ---
 
 ## Contributing Guidelines
 
 When adding new code:
-1. Follow naming conventions
-2. Add docstrings and type hints
-3. Write tests for new functionality
-4. Update this documentation
-5. Ensure code is well-commented
+1. Follow naming conventions consistently
+2. Add docstrings with parameter descriptions
+3. Include type hints where applicable
+4. Write tests for new functionality
+5. Update this STRUCTURE.md documentation
+6. Ensure code is well-commented in Spanish/English
+7. Test with both small and large datasets
+8. Use Patient-Subject Split for any generalization studies
 
 ---
 
 ## References
 
 - **Dataset**: UCI Machine Learning Repository - PPG-Dalia Wearable Dataset
-- **Framework**: PyTorch Official Documentation
+- **Framework**: PyTorch 2.0+ Official Documentation
+- **1D-CNN Architecture**: Time Series Classification Papers
+- **InceptionTime**: Fawaz et al., "InceptionTime: Finding AlexNet for Time Series Classification"
 - **Meta-Learning**: Finn et al., "Model-Agnostic Meta-Learning for Fast Adaptation"
-- **Signal Processing**: Numpy/Scipy Documentation
+- **Signal Processing**: Numpy/Scipy Official Documentation
+- **Mixed Precision Training**: NVIDIA Automatic Mixed Precision (AMP) Guide
 
 ---
 
 <div align="center">
 
-**Last Updated**: April 2025
+**Last Updated**: April 2026
 
-For questions or clarifications, please refer to README.md or contact the maintainer.
+**Maintainer**: Juan Marcos Grigolatto
+
+For questions or clarifications, please refer to README.md or open an issue.
 
 </div>

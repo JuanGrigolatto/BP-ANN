@@ -20,7 +20,7 @@ BP-ANN/
 │   │   │   ├── Procesamiento_por_picos.py      # Peak-based feature extraction
 │   │   │   └── Procesamiento_ventana_fija.py   # Fixed-window preprocessing
 │   │   │
-│   │   └── Detector_de_picos.py    # Peak detection algorithm for PPG signals
+│   │   └── Detector_de_picos.py    # Peak detection algorithm for PPG y ECG signals
 │   │
 │   ├── 📁 data/                    # Data loading and dataset management
 │   │   │
@@ -34,16 +34,12 @@ BP-ANN/
 │   ├── 📁 models/                  # Neural network architectures
 │   │   ├── ConvolucionalV1.py      # 1D-CNN with ReLU & Dropout regularization
 │   │   ├── ConvolucionalV2.py      # Lightweight 1D-CNN with reduced regularization
-│   │   ├── InceptionTime.py        # InceptionTime architecture with residual connections
-│   │   └── utils.py                # Model utility functions
+│   │   └── InceptionTime.py        # InceptionTime architecture with residual connections
 │   │
 │   ├── 📁 utils/                   # General utilities
 │   │   │
-│   │   ├── 📁 Tools/               # General helper tools
-│   │   │   └── Tools.py            # Utility functions and helpers
-│   │   │
-│   │   ├── Visualizador_datos.py   # Data visualization utilities
-│   │   └── metrics.py              # Evaluation metrics (MAE, RMSE, R²)
+│   │   └── 📁 Tools/               # General helper tools
+│   │       └── Tools.py            # Utility functions and helpers
 │   │
 │   └── 📁 entrenamiento/           # Training orchestration
 │       ├── Entrenamiento.py        # Main training script with random split
@@ -73,9 +69,9 @@ BP-ANN/
 │   └── Prueba_modelo.py            # Model inference and testing script
 │
 ├── 📁 metalearning/                # Meta-learning outputs and logs
-│   └── logs/                       # Meta-learning training logs
+│   └── 📁logs/                     # Meta-learning training logs
 │
 └── 📁 data/                        # Data storage (raw and processed)
-    └── processed/                  # Processed datasets
-        └── data_UCI/               # UCI dataset files
+    ├── 📁interim	            # Internal data
+    └── 📁processed/                # Processed datasets
 ```

@@ -5,7 +5,7 @@
   <img src="https://img.shields.io/badge/Python-3.9+-blue" alt="Python">
   <img src="https://img.shields.io/badge/PyTorch-2.0+-red" alt="PyTorch">
   <img src="https://img.shields.io/badge/learn2learn-MAML-green" alt="learn2learn">
-  <img src="https://img.shields.io/badge/Dataset-UCI%20PPG--BP-orange" alt="Dataset">
+  <img src="https://img.shields.io/badge/Dataset-UCI%20PPG--ECG--BP-orange" alt="Dataset">
   <img src="https://img.shields.io/badge/Status-Final%20Project-blueviolet" alt="Status">
 </p>
 
@@ -32,7 +32,7 @@
 
 Continuous non-invasive blood pressure monitoring is an unsolved clinical challenge. Current gold-standard methods are either invasive (arterial line) or intermittent (cuff-based). This project proposes a deep learning pipeline that:
 
-1. **Extracts beat-by-beat features** from synchronized PPG and ECG signals.
+1. **Extracts beat-by-beat features** from synchronized PPG, ECG and ABP signals.
 2. **Trains a base model** with a standard supervised approach (random split or patient-wise split).
 3. **Meta-trains the model** using MAML so that it learns an initialization that adapts quickly to a new patient's physiology using only a few heartbeats (Support Set).
 4. **Evaluates clinically** by simulating real-world scenarios: zero-shot generalization, one-time calibration (step response), and periodic recalibration during prolonged monitoring.
@@ -42,8 +42,8 @@ Continuous non-invasive blood pressure monitoring is an unsolved clinical challe
 ## Key Features
 
 - 🧠 **Three neural architectures**: `ConvolucionalV1` (1D-CNN + ELU + Dropout), `ConvolucionalV2` (lightweight 1D-CNN), and `InceptionTime` (multi-scale residual CNN).
-- 📊 **Advanced signal processing**: Peak-based segmentation and fixed-window preprocessing for PPG/ECG signals.
-- 🔄 **Meta-learning with MAML**: Two task-construction paradigms — `traditional` (random windows) and `patient_wise` (strict per-patient split).
+- 📊 **Advanced signal processing**: Peak-based segmentation and fixed-window preprocessing for PPG/ECG/ABP signals.
+- 🔄 **Meta-learning with MAML**: Three task-construction paradigms: traditional (support and query sets sampled randomly from a single patient's record), patient_wise (tasks formed by mixing signal segments from multiple patients to force cross-subject generalization), and temporal decoupling (sequential samples for the support set and temporally gapped samples for the query set from the same patient).
 - ⚡ **Delta Learning**: Predicts blood pressure *variations* relative to a calibration baseline, using a hybrid MSE + Pearson loss to capture both error magnitude and trend correlation.
 - 🎯 **SBP and DBP estimation**: Simultaneous prediction of Systolic and Diastolic Blood Pressure.
 - 📈 **Exhaustive hyperparameter search**: Automated grid search over MAML inner/outer learning rates, adaptation steps, and task group sizes.
@@ -114,7 +114,8 @@ BP-ANN/
 ├── models/              # Saved checkpoints and best models
 ├── notebooks/           # Visualization and analysis scripts
 ├── data/                # Raw and processed datasets
-└── Prueba_modelos/      # Inference and testing scripts
+├── Prueba_modelos/      # Inference and testing scripts
+└── Validation/          # Validation of ECG peak detection and ABP label extraction algorithms.
 ```
 
 ---
@@ -130,7 +131,7 @@ BP-ANN/
 
 ```bash
 # Clone the repository
-git clone https://github.com/<your-username>/BP-ANN.git
+git clone https://github.com/JuanGrigolatto/BP-ANN.git
 cd BP-ANN
 
 # Create and activate a virtual environment

@@ -1,0 +1,11 @@
+{
+  "source": "PulseDB official repo: https://github.com/pulselabteam/PulseDB",
+  "version": "PulseDB v2_0",
+  "date": "2026-08-13T17:51:11Z",
+  "fs_final": 125,
+  "window_seconds": 4.0,
+  "overlap": 0.0,
+  "detector_filter": "src.utils.Tools.Tools.filtrar_abp",
+  "detector_function": "src.utils.Tools.Tools.detectar_picos_abp",
+  "dbp_strategy": "find_peaks(-signal, height=-height_dbp, prominence=prominence, distance=0.3*fs)"
+}

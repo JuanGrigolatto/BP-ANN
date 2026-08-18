@@ -1,0 +1,20 @@
+segment,SBP_error,DBP_error,cantidad_latidos_SBP,cantidad_latidos_DBP,observation
+43,7.805915640653822,-75.53736661557637,12,1,SBP próximo a la referencia. DBP bajo respecto a la referencia; existe al menos un valle >20 mmHg por debajo de la referencia. Pocos latidos DBP detectados (1). 
+44,2.2982503652741855,-65.52268869392836,12,1,SBP próximo a la referencia. DBP bajo respecto a la referencia; existe al menos un valle >20 mmHg por debajo de la referencia. Pocos latidos DBP detectados (1). 
+53,15.506953254517839,-4.818559614259165,10,10,Desviación SBP moderada respecto a la referencia. DBP próximo a la referencia. 
+94,14.976970922414267,-13.10186706229279,4,3,Desviación SBP moderada respecto a la referencia. Desviación DBP moderada respecto a la referencia. Pocos latidos DBP detectados (3). 
+270,16.047331785521067,-3.973383720595237,14,12,Desviación SBP moderada respecto a la referencia. DBP próximo a la referencia. 
+282,1.909718313458228,-47.79373026058694,12,1,SBP próximo a la referencia. DBP bajo respecto a la referencia; existe al menos un valle >20 mmHg por debajo de la referencia. Pocos latidos DBP detectados (1). 
+286,2.6661701681759666,-63.71590247871808,12,1,SBP próximo a la referencia. DBP bajo respecto a la referencia; existe al menos un valle >20 mmHg por debajo de la referencia. Pocos latidos DBP detectados (1). 
+288,29.57871937229278,-22.57815433461468,3,2,SBP elevado respecto a la referencia; existe al menos un pico >20 mmHg sobre la referencia. DBP bajo respecto a la referencia; existe al menos un valle >20 mmHg por debajo de la referencia. Pocos latidos SBP detectados (3). Pocos latidos DBP detectados (2). 
+308,19.618461595407155,-12.563091465866052,8,11,Desviación SBP moderada respecto a la referencia. Desviación DBP moderada respecto a la referencia. 
+342,92.55318580765831,-32.29517387896623,1,2,SBP elevado respecto a la referencia; existe al menos un pico >20 mmHg sobre la referencia. DBP bajo respecto a la referencia; existe al menos un valle >20 mmHg por debajo de la referencia. Pocos latidos SBP detectados (1). Pocos latidos DBP detectados (2). 
+383,24.188358152203648,-1.6800642600521911,18,17,SBP elevado respecto a la referencia; existe al menos un pico >20 mmHg sobre la referencia. DBP próximo a la referencia. 
+387,24.844148687474245,-1.970356748347129,18,18,SBP elevado respecto a la referencia; existe al menos un pico >20 mmHg sobre la referencia. DBP próximo a la referencia. 
+388,24.429537955996437,-1.9865678489181846,18,18,SBP elevado respecto a la referencia; existe al menos un pico >20 mmHg sobre la referencia. DBP próximo a la referencia. 
+389,26.163815551806522,-2.382870762430798,18,18,SBP elevado respecto a la referencia; existe al menos un pico >20 mmHg sobre la referencia. DBP próximo a la referencia. 
+390,0.09938017064628468,-34.584714141786534,12,1,SBP próximo a la referencia. DBP bajo respecto a la referencia; existe al menos un valle >20 mmHg por debajo de la referencia. Pocos latidos DBP detectados (1). 
+456,5.500771257073964,-31.22432090498229,15,1,SBP próximo a la referencia. DBP bajo respecto a la referencia; existe al menos un valle >20 mmHg por debajo de la referencia. Pocos latidos DBP detectados (1). 
+532,-1.29480732650336,-48.47109366585232,10,1,SBP próximo a la referencia. DBP bajo respecto a la referencia; existe al menos un valle >20 mmHg por debajo de la referencia. Pocos latidos DBP detectados (1). 
+550,-1.633419091650353,-52.81934660012736,15,2,SBP próximo a la referencia. DBP bajo respecto a la referencia; existe al menos un valle >20 mmHg por debajo de la referencia. Pocos latidos DBP detectados (2). 
+617,3.7395947500951365,-84.6301147225153,13,1,SBP próximo a la referencia. DBP bajo respecto a la referencia; existe al menos un valle >20 mmHg por debajo de la referencia. Pocos latidos DBP detectados (1). 

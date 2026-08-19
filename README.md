@@ -155,13 +155,16 @@ pip install -e .
 
 ## Usage
 
+*Note: By default, all training scripts are configured to use the `ConvolucionalV1` architecture and the preprocessed Cuff-Less Blood Pressure (MIMIC II) dataset (PPG + ECG inputs). Modifying architectures or hyperparameters can be done directly within the configuration dictionaries inside each script.*
+
 ### 1. Standard Training (Random Split)
 
 ```bash
 python src/entrenamiento/Entrenamiento.py
 ```
 
-Trains a model on the UCI PPG-BP dataset with a 70/20/10 random train/val/test split. Uses mixed-precision training (AMP) and early stopping.
+Trains the baseline CNN using a traditional 70/20/10 random window split across the entire dataset. Uses mixed-precision training (AMP) and early stopping.
+Output: The best model weights are saved automatically to models/best_models/.
 
 ### 2. Standard Training (Patient-Wise Split)
 
@@ -169,7 +172,7 @@ Trains a model on the UCI PPG-BP dataset with a 70/20/10 random train/val/test s
 python src/entrenamiento/Entrenamiento_patient_subject.py
 ```
 
-Trains with a strict patient-level data split, ensuring no patient appears in both training and test sets.
+Trains the model using a strict patient-level data split to evaluate static generalization (zero-shot baseline), ensuring no patient appears in both training and test sets.
 
 ### 3. Meta-Training with MAML
 
@@ -179,8 +182,11 @@ python metalearning/Metaentrenamiento.py
 
 Meta-trains the model using MAML. Supports two modes configured inside the script:
 
-- `traditional`: Tasks are formed by random signal windows from a single patient.
-- `patient_wise`: Tasks are formed by mixing data from different patients, enforcing cross-patient generalization.
+-traditional: Tasks are formed by random signal windows from a single patient's record.
+
+-patient_wise: Tasks are formed by mixing data from different patients, enforcing cross-subject generalization.
+
+Output: Meta-trained checkpoints are saved to models/best_meta_models/.
 
 ### 4. Delta Learning Meta-Training
 
@@ -188,7 +194,7 @@ Meta-trains the model using MAML. Supports two modes configured inside the scrip
 python metalearning/Metaentrenamiento_delta.py
 ```
 
-Meta-trains using the Delta Learning paradigm with a hybrid MSE + Pearson loss and adaptive annealing of inner-loop steps.
+Meta-trains using the Delta Learning paradigm with a hybrid MSE + Pearson loss and adaptive annealing of inner-loop steps to predict blood pressure variations from a patient-specific calibration baseline.
 
 ### 5. Few-Shot Evaluation
 
@@ -196,7 +202,7 @@ Meta-trains using the Delta Learning paradigm with a hybrid MSE + Pearson loss a
 python metalearning/Fewshot.py
 ```
 
-Evaluates the meta-trained model on held-out test patients by performing fast adaptation using a small support set (default: 5 shots), then measuring MAE and RMSE before and after adaptation.
+Evaluates the meta-trained model on held-out test patients by performing fast adaptation using a small support set (default: 5 cardiac cycles), then measuring MAE and RMSE before and after adaptation.
 
 ---
 

@@ -236,18 +236,22 @@ python metalearning/Intrapatient_eval.py
 
 ## Dataset
 
-This project uses the **UCI Blood Pressure dataset** (PPG-BP), which contains simultaneous PPG and invasive arterial blood pressure (ABP) recordings from ICU patients. Signals are sampled at **125 Hz**.
+This project uses the **Cuff-Less Blood Pressure Estimation Dataset** from the UCI Machine Learning Repository. This dataset is a preprocessed and validated subset of the **MIMIC II** (Multiparameter Intelligent Monitoring in Intensive Care) database, containing synchronized Photoplethysmography (PPG), Electrocardiography (ECG, lead II), and invasive Arterial Blood Pressure (ABP) signals sampled at **125 Hz**.
 
 **Preprocessing pipeline:**
 1. Adaptive peak detection on ECG (R-peaks for synchronized window segmentation) and invasive ABP signals (for SBP/DBP ground truth extraction).
-2. Beat-by-beat segmentation into fixed-length windows (500 samples ≈ 4 seconds)
-3. Z-score normalization (SBP: μ=134.02, σ=22.75 mmHg | DBP: μ=63.47, σ=23.69 mmHg)
-4. Storage as memory-mapped arrays (`.dat`) with `.pt` metadata for efficient loading
+2. Beat-by-beat segmentation into fixed-length windows (500 samples ≈ 4 seconds).
+3. Z-score normalization (SBP: μ=134.02, σ=22.75 mmHg | DBP: μ=63.47, σ=23.69 mmHg).
+4. Storage as memory-mapped arrays (`.dat`) with `.pt` metadata for efficient loading.
 
-The processed dataset is split at the patient level:
-- **70%** training patients
-- **15%** validation patients  
-- **15%** test patients (held out for few-shot evaluation)
+**Data Splitting Paradigms:**
+To evaluate both static performance and dynamic adaptation, the dataset is partitioned in two distinct ways:
+
+1. **Random Split (Ideal Baseline):** A standard 70/20/10 split of all signal windows across the entire dataset, disregarding patient boundaries (used in `Entrenamiento.py`).
+2. **Patient-Level Split (Generalization Test & Meta-Learning):** A strict division by patient IDs to prevent data leakage. This split is used to prove the generalization failure of static models (`Entrenamiento_patient_subject.py`) and to train/evaluate the MAML pipeline:
+   - **70%** training patients
+   - **15%** validation patients
+   - **15%** test patients (held out for zero-shot and few-shot adaptation)
 
 ---
 
@@ -268,22 +272,22 @@ python metalearning/Hiperparametros_fewshot.py
 Evaluates different learning rates for intra-patient fine-tuning, measuring pre/post adaptation MAE and the population improvement rate.
 
 ---
-
 ## Results
 
 > Performance metrics are evaluated against AAMI/ISO 81060-3:2022 clinical standards (Mean Error ≤ ±5 mmHg, SD ≤ 8 mmHg).
 
-| Evaluation Paradigm | SBP (ME ± SD) [mmHg] | DBP (ME ± SD) [mmHg] | AAMI/ISO Compliance |
-|---------------------|----------------------|----------------------|---------------------|
-| **Random Split** (Baseline V1) | 0.65 ± 6.60 | 0.07 ± 4.67 | **Pass** |
-| **Patient-Wise** (Zero-Shot V1) | -1.92 ± 13.51 | -2.75 ± 10.99 | **Fail** (Severe data drift) |
-| **Delta Meta-Learning** (5-Shot) | 0.18 ± 10.87 | -0.71 ± 7.48 | **Partial** (DBP Pass, SBP SD > 8) |
+| Evaluation Paradigm | SBP (MAE / RMSE) | SBP (ME ± SD) | DBP (MAE / RMSE) | DBP (ME ± SD) | AAMI/ISO Compliance |
+|---------------------|------------------|---------------|------------------|---------------|---------------------|
+| **Random Split** (Baseline V1) | 3.84 / 5.74 | 0.65 ± 6.60 | 3.84 / 5.74* | 0.07 ± 4.67 | **Pass** |
+| **Patient-Wise** (Zero-Shot V1) | 7.31 / 12.54 | -1.92 ± 13.51 | 7.31 / 12.54* | -2.75 ± 10.99 | **Fail** (Severe data drift) |
+| **Delta Meta-Learning** (5-Shot)| 7.14 / 10.87 | 0.18 ± 10.87 | 4.73 / 7.51 | -0.71 ± 7.48 | **Partial** (DBP Pass, SBP SD > 8) |
+
+*(Note: Baseline MAE/RMSE metrics reflect average global performance across both SBP/DBP channels).*
 
 ### Key Findings
-* **Static Model Failure:** Traditional CNNs perform well on random splits but fail to generalize to unseen patients (Patient-Wise), exhibiting a strong regression to the mean.
-* **MAML + Delta Learning Success:** Fine-tuning with only 5 support samples successfully eliminated the systematic bias (Mean Error < 1 mmHg for both SBP and DBP).
-* **Variance Trade-off:** While Delta Learning tracks relative variations, it increases susceptibility to high-frequency noise, keeping the SBP standard deviation above the 8 mmHg threshold.
-
+* **Static Model Failure:** Traditional CNNs perform well on random splits but fail to generalize to unseen patients (Patient-Wise), exhibiting a strong regression to the mean and surpassing clinical error limits.
+* **MAML + Delta Learning Success:** Fine-tuning with only 5 support samples successfully eliminated the systematic bias (Mean Error < 1 mmHg for both SBP and DBP) and reduced the absolute error in **62.1%** (SBP) and **77.0%** (DBP) of the unseen patients.
+* **Variance Trade-off:** While Delta Learning tracks relative variations, it lacks temporal memory, increasing susceptibility to high-frequency noise. This keeps the SBP standard deviation (10.87 mmHg) above the 8 mmHg clinical threshold.
 ---
 
 ## Citation

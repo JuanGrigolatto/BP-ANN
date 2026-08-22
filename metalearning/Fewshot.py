@@ -27,25 +27,25 @@ from src.models.ConvolucionalV1 import Modelo_ConvolucionalV1
 from src.data.data_chargers.Tuningndataset import TuningNDataset
 
 def promedio_metricas(m_list):
-    """_summary_ Realiza el promedio de una lista de métricas, donde cada métrica es una tupla (mae, rmse, bias, std).  
+    """Realiza el promedio de una lista de métricas, donde cada métrica es una tupla (mae, rmse, bias, std).  
 
     Args:
-        m_list (_type_): _description_ Lista de tuplas con métricas por paciente.
+        m_list: Lista de tuplas con métricas por paciente.
 
     Returns:
-        _type_: _description_ Tupla con el promedio de cada métrica (mae, rmse, bias, std) a nivel global.
+        tipo: Tupla con el promedio de cada métrica (mae, rmse, bias, std) a nivel global.
     """    
     return np.mean(m_list, axis=0)
 
 def calcular_metricas(y_true, y_pred):
-    """_summary_ Calcula las métricas de error (MAE, RMSE) y las métricas clínicas ISO (Bias y STD) para un conjunto de predicciones vs valores reales.
+    """Calcula las métricas de error (MAE, RMSE) y las métricas clínicas ISO (Bias y STD) para un conjunto de predicciones vs valores reales.
 
     Args:
-        y_true (_type_): _description_ Valores reales de presión arterial (SBP o DBP) para un paciente específico.
-        y_pred (_type_): _description_ Valores predichos por el modelo para ese mismo paciente, después de la adaptación few-shot.
+        y_true: Valores reales de presión arterial (SBP o DBP) para un paciente específico.
+        y_pred: Valores predichos por el modelo para ese mismo paciente, después de la adaptación few-shot.
 
     Returns:
-        _type_: _description_ Tupla con las métricas calculadas: (MAE, RMSE, Bias, STD), donde:
+        tipo: Tupla con las métricas calculadas: (MAE, RMSE, Bias, STD), donde:
             - MAE: Error absoluto medio entre predicciones y valores reales.
             - RMSE: Raíz del error cuadrático medio, que penaliza más los errores grandes.
             - Bias: Promedio de los errores (pred - real), que indica si el modelo tiende a sobreestimar o subestimar.
@@ -63,31 +63,31 @@ def calcular_metricas(y_true, y_pred):
     return mae, rmse, bias, std
 
 def desnormalizar_zscore(norm_array, media, std):
-    """_summary_ Desnormaliza un array que fue normalizado con z-score, utilizando la media y desviación estándar globales del entrenamiento. Esto es crucial para interpretar las predicciones en unidades reales (mmHg) y calcular métricas clínicas significativas.
+    """Desnormaliza un array que fue normalizado con z-score, utilizando la media y desviación estándar globales del entrenamiento. Esto es crucial para interpretar las predicciones en unidades reales (mmHg) y calcular métricas clínicas significativas.
 
     Args:
-        norm_array (_type_): _description_ Array de predicciones normalizadas (z-score) que se desea desnormalizar.
-        media (_type_): _description_ Media global utilizada para la normalización z-score durante el entrenamiento (por ejemplo, media de SBP o DBP en el dataset de entrenamiento).
-        std (_type_): _description_ Desviación estándar global utilizada para la normalización z-score durante el entrenamiento (por ejemplo, desviación estándar de SBP o DBP en el dataset de entrenamiento).
+        norm_array: Array de predicciones normalizadas (z-score) que se desea desnormalizar.
+        media: Media global utilizada para la normalización z-score durante el entrenamiento (por ejemplo, media de SBP o DBP en el dataset de entrenamiento).
+        std: Desviación estándar global utilizada para la normalización z-score durante el entrenamiento (por ejemplo, desviación estándar de SBP o DBP en el dataset de entrenamiento).
 
     Returns:
-        _type_: _description_  Array de predicciones desnormalizadas, en las mismas unidades que los valores reales (mmHg), listo para evaluación clínica y cálculo de métricas.
+        tipo: Array de predicciones desnormalizadas, en las mismas unidades que los valores reales (mmHg), listo para evaluación clínica y cálculo de métricas.
     """    
     return norm_array * std + media
 
 def tuning(sample, optimizer, model, criterion, device, bias_norm=None):
-    """_summary_ Realiza un paso de fine-tuning (adaptación) del modelo para un paciente específico, utilizando un solo batch de datos de soporte (Support Set). Si se proporciona bias_norm, el modelo se entrenará para predecir "deltas" respecto a ese bias, lo que puede mejorar la estabilidad y rapidez de la adaptación en escenarios few-shot.
+    """Realiza un paso de fine-tuning (adaptación) del modelo para un paciente específico, utilizando un solo batch de datos de soporte (Support Set). Si se proporciona bias_norm, el modelo se entrenará para predecir "deltas" respecto a ese bias, lo que puede mejorar la estabilidad y rapidez de la adaptación en escenarios few-shot.
 
     Args:
-        sample (_type_): _description_ Batch de datos de soporte para un paciente específico, que incluye las señales de entrada y las etiquetas correspondientes (SBP y DBP normalizados).
-        optimizer (_type_): _description_ Optimizador para actualizar los parámetros del modelo.
-        model (_type_): _description_ Modelo a adaptar.
-        criterion (_type_): _description_ Función de pérdida para calcular el error.
-        device (_type_): _description_ Dispositivo en el que se ejecuta el modelo (CPU o GPU).
-        bias_norm (_type_, optional): _description_ Bias normalizado para calcular deltas. Por defecto None.
+        sample: Batch de datos de soporte para un paciente específico, que incluye las señales de entrada y las etiquetas correspondientes (SBP y DBP normalizados).
+        optimizer: Optimizador para actualizar los parámetros del modelo.
+        model: Modelo a adaptar.
+        criterion: Función de pérdida para calcular el error.
+        device: Dispositivo en el que se ejecuta el modelo (CPU o GPU).
+        bias_norm (opcional): Bias normalizado para calcular deltas. Por defecto None.
 
     Returns:
-        _type_: _description_ Valor de la pérdida después de realizar el paso de adaptación con el batch dado. 
+        tipo: Valor de la pérdida después de realizar el paso de adaptación con el batch dado. 
     """    
     optimizer.zero_grad() 
     data, labels, *_ = sample 
@@ -114,16 +114,16 @@ def tuning(sample, optimizer, model, criterion, device, bias_norm=None):
     return loss.item()
 
 def evaluation(batch, model, criterion, device):
-    """_summary_  Realiza la evaluación del modelo en un batch de datos de validación (Query Set) para un paciente específico, calculando las predicciones y la pérdida correspondiente. Esta función se utiliza tanto antes como después del fine-tuning para cuantificar la mejora en la precisión de las predicciones.
+    """Realiza la evaluación del modelo en un batch de datos de validación (Query Set) para un paciente específico, calculando las predicciones y la pérdida correspondiente. Esta función se utiliza tanto antes como después del fine-tuning para cuantificar la mejora en la precisión de las predicciones.
 
     Args:
-        batch (_type_): _description_  Batch de datos de evaluación.
-        model (_type_): _description_ Modelo a evaluar.
-        criterion (_type_): _description_ Función de pérdida para calcular el error.
-        device (_type_): _description_ Dispositivo en el que se ejecuta el modelo (CPU o GPU).
+        batch: Batch de datos de evaluación.
+        model: Modelo a evaluar.
+        criterion: Función de pérdida para calcular el error.
+        device: Dispositivo en el que se ejecuta el modelo (CPU o GPU).
 
     Returns:
-        _type_: _description_ Tupla con las predicciones del modelo para el batch dado y el valor de la pérdida calculada, ambos necesarios para el análisis posterior de métricas y visualizaciones.
+        tipo: Tupla con las predicciones del modelo para el batch dado y el valor de la pérdida calculada, ambos necesarios para el análisis posterior de métricas y visualizaciones.
     """    
     with torch.no_grad():
         data, labels, *_ = batch
@@ -135,18 +135,18 @@ def evaluation(batch, model, criterion, device):
     return preds, loss
 
 def graficar_resultados_pacientes(true_means, pred_means, maes_post, maes_pre=None, titulo="Por Paciente"):
-    """_summary_ Genera un conjunto de gráficos para visualizar los resultados de la adaptación few-shot a nivel de paciente, incluyendo:
+    """Genera un conjunto de gráficos para visualizar los resultados de la adaptación few-shot a nivel de paciente, incluyendo:
     a) Gráfico de dispersión de valores reales vs predichos, destacando pacientes con valores extremos.
     b) Gráfico de Bland-Altman para analizar el bias y la variabilidad de las predicciones.
     c) Gráfico de dispersión comparando MAE pre y post adaptación, resaltando mejoras y fallas.
     d) Histograma de MAE post-adaptación con anotación del porcentaje de pacientes
     
     Args:
-        true_means (_type_): _description_ Lista o array con los valores reales promedio de presión arterial (SBP o DBP) para cada paciente, calculados a partir de los latidos del Query Set.
-        pred_means (_type_): _description_ Lista o array con los valores predichos promedio de presión arterial para cada paciente, después de la adaptación few-shot.
-        maes_post (_type_): _description_ Lista o array con los valores de MAE post-adaptación para cada paciente, que reflejan la precisión final del modelo después de la personalización.
-        maes_pre (_type_, optional): _description_ Lista o array con los valores de MAE pre-adaptación para cada paciente, que reflejan la precisión inicial del modelo antes de la personalización. Defaults to None.
-        titulo (str, optional): _description_ Título del conjunto de gráficos. Por defecto "Por Paciente".
+        true_means: Lista o array con los valores reales promedio de presión arterial (SBP o DBP) para cada paciente, calculados a partir de los latidos del Query Set.
+        pred_means: Lista o array con los valores predichos promedio de presión arterial para cada paciente, después de la adaptación few-shot.
+        maes_post: Lista o array con los valores de MAE post-adaptación para cada paciente, que reflejan la precisión final del modelo después de la personalización.
+        maes_pre (opcional): Lista o array con los valores de MAE pre-adaptación para cada paciente, que reflejan la precisión inicial del modelo antes de la personalización. Defaults to None.
+        titulo (str, optional): Título del conjunto de gráficos. Por defecto "Por Paciente".
     """   
     true_means = np.array(true_means)
     pred_means = np.array(pred_means)
@@ -238,17 +238,17 @@ def graficar_resultados_pacientes(true_means, pred_means, maes_post, maes_pre=No
     print(f"Gráfico guardado: metalearning/pacientes_{titulo}_final_tradicional_4.png")
 
 def main(n_shots=5, base_lr = 5e-3, base_dataset=None, test_patient_ids=None, is_delta_model=False):
-    """_summary_ Función principal para ejecutar la evaluación few-shot fine-tuning del modelo de presión arterial. Carga el modelo pre-entrenado, prepara los datos de soporte y consulta para cada paciente, realiza la adaptación del modelo utilizando un número limitado de latidos (n_shots) y evalúa la mejora en la precisión de las predicciones antes y después de la adaptación. Además, calcula métricas globales y por paciente, y genera visualizaciones para analizar los resultados.
+    """Función principal para ejecutar la evaluación few-shot fine-tuning del modelo de presión arterial. Carga el modelo pre-entrenado, prepara los datos de soporte y consulta para cada paciente, realiza la adaptación del modelo utilizando un número limitado de latidos (n_shots) y evalúa la mejora en la precisión de las predicciones antes y después de la adaptación. Además, calcula métricas globales y por paciente, y genera visualizaciones para analizar los resultados.
 
     Args:
-        n_shots (int, optional): _description_. Por defecto 5. Indica el número de muestras de soporte (Support Set) utilizados para la adaptación few-shot de cada paciente. 
-        base_lr (_type_, optional): _description_. Por defecto 5e-3. Tasa de aprendizaje utilizada durante el proceso de fine-tuning para adaptar el modelo a cada paciente específico.
-        base_dataset (_type_, optional): _description_. Por defecto None. Dataset base que contiene los datos completos, necesario si se desea especificar un conjunto de pacientes de prueba personalizado. Si es None, se cargará el dataset completo desde las rutas predefinidas.
-        test_patient_ids (_type_, optional): _description_. Por defecto None. Lista de IDs de pacientes reservados para la evaluación few-shot. Si es None, se cargarán los IDs desde un archivo preprocesado específico. Si se proporciona una lista personalizada, se utilizará esa lista para la evaluación.
-        is_delta_model (bool, optional): _description_. Por defecto False. Indica si el modelo está configurado para predecir "deltas" respecto a un bias específico del paciente, lo que puede mejorar la estabilidad y rapidez de la adaptación en escenarios few-shot. Si es True, durante el fine-tuning se restará el bias normalizado de las etiquetas, y durante la evaluación se sumará nuevamente para obtener las predicciones finales en unidades reales.
+        n_shots (int, optional): Por defecto 5. Indica el número de muestras de soporte (Support Set) utilizados para la adaptación few-shot de cada paciente. 
+        base_lr (opcional): Por defecto 5e-3. Tasa de aprendizaje utilizada durante el proceso de fine-tuning para adaptar el modelo a cada paciente específico.
+        base_dataset (opcional): Por defecto None. Dataset base que contiene los datos completos, necesario si se desea especificar un conjunto de pacientes de prueba personalizado. Si es None, se cargará el dataset completo desde las rutas predefinidas.
+        test_patient_ids (opcional): Por defecto None. Lista de IDs de pacientes reservados para la evaluación few-shot. Si es None, se cargarán los IDs desde un archivo preprocesado específico. Si se proporciona una lista personalizada, se utilizará esa lista para la evaluación.
+        is_delta_model (bool, optional): Por defecto False. Indica si el modelo está configurado para predecir "deltas" respecto a un bias específico del paciente, lo que puede mejorar la estabilidad y rapidez de la adaptación en escenarios few-shot. Si es True, durante el fine-tuning se restará el bias normalizado de las etiquetas, y durante la evaluación se sumará nuevamente para obtener las predicciones finales en unidades reales.
 
     Returns:
-        _type_: _description_ Diccionario con los resultados globales de la evaluación few-shot, incluyendo métricas de error (MAE, RMSE), métricas clínicas (Bias, STD), tasa de mejora por paciente, y un resumen detallado por paciente con sus respectivas métricas pre y post adaptación.
+        tipo: Diccionario con los resultados globales de la evaluación few-shot, incluyendo métricas de error (MAE, RMSE), métricas clínicas (Bias, STD), tasa de mejora por paciente, y un resumen detallado por paciente con sus respectivas métricas pre y post adaptación.
     """    
     SBP_MEAN = 134.02
     DBP_MEAN = 63.47

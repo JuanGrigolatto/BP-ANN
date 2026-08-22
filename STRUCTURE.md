@@ -1,185 +1,241 @@
-# Project Structure Documentation
+# Documentación de la estructura del proyecto
 
-## Directory Hierarchy
+> Este documento fue verificado línea por línea contra el árbol real del repositorio
+> (no es un plan aspiracional). Si movés o renombrás un archivo, actualizá esta sección.
+
+## Jerarquía de directorios
 
 ```
 BP-ANN/
 │
-├── 📄 README.md                          # Main project documentation
-├── 📄 LICENSE                            # Apache 2.0 License
-├── 📄 STRUCTURE.md                       # This file
-├── 📄 requirements.txt                   # Python dependencies
-├── 📄 setup.py                           # Package configuration
+├── 📄 README.md                          # Documentación principal del proyecto
+├── 📄 LICENSE                            # Licencia Apache 2.0
+├── 📄 STRUCTURE.md                       # Este archivo
+├── 📄 requirements.txt                   # Dependencias de Python
+├── 📄 setup.py                           # Configuración del paquete
 │
-├── 📁 src/                               # Main source package
+├── 📁 src/                               # Paquete principal de código fuente
 │   │
-│   ├── 📁 features/                      # Signal processing & feature engineering
+│   ├── 📁 features/                      # Procesamiento de señales e ingeniería de características
 │   │   │
-│   │   ├── 📁 data_processing/           # Preprocessing strategies
-│   │   │   ├── Procesamiento_datos_UCI.py          # UCI standard preprocessing
-│   │   │   ├── Procesamiento_por_picos.py          # Beat-by-beat (peak-based) segmentation
-│   │   │   └── Procesamiento_ventana_fija.py       # Fixed-window segmentation
+│   │   ├── 📁 data_processing/
+│   │   │   └── Procesamiento_por_picos.py    # Segmentación latido a latido (basada en picos):
+│   │   │                                     # carga .mat crudos, filtra, sincroniza y
+│   │   │                                     # segmenta PPG/ECG/ABP latido a latido,
+│   │   │                                     # extrae etiquetas SBP/DBP y normaliza.
 │   │   │
-│   │   └── Detector_de_picos.py          # Peak detection algorithm for PPG/ECG signals
+│   │   └── Detector_de_picos.py          # Algoritmo de detección de picos para señales PPG/ECG
 │   │
-│   ├── 📁 data/                          # Data loading & dataset management
+│   ├── 📁 data/                          # Carga de datos y gestión de datasets
 │   │   │
-│   │   └── 📁 data_chargers/             # PyTorch Dataset classes
-│   │       ├── Clase_UCIDataset.py       # Base UCI dataset class (memmap-backed)
-│   │       ├── MetaDataset.py            # Task dataset for MAML (few-shot episodes)
-│   │       ├── PatientWiseSet.py         # Patient-wise task construction for MAML
-│   │       ├── TuningDataset.py          # Dataset for few-shot fine-tuning
-│   │       ├── IntrapatientSet.py        # Per-patient sequential dataset for clinical eval
-│   │       └── PatientWiseSet.py         # Strict patient-level split dataset
+│   │   └── 📁 data_chargers/             # Clases de Dataset de PyTorch
+│   │       ├── Clase_UCIDataset.py       # UCIDataset: dataset base memmap-backed (soporta datasets más grandes que la RAM)
+│   │       ├── MetaDataset.py            # TaskDataset: episodios MAML intra-paciente (Support/Query con gap temporal)
+│   │       ├── PatientWiseSet.py         # PatientWiseDataset: episodios cross-patient (Support y Query de pacientes distintos)
+│   │       ├── Tuningndataset.py         # TuningNDataset: subconjunto por paciente para fine-tuning few-shot
+│   │       └── Intrapatientset.py        # Intrapatientset: todas las muestras secuenciales de UN paciente (evaluación clínica / recalibración)
 │   │
-│   ├── 📁 models/                        # Neural network architectures
-│   │   ├── ConvolucionalV1.py            # 1D-CNN with ELU activations, BatchNorm & Dropout
-│   │   ├── ConvolucionalV2.py            # Lightweight 1D-CNN with reduced regularization
-│   │   └── InceptionTime.py             # InceptionTime with multi-scale blocks & residual connections
+│   ├── 📁 models/                        # Arquitecturas de red neuronal
+│   │   ├── ConvolucionalV1.py            # 1D-CNN con activaciones ELU, BatchNorm y Dropout
+│   │   ├── ConvolucionalV2.py            # 1D-CNN liviana con regularización reducida
+│   │   └── InceptionTime.py             # InceptionTime: bloques multi-escala y conexiones residuales
 │   │
-│   ├── 📁 utils/                         # General utilities
+│   ├── 📁 utils/                         # Utilidades generales
 │   │   └── 📁 Tools/
-│   │       └── Tools.py                  # Shared helper functions
+│   │       └── Tools.py                  # Funciones compartidas: lectura HDF5/.mat, filtrado digital,
+│   │                                     # detección de picos (ECG/ABP), segmentación y normalización
 │   │
-│   └── 📁 entrenamiento/                 # Standard supervised training
-│       ├── Entrenamiento.py              # Training with random 70/20/10 split + AMP + Early Stopping
-│       └── Entrenamiento_patient_subject.py  # Training with strict patient-wise split
+│   └── 📁 entrenamiento/                 # Entrenamiento supervisado estándar
+│       ├── Entrenamiento.py              # Entrenamiento con split aleatorio 70/20/10 + AMP + Early Stopping
+│       └── Entrenamiento_patient_subject.py  # Entrenamiento con split estricto por paciente
 │
-├── 📁 metalearning/                      # Meta-learning pipeline
+├── 📁 metalearning/                      # Pipeline de meta-aprendizaje
 │   │
-│   ├── Metaentrenamiento.py              # MAML meta-training (traditional & patient_wise modes)
-│   ├── Metaentrenamiento_delta.py        # Delta Learning meta-training (hybrid MSE+Pearson loss)
-│   ├── Fewshot.py                        # Few-shot fine-tuning evaluation on test patients
-│   ├── zero_shot.py                      # Zero-shot evaluation (frozen meta-model)
-│   ├── Respuesta_escalon.py              # Step-response: single initial calibration experiment
-│   ├── Intrapatient_eval.py              # Periodic recalibration during prolonged monitoring
-│   ├── Busqueda_Hiperparametros.py       # Grid search over MAML hyperparameters
-│   ├── Hiperparametros_fewshot.py        # Grid search over few-shot adaptation learning rates
+│   ├── Metaentrenamiento.py              # Meta-entrenamiento MAML (modos 'traditional' y 'patient_wise').
+│   │                                     # main() acepta opcionalmente base_dataset/selected_patients/
+│   │                                     # experiment_name para ser reutilizado por scripts de búsqueda
+│   │                                     # de hiperparámetros sin recargar el dataset ni pisar checkpoints.
+│   ├── Metaentrenamiento_delta.py        # Meta-entrenamiento con Delta Learning (loss híbrida MSE+Pearson)
+│   ├── Fewshot.py                        # Fine-tuning few-shot sobre pacientes de test; MAE/RMSE pre/post adaptación
+│   ├── zero_shot.py                      # Evaluación zero-shot (sin ninguna adaptación) del meta-modelo
+│   ├── Respuesta_escalon.py              # Calibración única al inicio (congela conv, actualiza solo el regresor denso)
+│   ├── Intrapatient_eval.py              # Recalibración periódica durante monitoreo prolongado
+│   ├── Busqueda_Hiperparametros.py       # Grid search de hiperparámetros MAML (usa Metaentrenamiento.main())
+│   ├── Hiperparametros_fewshot.py        # Grid search de learning rates para la fase de adaptación few-shot
 │   │
-│   └── 📁 logs/                          # Meta-training loss logs (CSV per experiment)
+│   ├── 📁 logs/                          # Logs de pérdida por experimento (CSV) + curvas (PNG)
+│   └── 📁 Gráficos_ resultados_ metalearning/  # Gráficos de resultados guardados (Convencional / Patient-wise)
 │
-├── 📁 models/                            # Persisted model weights
+├── 📁 models/                            # Pesos de modelo persistidos (pesado, ver nota más abajo)
+│   ├── 📁 best_models/                   # Checkpoints del mejor modelo supervisado por experimento
+│   ├── 📁 best_meta_models/              # Checkpoints del mejor meta-modelo por experimento
+│   └── 📁 checkpoints/                   # Checkpoints "latest" y "best" de cada corrida (resumable)
+│
+├── 📁 notebooks/                         # Scripts de visualización y análisis
+│   ├── graficacion_datos.py              # Caracterización del dataset (split aleatorio)
+│   ├── Graficacion_datos_meta.py         # Caracterización del dataset para meta-learning
+│   ├── Graficacion_perdida.py            # Curvas de pérdida de meta-entrenamiento
+│   └── Graficacion_combinada.py          # Visualización de resultados de búsqueda de hiperparámetros
+│
+├── 📁 Prueba_modelos/                    # Inferencia y pruebas standalone
+│   └── Prueba_modelo.py                  # Carga un checkpoint y corre inferencia sobre datos de test;
+│                                         # exporta métricas de error a data/processed/ (ver nota más abajo)
+│
+├── 📁 validation/                        # Validación algorítmica independiente del pipeline de señales
 │   │
-│   ├── 📁 best_models/                   # Best standard (supervised) model checkpoints
-│   │   └── best_model.pt
+│   ├── 📁 ECG/                           # Validación del detector de picos QRS sobre MIT-BIH Arrhythmia DB
+│   │   ├── Validar_picos_ECG_MITbih2.py  # Script vigente: remuestreo FIR a 125 Hz, filtrado, detección,
+│   │   │                                 # matching por barrido de dos punteros (tolerancia ±50 ms),
+│   │   │                                 # exporta CSV por registro + gráficos (histograma y error vs. RR).
+│   │   ├── Validar_picos_ECG_MITbih.py   # Versión preliminar/legada de lo anterior (sin CSV por registro
+│   │   │                                 # ni gráfico de error vs. RR). Se conserva a modo de referencia histórica.
+│   │   ├── resultados_por_registro_mitbih.csv   # Salida: métricas (TP/FP/FN, sensibilidad, precisión) por registro
+│   │   ├── error_vs_rr_mitbih.png               # Salida: densidad de error de localización vs. intervalo RR previo
+│   │   └── histograma_errores_mitbih.png        # Salida: histograma de errores temporales de detección
 │   │
-│   ├── 📁 best_meta_models/              # Best meta-trained model checkpoints
-│   │   └── best_meta_model.pt
-│   │
-│   └── 📁 checkpoints/                   # All training checkpoints (latest + best per experiment)
-│       └── (checkpoint_<experiment_name>.pt files)
+│   └── 📁 ABP/                           # Validación del detector de picos ABP sobre VitalDB (AAMI)
+│       ├── prepare_vital_for_validation.py      # Carga el .mat de VitalDB, detecta picos por ventana,
+│       │                                        # guarda salidas intermedias (JSON + pickle)
+│       ├── run_full_vital_validation.py         # Validación completa: SBP/DBP por segmento, Bland-Altman
+│       │                                        # (crudo y acotado ±30 mmHg), CSV de resultados y resumen
+│       ├── test_data/synthetic_abp.mat          # Señal ABP sintética de prueba
+│       └── results/                             # Salidas: VitalDB_AAMI/ (CSV, Bland-Altman, top-10 errores
+│                                                 # con sus gráficos por segmento), intermediate/, csv/
 │
-├── 📁 notebooks/                         # Visualization & analysis scripts
-│   ├── graficacion_datos.py              # Dataset characterization (random split)
-│   ├── Graficacion_datos_meta.py         # Meta-learning dataset characterization
-│   ├── Graficacion_perdida.py            # Meta-training loss curves
-│   └── Graficacion_combinada.py          # Hyperparameter search visualization
-│
-├── 📁 Prueba_modelos/                    # Standalone inference & testing
-│   └── Prueba_modelo.py                  # Load a checkpoint and run inference on test data
-│
-├── 📁 resultados_intrapatient/           # Output folder for clinical simulation plots
-│   └── (per-experiment subfolders with .png tracking plots per patient)
-│
-└── 📁 data/                              # Data storage
-    ├── 📁 interim/                       # Intermediate processed data
-    └── 📁 processed/                     # Final processed datasets
-        └── 📁 data_UCI/
-            ├── dataset_parte_1_por_picos.pt       # Processed signal chunks (memmap metadata)
-            ├── dataset_parte_2_por_picos.pt
-            ├── dataset_parte_3_por_picos.pt
-            ├── dataset_parte_4_por_picos.pt
-            └── few_shot_patient_data.pt           # Held-out test patient IDs for few-shot eval
+└── 📁 data/                              # Almacenamiento de datos (NO versionado en su mayoría, ver nota)
+    ├── 📁 interim/
+    │   └── patients_temp.dat             # Archivo temporal de procesamiento (memmap intermedio)
+    └── 📁 processed/
+        ├── Errores_predicción.npy / .npz # Salida de Prueba_modelo.py: errores (SBP,DBP) por muestra de test
+        └── indices_errores.npy           # Salida de Prueba_modelo.py: índices globales asociados a esos errores
 ```
 
 ---
 
-## Module Descriptions
+## ⚠️ Nota importante sobre los datos
+
+`data/` está excluido por `.gitignore`; los 4 archivos que aparecen en `data/interim/` y
+`data/processed/` quedaron versionados de forma puntual (forzados con `git add`) y son
+**salidas** de una corrida anterior de `Prueba_modelos/Prueba_modelo.py`, no el dataset de
+entrenamiento.
+
+**El dataset procesado real que consumen los scripts de entrenamiento/meta-entrenamiento
+(`data/processed/data_UCI/dataset_parte_1_por_picos.pt` … `_4_por_picos.pt`,
+`few_shot_patient_data.pt`, `test_set_por_pacientes_iso/test_meta.pt`) NO está incluido en
+el repositorio** (es demasiado pesado para versionar). Para regenerarlo:
+
+1. Descargar el dataset crudo *Cuff-Less Blood Pressure Estimation* (UCI/MIMIC II).
+2. Ubicarlo en `data/raw/` según la ruta que espera `Procesamiento_por_picos.py`.
+3. Correr `src/features/data_processing/Procesamiento_por_picos.py` para generar los `.pt`/`.dat` procesados.
+4. Recién entonces, los scripts de `src/entrenamiento/` y `metalearning/` pueden ejecutarse.
+
+Este paso todavía no está automatizado con argumentos de línea de comandos (las rutas están
+hardcodeadas dentro de cada script) — es el próximo punto a resolver en la fase de "probar
+que los scripts corran".
+
+---
+
+## Descripción de los módulos
 
 ### `src/models/`
 
-| File | Architecture | Use Case |
+| Archivo | Arquitectura | Caso de uso |
 |---|---|---|
-| `ConvolucionalV1.py` | 4× Conv1d → 4× Linear, ELU, BN, Dropout(0.5) | Main model for meta-training and few-shot |
-| `ConvolucionalV2.py` | 4× Conv1d → 4× Linear, ReLU, reduced BN | Lightweight baseline comparison |
-| `InceptionTime.py` | Inception blocks + residual + GAP | Multi-scale temporal feature extraction |
+| `ConvolucionalV1.py` | 4× Conv1d → 4× Linear, ELU, BN, Dropout(0.5) | Modelo principal para meta-entrenamiento y few-shot |
+| `ConvolucionalV2.py` | 4× Conv1d → 4× Linear, ReLU, BN reducido | Comparación baseline liviana |
+| `InceptionTime.py` | Bloques Inception + residual + GAP | Extracción de características temporales multi-escala |
 
-All models accept input tensors of shape `(batch, channels=2, signal_length)` and output `(batch, 2)` for simultaneous SBP and DBP regression.
+Todos los modelos aceptan tensores de entrada de forma `(batch, channels=2, signal_length)` y devuelven `(batch, 2)` para la regresión simultánea de SBP y DBP.
 
 ---
 
 ### `src/data/data_chargers/`
 
-| File | Purpose |
-|---|---|
-| `Clase_UCIDataset.py` | Base dataset backed by memory-mapped `.dat` files for efficient large-scale loading |
-| `MetaDataset.py` | Constructs MAML episodes: samples N+K windows per patient as Support + Query sets |
-| `PatientWiseSet.py` | Constructs cross-patient MAML episodes: Support and Query from different patients |
-| `TuningDataset.py` | Wraps a small per-patient subset for few-shot fine-tuning |
-| `IntrapatientSet.py` | Returns all sequential windows from a single patient for clinical evaluation |
+| Archivo | Clase | Propósito |
+|---|---|---|
+| `Clase_UCIDataset.py` | `UCIDataset` | Dataset base respaldado por memmap; soporta datasets más grandes que la RAM disponible |
+| `MetaDataset.py` | `TaskDataset` | Construye episodios MAML intra-paciente: Support/Query del mismo paciente con brecha temporal |
+| `PatientWiseSet.py` | `PatientWiseDataset` | Construye episodios cross-patient: Support y Query mezclando distintos pacientes |
+| `Tuningndataset.py` | `TuningNDataset` | Subconjunto por paciente para fine-tuning few-shot (primeros n_shots = soporte, resto = evaluación) |
+| `Intrapatientset.py` | `Intrapatientset` | Todas las muestras secuenciales de un único paciente, para evaluación clínica intra-paciente |
 
 ---
 
 ### `metalearning/`
 
-| File | Purpose |
+| Archivo | Propósito |
 |---|---|
-| `Metaentrenamiento.py` | Main MAML loop. Supports `traditional` (random task) and `patient_wise` (cross-patient) modes |
-| `Metaentrenamiento_delta.py` | MAML with Delta Learning: predicts BP deltas from support mean; hybrid loss; step annealing |
-| `Fewshot.py` | Applies K-shot fine-tuning on test patients; computes pre/post MAE, RMSE, and improvement rate |
-| `zero_shot.py` | Runs the frozen meta-model on unseen patients; no adaptation performed |
-| `Respuesta_escalon.py` | Single calibration at t=0 (freeze conv layers, update only dense regressor); tracks performance over full session |
-| `Intrapatient_eval.py` | Recalibrates every X minutes; plots SBP/DBP tracking and MAE-over-time per patient |
-| `Busqueda_Hiperparametros.py` | Exhaustive grid over `adapt_lr × meta_lr × k_steps × group_size`; saves JSON + CSV results |
-| `Hiperparametros_fewshot.py` | Sweeps adaptation learning rates; reports population improvement rate (% patients that improve post-adaptation) |
+| `Metaentrenamiento.py` | Loop principal de MAML. Admite modos `traditional` (tarea aleatoria) y `patient_wise` (cross-patient). `main()` también acepta `base_dataset`, `selected_patients` y `experiment_name` para ser reutilizado desde la búsqueda de hiperparámetros |
+| `Metaentrenamiento_delta.py` | MAML con Delta Learning: predice deltas de PA respecto de la media del support set; loss híbrida; annealing de pasos |
+| `Fewshot.py` | Aplica fine-tuning K-shot sobre pacientes de test; calcula MAE, RMSE y tasa de mejora pre/post |
+| `zero_shot.py` | Corre el meta-modelo congelado sobre pacientes no vistos; sin ninguna adaptación |
+| `Respuesta_escalon.py` | Calibración única en t=0 (congela capas conv, actualiza solo el regresor denso); sigue el desempeño durante toda la sesión |
+| `Intrapatient_eval.py` | Recalibra cada X minutos; grafica el seguimiento de SBP/DBP y el MAE a lo largo del tiempo por paciente |
+| `Busqueda_Hiperparametros.py` | Grid search exhaustivo sobre `adapt_lr × meta_lr × k_steps × N_patient_group`; carga el dataset y selecciona los pacientes una sola vez, reutiliza `Metaentrenamiento.main()` por combinación; guarda JSON + CSV + gráfico comparativo |
+| `Hiperparametros_fewshot.py` | Barre tasas de aprendizaje de adaptación; reporta la tasa de mejora poblacional (% de pacientes que mejoran post-adaptación) |
 
 ---
 
-## Data Flow
+### `validation/`
+
+| Archivo | Propósito |
+|---|---|
+| `ECG/Validar_picos_ECG_MITbih2.py` | Validación del detector QRS propio contra las anotaciones de MIT-BIH Arrhythmia DB. Remuestrea a 125 Hz (FIR), filtra, detecta, empareja por barrido de dos punteros (tolerancia configurable, default ±50 ms), y reporta sensibilidad/precisión/sesgo/SD global y por registro. Ruta del dataset configurable vía `--data_path` (default: `data/raw/mit-bih-arrhythmia-database-1.0.0/`); corre como script directo o como módulo (`python -m validation.ECG.Validar_picos_ECG_MITbih2`) |
+| `ECG/Validar_picos_ECG_MITbih.py` | Versión preliminar del script anterior; se mantiene como referencia histórica del proceso de auditoría |
+| `ABP/prepare_vital_for_validation.py` | Prepara detecciones intermedias de picos ABP sobre el subset AAMI de VitalDB. Ruta configurable vía `--data_mat` |
+| `ABP/run_full_vital_validation.py` | Validación completa de SBP/DBP estimados vs. referencia sobre VitalDB, con análisis Bland-Altman. Ruta configurable vía `--data_mat` (default: `data/raw/VitalDB_AAMI_Test_Subset/VitalDB_AAMI_Test_Subset.mat`) |
+
+---
+
+## Flujo de datos
 
 ```
-Raw UCI PPG/ECG signals
+Señales crudas UCI PPG/ECG/ABP (.mat)         [NO incluido en el repo, ver nota de datos]
         │
         ▼
-Peak Detection (Detector_de_picos.py)
+Detección de picos (Detector_de_picos.py / Tools.py)
         │
         ▼
-Beat Segmentation → 500-sample windows @ 125 Hz (~4 sec/beat)
+Segmentación por latido → ventanas de 500 muestras @ 125 Hz (~4 seg/latido)   (Procesamiento_por_picos.py)
         │
         ▼
-Z-score Normalization per channel
+Normalización Z-score por canal
         │
         ▼
-Memory-mapped .dat files + .pt metadata
+Archivos .dat memory-mapped + metadatos .pt     [tampoco incluidos, se regeneran localmente]
         │
-        ├──► UCIDataset (standard training)
-        ├──► MetaDataset / PatientWiseSet (MAML episodes)
-        └──► IntrapatientSet (clinical evaluation)
+        ├──► UCIDataset (entrenamiento estándar)
+        ├──► MetaDataset / PatientWiseSet (episodios MAML)
+        └──► Intrapatientset (evaluación clínica)
 ```
 
 ---
 
-## Checkpoint Naming Convention
+## Convención de nombres de checkpoints
 
-Checkpoints follow the pattern:
+Los checkpoints siguen el patrón:
 
 ```
-checkpoint_<experiment_name>.pt   ← latest state (resumable)
-best_<experiment_name>.pt         ← best validation loss snapshot
+checkpoint_<experiment_name>.pt   ← estado más reciente (resumable)
+best_<experiment_name>.pt         ← snapshot de mejor pérdida de validación
 ```
 
-Each checkpoint contains: `epoch`, `model_state_dict`, `optimizer_state_dict`, `best_loss`.
+Cada checkpoint contiene: `epoch`, `model_state_dict`, `optimizer_state_dict`, `best_loss`.
+
+Dentro de `Busqueda_Hiperparametros.py`, `<experiment_name>` se arma automáticamente a partir
+de la combinación de hiperparámetros de esa corrida (ej. `hsearch_a0.01_m0.001_k5_G4_p5_q10`),
+así ninguna corrida pisa el checkpoint de otra.
 
 ---
 
-## Key Hyperparameters
+## Hiperparámetros clave
 
-| Parameter | Default | Description |
+| Parámetro | Valor por defecto | Descripción |
 |---|---|---|
-| `shots` | 5 | Support set size per task (few-shot calibration samples) |
-| `adapt_lr` | 0.005 | Inner-loop (task-specific) learning rate |
-| `meta_lr` | 0.001 | Outer-loop (meta) learning rate |
-| `adapt_steps` | 5 | Inner-loop gradient steps per task |
-| `tasks_per_batch` | 4 | Number of tasks per meta-gradient update |
-| `signal_length` | 500 | Samples per input window (4 sec @ 125 Hz) |
-| `alpha` (Delta) | 0.75 | Weight of Pearson loss in hybrid loss function |
+| `shots` | 5 | Tamaño del support set por tarea (muestras de calibración few-shot) |
+| `adapt_lr` | 0.005 | Tasa de aprendizaje del inner loop (específica por tarea) |
+| `meta_lr` | 0.001 | Tasa de aprendizaje del outer loop (meta) |
+| `adapt_steps` | 5 | Pasos de gradiente del inner loop por tarea |
+| `tasks_per_batch` | 4 | Cantidad de tareas por actualización de meta-gradiente |
+| `signal_length` | 500 | Muestras por ventana de entrada (4 seg @ 125 Hz) |
+| `alpha` (Delta) | 0.75 | Peso de la pérdida de Pearson en la función de pérdida híbrida |

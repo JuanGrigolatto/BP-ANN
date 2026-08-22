@@ -24,14 +24,14 @@ from src.models.ConvolucionalV1 import Modelo_ConvolucionalV1
 import metalearning.Fewshot as Fewshot
 
 def calcular_metricas_avanzadas(y_true, y_pred):
-    """_summary_ Calcula métricas avanzadas de error: MAE, RMSE, Bias y Desviación Estándar de los errores.
+    """Calcula métricas avanzadas de error: MAE, RMSE, Bias y Desviación Estándar de los errores.
 
     Args:
-        y_true (_type_): _description_ Valores reales de presión arterial (mmHg)
-        y_pred (_type_): _description_ Valores predichos por el modelo (mmHg)
+        y_true: Valores reales de presión arterial (mmHg)
+        y_pred: Valores predichos por el modelo (mmHg)
 
     Returns:
-        _type_: _description_ Tupla con las métricas: (MAE, RMSE, Bias, SD)
+        tipo: Tupla con las métricas: (MAE, RMSE, Bias, SD)
     """    
     y_true, y_pred = np.array(y_true), np.array(y_pred)
     errores = y_pred - y_true
@@ -42,14 +42,14 @@ def calcular_metricas_avanzadas(y_true, y_pred):
     return mae, rmse, bias, sd
 
 def main(n_shots=5, n_epochs=5, lr=5e-3, MINUTOS_DESEADOS=15, NUM_PACIENTES_TOTAL=10):
-    """_summary_ Función principal que ejecuta la simulación de monitoreo periódico prolongado con calibración dinámica. Permite configurar el número de shots para el ajuste, épocas de fine-tuning, tasa de aprendizaje, intervalo deseado entre ajustes (en minutos) y el número total de pacientes a evaluar.
+    """Función principal que ejecuta la simulación de monitoreo periódico prolongado con calibración dinámica. Permite configurar el número de shots para el ajuste, épocas de fine-tuning, tasa de aprendizaje, intervalo deseado entre ajustes (en minutos) y el número total de pacientes a evaluar.
  
     Args:
-        n_shots (int, optional): _description_. Por defecto 5. Número de muestras (shots) utilizadas para el ajuste recurrente del modelo cada X minutos. Estas muestras se utilizan para recalibrar el modelo periódicamente, aunque el modelo también se evalúa en modo zero-shot sobre los lotes intermedios para analizar la degradación del error a lo largo del tiempo.
-        n_epochs (int, optional): _description_. Por defecto 5. Número de épocas de ajuste (fine-tuning) realizadas sobre el paciente utilizando solo las muestras del lote actual cada vez que se alcanza el intervalo de ajuste deseado.
-        lr (_type_, optional): _description_. Por defecto 5e-3. Tasa de aprendizaje utilizada para el optimizador durante cada proceso de recalibrado del modelo.
-        MINUTOS_DESEADOS (int, optional): _description_. Por defecto 15. Intervalo deseado entre cada proceso de ajuste/recalibrado del modelo, expresado en minutos. El script calculará automáticamente cuántos lotes de datos corresponden a este intervalo en función del número de shots y la frecuencia de muestreo, y realizará el fine-tuning cada vez que se alcance este umbral durante la iteración sobre los datos del paciente.
-        NUM_PACIENTES_TOTAL (int, optional): _description_. Por defecto 10. Número total de pacientes a evaluar en la simulación. El script seleccionará pacientes específicos de interés (si están disponibles) y completará el resto con pacientes aleatorios del conjunto de test para alcanzar este número total.
+        n_shots (int, optional): Por defecto 5. Número de muestras (shots) utilizadas para el ajuste recurrente del modelo cada X minutos. Estas muestras se utilizan para recalibrar el modelo periódicamente, aunque el modelo también se evalúa en modo zero-shot sobre los lotes intermedios para analizar la degradación del error a lo largo del tiempo.
+        n_epochs (int, optional): Por defecto 5. Número de épocas de ajuste (fine-tuning) realizadas sobre el paciente utilizando solo las muestras del lote actual cada vez que se alcanza el intervalo de ajuste deseado.
+        lr (opcional): Por defecto 5e-3. Tasa de aprendizaje utilizada para el optimizador durante cada proceso de recalibrado del modelo.
+        MINUTOS_DESEADOS (int, optional): Por defecto 15. Intervalo deseado entre cada proceso de ajuste/recalibrado del modelo, expresado en minutos. El script calculará automáticamente cuántos lotes de datos corresponden a este intervalo en función del número de shots y la frecuencia de muestreo, y realizará el fine-tuning cada vez que se alcance este umbral durante la iteración sobre los datos del paciente.
+        NUM_PACIENTES_TOTAL (int, optional): Por defecto 10. Número total de pacientes a evaluar en la simulación. El script seleccionará pacientes específicos de interés (si están disponibles) y completará el resto con pacientes aleatorios del conjunto de test para alcanzar este número total.
     """    
     IS_DELTA_MODEL = True  
     PATH_IDS_TEST = 'data/processed/data_UCI/few_shot_patient_data.pt'

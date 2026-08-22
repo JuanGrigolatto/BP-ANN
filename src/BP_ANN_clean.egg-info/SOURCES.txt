@@ -1,5 +1,0 @@
-setup.py
-src/BP_ANN_clean.egg-info/PKG-INFO
-src/BP_ANN_clean.egg-info/SOURCES.txt
-src/BP_ANN_clean.egg-info/dependency_links.txt
-src/BP_ANN_clean.egg-info/top_level.txt

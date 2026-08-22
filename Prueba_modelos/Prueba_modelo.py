@@ -22,10 +22,10 @@ import src.utils.Tools.Tools as Tools
 import random
 
 def set_seed(seed=42):
-    """_summary_ Establece la semilla para todas las operaciones aleatorias en Python, NumPy y PyTorch, asegurando la reproducibilidad de los experimentos. Esta función configura la semilla para el módulo random de Python, el generador de números aleatorios de NumPy, y los generadores de números aleatorios de PyTorch tanto para CPU como para GPU. Además, ajusta las configuraciones de cuDNN para garantizar resultados determinísticos en operaciones convolucionales. 
+    """Establece la semilla para todas las operaciones aleatorias en Python, NumPy y PyTorch, asegurando la reproducibilidad de los experimentos. Esta función configura la semilla para el módulo random de Python, el generador de números aleatorios de NumPy, y los generadores de números aleatorios de PyTorch tanto para CPU como para GPU. Además, ajusta las configuraciones de cuDNN para garantizar resultados determinísticos en operaciones convolucionales. 
 
     Args:
-        seed (int, optional): _description_. Por defecto 42.  La semilla que se utilizará para inicializar los generadores de números aleatorios en Python, NumPy y PyTorch, asegurando que los experimentos sean reproducibles.     
+        seed (int, optional): Por defecto 42.  La semilla que se utilizará para inicializar los generadores de números aleatorios en Python, NumPy y PyTorch, asegurando que los experimentos sean reproducibles.     
     """
     random.seed(seed)
     np.random.seed(seed)
@@ -45,14 +45,14 @@ DBP_STD = 23.69
 ABP_MAX, ABP_MIN = 60, 180.00
 """
 def aami_metrics(y_true, y_pred):
-    """_summary_ Calcula las métricas AAMI/ISO para un conjunto de predicciones y valores verdaderos. Esta función calcula el error medio y la desviación estándar del error entre las predicciones y los valores reales, utilizando la fórmula estándar de AAMI que se emplea para evaluar la precisión de los dispositivos de medición de presión arterial. 
+    """Calcula las métricas AAMI/ISO para un conjunto de predicciones y valores verdaderos. Esta función calcula el error medio y la desviación estándar del error entre las predicciones y los valores reales, utilizando la fórmula estándar de AAMI que se emplea para evaluar la precisión de los dispositivos de medición de presión arterial. 
 
     Args:
-        y_true (_type_): _description_ Vector de valores verdaderos (real) de presión arterial, ya sea SBP o DBP, en unidades desnormalizadas (mmHg).
-        y_pred (_type_): _description_ Vector de valores predichos (modelo) de presión arterial, ya sea SBP o DBP, en unidades desnormalizadas (mmHg).
+        y_true: Vector de valores verdaderos (real) de presión arterial, ya sea SBP o DBP, en unidades desnormalizadas (mmHg).
+        y_pred: Vector de valores predichos (modelo) de presión arterial, ya sea SBP o DBP, en unidades desnormalizadas (mmHg).
 
     Returns:
-        _type_: _description_ Tupla que contiene el error medio (mean_error) y la desviación estándar del error (std_error) entre las predicciones y los valores reales, ambos en unidades de mmHg. 
+        tipo: Tupla que contiene el error medio (mean_error) y la desviación estándar del error (std_error) entre las predicciones y los valores reales, ambos en unidades de mmHg. 
     """    
     errors = y_pred - y_true
     mean_error = np.mean(errors)
@@ -60,38 +60,38 @@ def aami_metrics(y_true, y_pred):
     return mean_error, std_error
 
 def desnormalizar_minmax(norm_array, min_val, max_val):
-    """_summary_ Desnormaliza un array normalizado utilizando la fórmula de normalización min-max. Esta función toma un array de valores normalizados (en el rango [0, 1]) y los convierte de nuevo a su escala original utilizando los valores mínimo y máximo proporcionados. 
+    """Desnormaliza un array normalizado utilizando la fórmula de normalización min-max. Esta función toma un array de valores normalizados (en el rango [0, 1]) y los convierte de nuevo a su escala original utilizando los valores mínimo y máximo proporcionados. 
     Args:
-        norm_array (_type_): _description_ Array de valores normalizados, donde cada valor se encuentra en el rango [0, 1], resultado de aplicar la normalización min-max a los datos originales.
-        min_val (_type_): _description_ Valor mínimo de la escala original.
-        max_val (_type_): _description_ Valor máximo de la escala original.
+        norm_array: Array de valores normalizados, donde cada valor se encuentra en el rango [0, 1], resultado de aplicar la normalización min-max a los datos originales.
+        min_val: Valor mínimo de la escala original.
+        max_val: Valor máximo de la escala original.
 
     Returns:
-        _type_: _description_ Array de valores desnormalizados, donde cada valor ha sido transformado de nuevo a su escala original. 
+        tipo: Array de valores desnormalizados, donde cada valor ha sido transformado de nuevo a su escala original. 
     """    
     return norm_array * (max_val - min_val) + min_val
 
 def desnormalizar_zscore(norm_array, media, std):
-    """_summary_ Desnormaliza un array normalizado utilizando la fórmula de normalización z-score. Esta función toma un array de valores normalizados (con media 0 y desviación estándar 1) y los convierte de nuevo a su escala original utilizando la media y desviación estándar proporcionadas.
+    """Desnormaliza un array normalizado utilizando la fórmula de normalización z-score. Esta función toma un array de valores normalizados (con media 0 y desviación estándar 1) y los convierte de nuevo a su escala original utilizando la media y desviación estándar proporcionadas.
 
     Args:
-        norm_array (_type_): _description_ Array de valores normalizados, donde cada valor tiene media 0 y desviación estándar 1, resultado de aplicar la normalización z-score a los datos originales.
-        media (_type_): _description_ Media de la escala original.
-        std (_type_): _description_ Desviación estándar de la escala original.
+        norm_array: Array de valores normalizados, donde cada valor tiene media 0 y desviación estándar 1, resultado de aplicar la normalización z-score a los datos originales.
+        media: Media de la escala original.
+        std: Desviación estándar de la escala original.
 
     Returns:
-        _type_: _description_ Array de valores desnormalizados, donde cada valor ha sido transformado de nuevo a su escala original.
+        tipo: Array de valores desnormalizados, donde cada valor ha sido transformado de nuevo a su escala original.
     """
     return norm_array * std + media
 
 def bland_altman_graf(preds, labels, title, color="blue"):
-    """_summary_  Genera un gráfico de Bland-Altman para evaluar la concordancia entre las predicciones y los valores reales. Este gráfico muestra la diferencia entre las predicciones y los valores reales en función del promedio de ambos, permitiendo visualizar la presencia de sesgos sistemáticos y la dispersión de los errores. 
+    """Genera un gráfico de Bland-Altman para evaluar la concordancia entre las predicciones y los valores reales. Este gráfico muestra la diferencia entre las predicciones y los valores reales en función del promedio de ambos, permitiendo visualizar la presencia de sesgos sistemáticos y la dispersión de los errores. 
 
     Args:
-        preds (_type_): _description_ Vector de valores predichos por el modelo, en unidades desnormalizadas (mmHg).
-        labels (_type_): _description_ Vector de valores verdaderos (real) de presión arterial, ya sea SBP o DBP, en unidades desnormalizadas (mmHg).
-        title (_type_): _description_ Título del gráfico.
-        color (str, optional): _description_. Por defecto "blue". Color de los puntos en el gráfico de Bland-Altman. Puede ser cualquier color válido en Matplotlib, como "blue", "red", "green", etc. 
+        preds: Vector de valores predichos por el modelo, en unidades desnormalizadas (mmHg).
+        labels: Vector de valores verdaderos (real) de presión arterial, ya sea SBP o DBP, en unidades desnormalizadas (mmHg).
+        title: Título del gráfico.
+        color (str, optional): Por defecto "blue". Color de los puntos en el gráfico de Bland-Altman. Puede ser cualquier color válido en Matplotlib, como "blue", "red", "green", etc. 
     """    
     differences = preds - labels
     averages = (preds + labels) / 2
@@ -117,13 +117,13 @@ def bland_altman_graf(preds, labels, title, color="blue"):
     plt.show()
 
 def plot_comparacion_errores(dataset, indices_alto, indices_bajo, n=3):
-    """_summary_ Genera gráficos comparativos de las señales ECG y PPG para muestras con errores altos y bajos. Esta función toma un conjunto de índices correspondientes a muestras con errores altos y bajos, extrae las señales ECG y PPG de esas muestras, y las grafica en subplots para facilitar la comparación visual de las morfologías de las señales en ambos casos.
+    """Genera gráficos comparativos de las señales ECG y PPG para muestras con errores altos y bajos. Esta función toma un conjunto de índices correspondientes a muestras con errores altos y bajos, extrae las señales ECG y PPG de esas muestras, y las grafica en subplots para facilitar la comparación visual de las morfologías de las señales en ambos casos.
 
     Args:
-        dataset (_type_): _description_ Conjunto de datos que contiene las señales ECG y PPG, así como las etiquetas y metadatos asociados. Se espera que el dataset tenga un formato compatible con PyTorch, donde cada muestra se puede acceder mediante un índice y devuelve las señales y etiquetas correspondientes.
-        indices_alto (_type_): _description_ Lista de índices correspondientes a muestras con errores altos.
-        indices_bajo (_type_): _description_ Lista de índices correspondientes a muestras con errores bajos.
-        n (int, optional): _description_ Número de muestras a graficar en cada fila. Por defecto 3.
+        dataset: Conjunto de datos que contiene las señales ECG y PPG, así como las etiquetas y metadatos asociados. Se espera que el dataset tenga un formato compatible con PyTorch, donde cada muestra se puede acceder mediante un índice y devuelve las señales y etiquetas correspondientes.
+        indices_alto: Lista de índices correspondientes a muestras con errores altos.
+        indices_bajo: Lista de índices correspondientes a muestras con errores bajos.
+        n (int, optional): Número de muestras a graficar en cada fila. Por defecto 3.
     """    
     fig, axes = plt.subplots(2, n, figsize=(4*n, 6))
 
@@ -149,7 +149,7 @@ def plot_comparacion_errores(dataset, indices_alto, indices_bajo, n=3):
     plt.show()
 
 def main():
-    """_summary_ Función principal que realiza la evaluación del modelo entrenado en el conjunto de prueba. Esta función carga el modelo, prepara el conjunto de datos de prueba, realiza las predicciones, calcula las métricas de evaluación (MSE, RMSE, MAE, R2, AAMI), y genera visualizaciones como gráficos de Bland-Altman, diagramas de dispersión y comparativas morfológicas de señales con alto/bajo error. Además, guarda los errores de predicción en un archivo para análisis posterior.
+    """Función principal que realiza la evaluación del modelo entrenado en el conjunto de prueba. Esta función carga el modelo, prepara el conjunto de datos de prueba, realiza las predicciones, calcula las métricas de evaluación (MSE, RMSE, MAE, R2, AAMI), y genera visualizaciones como gráficos de Bland-Altman, diagramas de dispersión y comparativas morfológicas de señales con alto/bajo error. Además, guarda los errores de predicción en un archivo para análisis posterior.
     """    
     set_seed(42)
 
@@ -161,8 +161,8 @@ def main():
         'drop_last': False
     }
 
-    print(os.path.exists('data/processed/data_UCI/test_set_por_pacientes_iso/test_meta.pt'))
-    dataset = UCIDataset(['data/processed/data_UCI/test_set_por_pacientes_iso/test_meta.pt'])
+    print(os.path.exists('data/processed/data_UCI/test_set_por_pacientes_iso.pt/test_meta.pt'))
+    dataset = UCIDataset(['data/processed/data_UCI/test_set_por_pacientes_iso.pt/test_meta.pt'])
     
     subset = torch.utils.data.Subset(dataset, indices=list(range(10000)))
     dataloader = torch.utils.data.DataLoader(subset, **parameters)

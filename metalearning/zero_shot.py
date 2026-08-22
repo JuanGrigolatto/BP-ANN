@@ -19,14 +19,14 @@ from src.data.data_chargers.Intrapatientset import Intrapatientset
 from src.models.ConvolucionalV1 import Modelo_ConvolucionalV1
 
 def calcular_metricas_avanzadas(y_true, y_pred):
-    """_summary_ Calcula métricas avanzadas de error: MAE, RMSE, Bias y Desviación Estándar de los errores.
+    """Calcula métricas avanzadas de error: MAE, RMSE, Bias y Desviación Estándar de los errores.
 
     Args:
-        y_true (_type_): _description_ Valores reales de presión arterial (mmHg)
-        y_pred (_type_): _description_ Valores predichos por el modelo (mmHg)
+        y_true: Valores reales de presión arterial (mmHg)
+        y_pred: Valores predichos por el modelo (mmHg)
 
     Returns:
-        _type_: _description_ Tupla con las métricas: (MAE, RMSE, Bias, SD)
+        tipo: Tupla con las métricas: (MAE, RMSE, Bias, SD)
     """    
     y_true = np.array(y_true)
     y_pred = np.array(y_pred)
@@ -38,28 +38,28 @@ def calcular_metricas_avanzadas(y_true, y_pred):
     return mae, rmse, bias, sd
 
 def desnormalizar_zscore(norm_array, media, std):
-    """_summary_ Desnormaliza un array normalizado con Z-score a sus valores originales en mmHg.
+    """Desnormaliza un array normalizado con Z-score a sus valores originales en mmHg.
 
     Args:
-        norm_array (_type_): _description_ Array normalizado (Z-score)
-        media (_type_): _description_ Media utilizada para la normalización (SBP_MEAN o DBP_MEAN)
-        std (_type_): _description_ Desviación estándar utilizada para la normalización (SBP_STD o DBP_STD)
+        norm_array: Array normalizado (Z-score)
+        media: Media utilizada para la normalización (SBP_MEAN o DBP_MEAN)
+        std: Desviación estándar utilizada para la normalización (SBP_STD o DBP_STD)
 
     Returns:
-        _type_: _description_ Valores desnormalizados en mmHg
+        tipo: Valores desnormalizados en mmHg
     """    
     return norm_array * std + media
 
 def evaluation(batch, model, device):
-    """_summary_ Realiza la inferencia del modelo sobre un batch de datos, sin actualizar los pesos (modo evaluación).
+    """Realiza la inferencia del modelo sobre un batch de datos, sin actualizar los pesos (modo evaluación).
 
     Args:
-        batch (_type_): _description_ Batch de datos que contiene señales y etiquetas (SBP, DBP) normalizadas.
-        model (_type_): _description_ Modelo de red neuronal previamente entrenado y cargado.
-        device (_type_): _description_ Dispositivo de cómputo (CPU o GPU) donde se realizará la inferencia.
+        batch: Batch de datos que contiene señales y etiquetas (SBP, DBP) normalizadas.
+        model: Modelo de red neuronal previamente entrenado y cargado.
+        device: Dispositivo de cómputo (CPU o GPU) donde se realizará la inferencia.
 
     Returns:
-        _type_: _description_ Predicciones del modelo para el batch de entrada, en formato tensor (normalizado).
+        tipo: Predicciones del modelo para el batch de entrada, en formato tensor (normalizado).
     """    
     with torch.no_grad():
         batch_data, labels, *_ = batch
@@ -69,10 +69,10 @@ def evaluation(batch, model, device):
     return preds
 
 def main(n_shots=5):
-    """_summary_ Función principal que ejecuta la evaluación zero-shot del modelo sobre pacientes no vistos. Permite configurar el número de shots y el tipo de modelo (Delta Learning o Tradicional) mediante variables internas.
+    """Función principal que ejecuta la evaluación zero-shot del modelo sobre pacientes no vistos. Permite configurar el número de shots y el tipo de modelo (Delta Learning o Tradicional) mediante variables internas.
 
     Args:
-        n_shots (int, optional): _description_. Por defecto 5. Número de muestras (shots) utilizadas para la evaluación intrapatient, aunque el modelo no se ajusta con ellas (zero-shot), se muestran en las gráficas para referencia.
+        n_shots (int, optional): Por defecto 5. Número de muestras (shots) utilizadas para la evaluación intrapatient, aunque el modelo no se ajusta con ellas (zero-shot), se muestran en las gráficas para referencia.
     """    
     IS_DELTA_MODEL = False 
     

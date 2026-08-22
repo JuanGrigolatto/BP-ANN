@@ -18,7 +18,7 @@ from src.data.data_chargers.Clase_UCIDataset import UCIDataset
 from metalearning.Fewshot import main
 import random
 import numpy as np
-"""_summary_   Este módulo se centra en la búsqueda de hiperparámetros para la fase de adaptación rápida (Few-Shot Fine-Tuning) del modelo MAML. 
+"""Este módulo se centra en la búsqueda de hiperparámetros para la fase de adaptación rápida (Few-Shot Fine-Tuning) del modelo MAML. 
 """
 def set_all_seeds(seed=42):
     random.seed(seed)

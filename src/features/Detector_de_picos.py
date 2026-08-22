@@ -13,7 +13,6 @@ import matplotlib.pyplot as plt
 import torch
 import numpy as np
 from scipy.signal import argrelextrema, resample
-from notebooks.prueba_seniales_ruido import white_noise_torch
 from scipy import signal
 
 # --- DEFINICIÓN DE FUNCIONES DE FILTRADO ---
@@ -190,67 +189,69 @@ def extraer_pulso_ppg_fixed_length(signal, fs=125, ancho_pulso=500, num_picos=5)
     return pulsos_segmented, peaks, foots
 
 
-# --- CARGA DE DATOS Y EJECUCIÓN PRINCIPAL ---
 
-# Carga de tensores preprocesados (Dataset UCI)
-archivo = 'data/processed/data_UCI/dataset_parte_2.pt'
-data = torch.load(archivo)
+if __name__ == "__main__":
+    # --- CARGA DE DATOS Y EJECUCIÓN PRINCIPAL ---
 
-# Extracción de canales PPG y ECG
-ppg_muestras = data['data'][:, 0, :]  
-ecg_muestras = data['data'][:, 1, :]  
+    # Carga de tensores preprocesados (Dataset UCI)
+    archivo = 'data/processed/data_UCI/dataset_parte_2.pt'
+    data = torch.load(archivo)
 
-# Selección de muestra de prueba
-i=0
+    # Extracción de canales PPG y ECG
+    ppg_muestras = data['data'][:, 0, :]  
+    ecg_muestras = data['data'][:, 1, :]  
 
-# Ejecución del pipeline de filtrado
-ppg_filtrada = filtrar_ppg(ppg_muestras[i].numpy())
-ecg_filtrada = filtrar_ecg(ecg_muestras[i].numpy())
+    # Selección de muestra de prueba
+    i=0
 
-# Extracción y segmentación
-pulsos_segmented_ppg, peaks_ppg, foots_ppg = extraer_pulso_ppg_fixed_length(ppg_filtrada)
-pulsos_segmented_ecg, peaks_ecg, foots_ecg= extraer_pulso_ecg_fixed_length(ecg_filtrada) 
+    # Ejecución del pipeline de filtrado
+    ppg_filtrada = filtrar_ppg(ppg_muestras[i].numpy())
+    ecg_filtrada = filtrar_ecg(ecg_muestras[i].numpy())
 
-# --- RESULTADOS Y VISUALIZACIÓN ---
-if pulsos_segmented_ppg is not None:
-    plt.figure(figsize=(12, 5))
-    plt.plot(ppg_filtrada, label='Señal PPG', color='blue')
-    plt.plot(peaks_ppg, ppg_filtrada[peaks_ppg], 'ro', label='Picos')
-    plt.plot(foots_ppg, ppg_filtrada[foots_ppg], 'go', label='Foots')
-    #plt.plot(ppg_muestras_ruido.numpy(), label='Señal PPG', color='blue')
-    #plt.plot(peaks, ppg_muestras_ruido[peaks].numpy(), 'ro', label='Picos')
-    #plt.plot(foots, ppg_muestras_ruido[foots].numpy(), 'go', label='Foots')
-    plt.xlabel('Muestras')
-    plt.ylabel('Amplitud')
-    plt.title('Detección de Picos y Foots en Señal de ppg')
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
-    print(f"Se detectaron {len(pulsos_segmented_ppg)} pulsos en la señal.")
-    print(f"Picos detectados: {len(peaks_ppg)}, Foots detectados: {len(foots_ppg)}")
-else:
-    print("Todo lo que pudo fallar lo hizo")
+    # Extracción y segmentación
+    pulsos_segmented_ppg, peaks_ppg, foots_ppg = extraer_pulso_ppg_fixed_length(ppg_filtrada)
+    pulsos_segmented_ecg, peaks_ecg, foots_ecg= extraer_pulso_ecg_fixed_length(ecg_filtrada) 
+
+    # --- RESULTADOS Y VISUALIZACIÓN ---
+    if pulsos_segmented_ppg is not None:
+        plt.figure(figsize=(12, 5))
+        plt.plot(ppg_filtrada, label='Señal PPG', color='blue')
+        plt.plot(peaks_ppg, ppg_filtrada[peaks_ppg], 'ro', label='Picos')
+        plt.plot(foots_ppg, ppg_filtrada[foots_ppg], 'go', label='Foots')
+        #plt.plot(ppg_muestras_ruido.numpy(), label='Señal PPG', color='blue')
+        #plt.plot(peaks, ppg_muestras_ruido[peaks].numpy(), 'ro', label='Picos')
+        #plt.plot(foots, ppg_muestras_ruido[foots].numpy(), 'go', label='Foots')
+        plt.xlabel('Muestras')
+        plt.ylabel('Amplitud')
+        plt.title('Detección de Picos y Foots en Señal de ppg')
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
+        print(f"Se detectaron {len(pulsos_segmented_ppg)} pulsos en la señal.")
+        print(f"Picos detectados: {len(peaks_ppg)}, Foots detectados: {len(foots_ppg)}")
+    else:
+        print("Todo lo que pudo fallar lo hizo")
 
 
-if pulsos_segmented_ecg is not None:
-    plt.figure(figsize=(12, 5))
-    plt.plot(ecg_filtrada, label='Señal ECG', color='blue')
-    plt.plot(peaks_ecg, ecg_filtrada[peaks_ecg], 'ro', label='Picos')
-    plt.plot(foots_ecg, ecg_filtrada[foots_ecg], 'go', label='Foots')
-    #plt.plot(ppg_muestras_ruido.numpy(), label='Señal PPG', color='blue')
-    #plt.plot(peaks, ppg_muestras_ruido[peaks].numpy(), 'ro', label='Picos')
-    #plt.plot(foots, ppg_muestras_ruido[foots].numpy(), 'go', label='Foots')
-    plt.xlabel('Muestras')
-    plt.ylabel('Amplitud')
-    plt.title('Detección de Picos y Foots en Señal de ecg')
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
-    print(f"Se detectaron {len(pulsos_segmented_ecg)} pulsos en la señal.")
-    print(f"Picos detectados: {len(peaks_ecg)}, Foots detectados: {len(foots_ecg)}")
-else:
-    print("Todo lo que pudo fallar lo hizo")
+    if pulsos_segmented_ecg is not None:
+        plt.figure(figsize=(12, 5))
+        plt.plot(ecg_filtrada, label='Señal ECG', color='blue')
+        plt.plot(peaks_ecg, ecg_filtrada[peaks_ecg], 'ro', label='Picos')
+        plt.plot(foots_ecg, ecg_filtrada[foots_ecg], 'go', label='Foots')
+        #plt.plot(ppg_muestras_ruido.numpy(), label='Señal PPG', color='blue')
+        #plt.plot(peaks, ppg_muestras_ruido[peaks].numpy(), 'ro', label='Picos')
+        #plt.plot(foots, ppg_muestras_ruido[foots].numpy(), 'go', label='Foots')
+        plt.xlabel('Muestras')
+        plt.ylabel('Amplitud')
+        plt.title('Detección de Picos y Foots en Señal de ecg')
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
+        print(f"Se detectaron {len(pulsos_segmented_ecg)} pulsos en la señal.")
+        print(f"Picos detectados: {len(peaks_ecg)}, Foots detectados: {len(foots_ecg)}")
+    else:
+        print("Todo lo que pudo fallar lo hizo")
 
 

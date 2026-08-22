@@ -24,23 +24,23 @@ DBP_MEAN, DBP_STD = 63.47, 23.69
 SEED = 42
 
 def desnormalizar_zscore(norm_tensor, media, std):
-    """_summary_ Desnormaliza un tensor z-score a su valor original.
+    """Desnormaliza un tensor z-score a su valor original.
 
     Args:
-        norm_tensor (_type_): _description_ Tensor normalizado (z-score).
-        media (_type_): _description_ Media utilizada para la normalización.
-        std (_type_): _description_ _descripcion_ Desviación estándar utilizada para la normalización.
+        norm_tensor: Tensor normalizado (z-score).
+        media: Media utilizada para la normalización.
+        std: _descripcion_ Desviación estándar utilizada para la normalización.
 
     Returns:
-        _type_: _description_ Tensor desnormalizado.
+        tipo: Tensor desnormalizado.
     """
     return norm_tensor * std + media
 
 def set_seed(seed=42):
-    """_summary_ Establece la semilla para reproducibilidad en random, numpy y torch.
+    """Establece la semilla para reproducibilidad en random, numpy y torch.
 
     Args:
-        seed (int, optional): _description_. Por defecto 42. Valor de la semilla a utilizar.
+        seed (int, optional): Por defecto 42. Valor de la semilla a utilizar.
     """
     random.seed(seed)
     np.random.seed(seed)
@@ -52,15 +52,15 @@ def set_seed(seed=42):
 set_seed(SEED)
 
 def obtener_datos_por_pids(dataset, pids, mapping):
-    """_summary_ Obtiene las etiquetas de SBP y DBP para una lista de pacientes especificados.
+    """Obtiene las etiquetas de SBP y DBP para una lista de pacientes especificados.
 
     Args:
-        dataset (_type_): _description_ Dataset completo del cual se extraerán las etiquetas.
-        pids (_type_): _description_ Lista de IDs de pacientes para los cuales se desean obtener las etiquetas.
-        mapping (_type_): _description_ Diccionario que mapea cada PID a una lista de índices en el dataset donde ese PID está presente.
+        dataset: Dataset completo del cual se extraerán las etiquetas.
+        pids: Lista de IDs de pacientes para los cuales se desean obtener las etiquetas.
+        mapping: Diccionario que mapea cada PID a una lista de índices en el dataset donde ese PID está presente.
 
     Returns:
-        _type_: _description_ Dos arrays de numpy: el primero con las etiquetas de SBP desnormalizadas y el segundo con las etiquetas de DBP desnormalizadas para los pacientes especificados.
+        tipo: Dos arrays de numpy: el primero con las etiquetas de SBP desnormalizadas y el segundo con las etiquetas de DBP desnormalizadas para los pacientes especificados.
     """
     
     sbp_list, dbp_list = [], []
@@ -72,7 +72,7 @@ def obtener_datos_por_pids(dataset, pids, mapping):
     return np.array(sbp_list), np.array(dbp_list)
 
 def main():
-    """_summary_ Función principal que ejecuta el proceso de carga del dataset, división por pacientes, extracción de etiquetas y generación de histogramas para SBP y DBP en los conjuntos de entrenamiento, validación y prueba.
+    """Función principal que ejecuta el proceso de carga del dataset, división por pacientes, extracción de etiquetas y generación de histogramas para SBP y DBP en los conjuntos de entrenamiento, validación y prueba.
     """
     data_paths = [
         'data/processed/data_UCI/dataset_parte_1_por_picos.pt',

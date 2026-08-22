@@ -8,13 +8,21 @@ Descripción: Implementación del experimento para la búsqueda exhaustiva de hi
              cada experimento en formato JSON y CSV, y genera gráficos comparativos 
              para justificar empíricamente la selección de la configuración óptima 
              del modelo fundacional.
+
+             Reutiliza directamente metalearning.Metaentrenamiento.main() como motor
+             de entrenamiento (mode='patient_wise'). El dataset se carga una única vez
+             y los 200 pacientes seleccionados (selected_patients) se fijan antes del
+             loop, y se pasan a cada llamada junto con un experiment_name único por
+             combinación de hiperparámetros -- así todas las corridas se comparan sobre
+             la misma partición train/val/test de pacientes y no se pisan los checkpoints
+             ni los logs CSV entre sí.
 """
 import itertools
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
 import time
-from metalearning.Patient_wise import main as patientwise_main
+from metalearning.Metaentrenamiento import main as patientwise_main
 import csv
 import os
 import json
@@ -23,7 +31,7 @@ from src.data.data_chargers.Clase_UCIDataset import UCIDataset
 import random
 
 def experiment_patientwise():
-    """_summary_   Realiza una búsqueda exhaustiva de hiperparámetros para el algoritmo MAML. 
+    """Realiza una búsqueda exhaustiva de hiperparámetros para el algoritmo MAML. 
     """    
     # === Crear carpeta de resultados ===
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -67,32 +75,28 @@ def experiment_patientwise():
         print(f"adapt_lr={adapt_lr}, meta_lr={meta_lr}, k_adapt_steps={k_adapt_steps}, N_group={N_group}, query_sets={query_set}, suport_sets={suport_set}")
 
         start_time = time.time()
+        # Nombre único por combinación para que los checkpoints/logs de cada experimento
+        # de la búsqueda no se sobrescriban entre sí.
+        experiment_name = f"hsearch_a{adapt_lr}_m{meta_lr}_k{k_adapt_steps}_G{N_group}_p{suport_set}_q{query_set}"
 
         try:
-            patientwise_main(
-                num_tasks=200,
+            run_info = patientwise_main(
+                mode='patient_wise',
                 tasks_per_batch=4,
                 adapt_lr=adapt_lr,
                 meta_lr=meta_lr,
-                k_adapt_steps=k_adapt_steps,
+                adapt_steps=k_adapt_steps,
                 seed=42,
                 num_epochs=5,
                 N_patient_group=N_group,
                 p_support=suport_set,
                 q_query=query_set,
                 base_dataset=dataset_completo,
-                selected_patients=selected_patients  
+                selected_patients=selected_patients,
+                experiment_name=experiment_name,
             )
             elapsed_time = time.time() - start_time
-
-            loss_file = "models/best_meta_models/best_meta_model_patientwise.pt"
-            #results.append((adapt_lr, meta_lr, k_adapt_steps, N_group, "Completado", elapsed_time))
-            
-            if os.path.exists(loss_file):
-                losses = torch.load(loss_file)
-                loss_final = float(losses['meta_loss']) if 'meta_loss' in losses else np.nan
-            else:
-                loss_final = np.nan
+            loss_final = float(run_info['best_loss'])
 
             result = {
                 'adapt_lr': adapt_lr,

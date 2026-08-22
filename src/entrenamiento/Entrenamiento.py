@@ -25,10 +25,10 @@ import pandas as pd
 
 
 def set_seed(seed=42):
-    """_summary_ Establece la semilla para todas las fuentes de aleatoriedad en el entrenamiento, incluyendo random, numpy y torch, para asegurar la reproducibilidad de los resultados. Además, configura los backends de PyTorch para garantizar un comportamiento determinista durante el entrenamiento.
+    """Establece la semilla para todas las fuentes de aleatoriedad en el entrenamiento, incluyendo random, numpy y torch, para asegurar la reproducibilidad de los resultados. Además, configura los backends de PyTorch para garantizar un comportamiento determinista durante el entrenamiento.
 
     Args:
-        seed (int, optional): _description_. Por defecto 42. Número entero que se utilizará como semilla para todas las fuentes de aleatoriedad en el entrenamiento.
+        seed (int, optional): Por defecto 42. Número entero que se utilizará como semilla para todas las fuentes de aleatoriedad en el entrenamiento.
     """    
     random.seed(seed)
     np.random.seed(seed)
@@ -40,10 +40,10 @@ def set_seed(seed=42):
     torch.backends.cudnn.benchmark = False
 
 def init_worker_fn(worker_id):
-    """_summary_ Función de inicialización para los workers del DataLoader que cargan los datos de entrenamiento. Esta función se encarga de acceder al dataset real (en caso de que se esté utilizando un Subset) y llamar a su método worker_init() para abrir los archivos memmap correspondientes a cada worker, asegurando que cada worker tenga acceso a los datos necesarios para cargar los batches durante el entrenamiento.
+    """Función de inicialización para los workers del DataLoader que cargan los datos de entrenamiento. Esta función se encarga de acceder al dataset real (en caso de que se esté utilizando un Subset) y llamar a su método worker_init() para abrir los archivos memmap correspondientes a cada worker, asegurando que cada worker tenga acceso a los datos necesarios para cargar los batches durante el entrenamiento.
 
     Args:
-        worker_id (_type_): _description_ Número entero que identifica al worker actual en el DataLoader, utilizado para acceder al dataset real y llamar a su método de inicialización.
+        worker_id: Número entero que identifica al worker actual en el DataLoader, utilizado para acceder al dataset real y llamar a su método de inicialización.
     """    
     worker_info = torch.utils.data.get_worker_info()
     dataset = worker_info.dataset
@@ -56,18 +56,18 @@ def init_worker_fn(worker_id):
         dataset.worker_init()
 
 def save_test_dataset(save_dir, prefix, data, labels, patients, indexs):
-    """_summary_ Guarda el conjunto de datos de prueba en un formato eficiente utilizando memmap para los datos y etiquetas, y un archivo .pt para la metadata. La función crea los archivos necesarios para almacenar los datos de prueba, incluyendo las señales, las etiquetas, los IDs de pacientes y los índices, y luego guarda la metadata que contiene las rutas a estos archivos junto con información adicional como el número de muestras y la longitud de las señales. 
+    """Guarda el conjunto de datos de prueba en un formato eficiente utilizando memmap para los datos y etiquetas, y un archivo .pt para la metadata. La función crea los archivos necesarios para almacenar los datos de prueba, incluyendo las señales, las etiquetas, los IDs de pacientes y los índices, y luego guarda la metadata que contiene las rutas a estos archivos junto con información adicional como el número de muestras y la longitud de las señales. 
 
     Args:
-        save_dir (_type_): _description_ Ruta del directorio donde se guardarán los archivos del conjunto de datos de prueba, incluyendo los archivos memmap para los datos y etiquetas, y el archivo .pt para la metadata.
-        prefix (_type_): _description_  Prefijo que se utilizará para nombrar los archivos del conjunto de datos de prueba, permitiendo identificar fácilmente los archivos relacionados con este conjunto específico.
-        data (_type_): _description_ Array o tensor que contiene las señales de prueba que se desean guardar, con una forma típica de (N, 2, L) donde N es el número de muestras, 2 es el número de canales (PPG y ECG), y L es la longitud de las señales.
-        labels (_type_): _description_ Array o tensor que contiene las etiquetas de presión arterial (SBP y DBP) correspondientes a cada muestra de prueba, con una forma típica de (N, 2) donde N es el número de muestras y 2 corresponde a las dos etiquetas (SBP y DBP).
-        patients (_type_): _description_ Array o tensor que contiene los IDs de pacientes correspondientes a cada muestra de prueba, con una forma típica de (N,) donde N es el número de muestras.
-        indexs (_type_): _description_ Array o tensor que contiene los índices correspondientes a cada muestra de prueba, con una forma típica de (N,) donde N es el número de muestras.
+        save_dir: Ruta del directorio donde se guardarán los archivos del conjunto de datos de prueba, incluyendo los archivos memmap para los datos y etiquetas, y el archivo .pt para la metadata.
+        prefix: Prefijo que se utilizará para nombrar los archivos del conjunto de datos de prueba, permitiendo identificar fácilmente los archivos relacionados con este conjunto específico.
+        data: Array o tensor que contiene las señales de prueba que se desean guardar, con una forma típica de (N, 2, L) donde N es el número de muestras, 2 es el número de canales (PPG y ECG), y L es la longitud de las señales.
+        labels: Array o tensor que contiene las etiquetas de presión arterial (SBP y DBP) correspondientes a cada muestra de prueba, con una forma típica de (N, 2) donde N es el número de muestras y 2 corresponde a las dos etiquetas (SBP y DBP).
+        patients: Array o tensor que contiene los IDs de pacientes correspondientes a cada muestra de prueba, con una forma típica de (N,) donde N es el número de muestras.
+        indexs: Array o tensor que contiene los índices correspondientes a cada muestra de prueba, con una forma típica de (N,) donde N es el número de muestras.
 
     Returns:
-        _type_: _description_ Retorna la ruta al archivo .pt que contiene la metadata del conjunto de datos de prueba, incluyendo las rutas a los archivos memmap de datos y etiquetas, y la información adicional sobre el número de muestras y la longitud de las señales.
+        tipo: Retorna la ruta al archivo .pt que contiene la metadata del conjunto de datos de prueba, incluyendo las rutas a los archivos memmap de datos y etiquetas, y la información adicional sobre el número de muestras y la longitud de las señales.
     """
 
     os.makedirs(save_dir, exist_ok=True)
@@ -106,10 +106,10 @@ def save_test_dataset(save_dir, prefix, data, labels, patients, indexs):
     return meta_path
 
 def main():
-    """_summary_ Función principal de entrenamiento de red neuronal para presión arterial.
+    """Función principal de entrenamiento de red neuronal para presión arterial.
 
     Returns:
-        _type_: _description_ Esta función no retorna ningún valor, pero ejecuta el proceso completo de entrenamiento de la red neuronal para estimación de presión arterial, incluyendo la carga de datos, la configuración del modelo, el ciclo de entrenamiento y validación, el guardado de modelos y logs, y la implementación de early stopping.
+        tipo: Esta función no retorna ningún valor, pero ejecuta el proceso completo de entrenamiento de la red neuronal para estimación de presión arterial, incluyendo la carga de datos, la configuración del modelo, el ciclo de entrenamiento y validación, el guardado de modelos y logs, y la implementación de early stopping.
     """    
     # Configuración del dispositivo
     parameters = {
@@ -195,6 +195,9 @@ def main():
     scaler = torch.amp.GradScaler('cuda')
 
     start_epoch = 0
+    max_epochs = 200
+    best_valid_loss = float('inf')
+    running_loss = np.zeros(shape=(max_epochs, 2))
     log_path = 'graficas/training_log.csv' 
     os.makedirs('graficas', exist_ok=True)
     checkpoint_path = "models/best_models/best_model_conv_time32_200_epocas_picos_def_early8.pt"
@@ -227,13 +230,13 @@ def main():
 
     # ENTRENAMIENTO
     def train_one_step(batch, l1_lambda=1e-5):
-        """_summary_ Realiza un paso de entrenamiento: procesa un batch de datos, calcula la pérdida, realiza backpropagation y actualiza los pesos del modelo.
+        """Realiza un paso de entrenamiento: procesa un batch de datos, calcula la pérdida, realiza backpropagation y actualiza los pesos del modelo.
 
         Args:
-            batch (_type_): _description_ Batch de datos que contiene las señales de entrada, las etiquetas de presión arterial, los IDs de pacientes y los índices, que se utilizará para realizar un paso de entrenamiento en el modelo.
-            l1_lambda (_type_, optional): _description_. Por defecto 1e-5. Coeficiente de regularización L1. 
+            batch: Batch de datos que contiene las señales de entrada, las etiquetas de presión arterial, los IDs de pacientes y los índices, que se utilizará para realizar un paso de entrenamiento en el modelo.
+            l1_lambda (opcional): Por defecto 1e-5. Coeficiente de regularización L1. 
         Returns:
-            _type_: _description_ Retorna el valor de la pérdida calculada para el batch procesado, que se utilizará para monitorear el rendimiento del modelo durante el entrenamiento.
+            tipo: Retorna el valor de la pérdida calculada para el batch procesado, que se utilizará para monitorear el rendimiento del modelo durante el entrenamiento.
         """        
         optimizer.zero_grad(set_to_none=True) # Reinicia los gradientes
         data, labels, _, _ = batch # Obtiene los datos y etiquetas
@@ -250,13 +253,13 @@ def main():
         return loss.item() # Devuelve la pérdida
 
     def evaluate_one_step(batch):
-        """_summary_ Realiza un paso de evaluación: procesa un batch de datos de validación, calcula la pérdida sin realizar backpropagation ni actualizar los pesos del modelo. 
+        """Realiza un paso de evaluación: procesa un batch de datos de validación, calcula la pérdida sin realizar backpropagation ni actualizar los pesos del modelo. 
 
         Args:
-            batch (_type_): _description_ Batch de datos que contiene las señales de entrada, las etiquetas de presión arterial, los IDs de pacientes y los índices, que se utilizará para realizar un paso de evaluación en el modelo durante la fase de validación.
+            batch: Batch de datos que contiene las señales de entrada, las etiquetas de presión arterial, los IDs de pacientes y los índices, que se utilizará para realizar un paso de evaluación en el modelo durante la fase de validación.
 
         Returns:
-            _type_: _description_ Retorna el valor de la pérdida calculada para el batch procesado, que se utilizará para monitorear el rendimiento del modelo durante la validación.
+            tipo: Retorna el valor de la pérdida calculada para el batch procesado, que se utilizará para monitorear el rendimiento del modelo durante la validación.
         """        
         with torch.no_grad():
             data, labels, _, _ = batch
@@ -266,10 +269,10 @@ def main():
             return loss.item()
     
     def train_one_epoch():    
-        """_summary_ Realiza un ciclo completo de entrenamiento para una época, procesando todos los batches de entrenamiento y validación, calculando las pérdidas promedio para cada fase, y actualizando el scheduler de aprendizaje en función de la pérdida de validación.
+        """Realiza un ciclo completo de entrenamiento para una época, procesando todos los batches de entrenamiento y validación, calculando las pérdidas promedio para cada fase, y actualizando el scheduler de aprendizaje en función de la pérdida de validación.
 
         Returns:
-            _type_: _description_ Retorna dos valores: train_loss, que es la pérdida promedio calculada para todos los batches de entrenamiento procesados durante la época, y valid_loss, que es la pérdida promedio calculada para todos los batches de validación procesados durante la época.
+            tipo: Retorna dos valores: train_loss, que es la pérdida promedio calculada para todos los batches de entrenamiento procesados durante la época, y valid_loss, que es la pérdida promedio calculada para todos los batches de validación procesados durante la época.
         """        
         train_loss, valid_loss = 0.0, 0.0
 
@@ -288,9 +291,6 @@ def main():
 
         return train_loss/len(training_generator), valid_loss/len(validation_generator)
     
-    max_epochs = 200
-    best_valid_loss = float('inf') 
-    running_loss = np.zeros(shape=(max_epochs, 2))
     min_delta = 0.0001  # mejora mínima requerida
     patience = 8
     patience_significativa = 8

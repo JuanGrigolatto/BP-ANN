@@ -41,19 +41,19 @@ os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 os.makedirs(LOG_DIR, exist_ok=True)
 
 def validate_meta_epoch(maml, val_loader, lossfn, adapt_steps, shots, device, mode='traditional'):
-    """_summary_ Validación del modelo meta-entrenado al finalizar cada época. Se evalúa la capacidad de adaptación rápida a nuevas tareas (pacientes) utilizando un Support Set pequeño y generalizando sobre un Query Set.  
+    """Validación del modelo meta-entrenado al finalizar cada época. Se evalúa la capacidad de adaptación rápida a nuevas tareas (pacientes) utilizando un Support Set pequeño y generalizando sobre un Query Set.  
 
     Args:
-        maml (_type_): _description_ es el meta-modelo que se va a evaluar. Se clona para cada tarea de validación y se adapta con el Support Set antes de evaluar en el Query Set.    
-        val_loader (_type_): _description_ es el DataLoader que proporciona las tareas de validación. Cada batch contiene un conjunto de tareas (episodios) formados por Support Set y Query Set.  
-        lossfn (_type_): _description_ es la función de pérdida utilizada para calcular el error en el Support Set durante la adaptación y en el Query Set durante la evaluación. En este caso, se utiliza MSELoss para regresión. 
-        adapt_steps (_type_): _description_ es el número de pasos de adaptación (inner loop) que se realizan en cada tarea de validación. Durante estos pasos, el modelo se adapta utilizando el Support Set antes de evaluar en el Query Set.
-        shots (_type_): _description_ es el número de muestras en el Support Set.
-        device (_type_): _description_ es el dispositivo en el que se ejecuta el modelo (CPU o CUDA).
-        mode (str, optional): _description_. Por defecto 'traditional'. Determina la forma en que se construyen las tareas de validación. En 'traditional', las tareas se forman por ventanas aleatorias de un único paciente. En 'patient_wise', las tareas se forman mezclando datos de diferentes pacientes, tanto en Support Set y como enQuery Set.
+        maml: es el meta-modelo que se va a evaluar. Se clona para cada tarea de validación y se adapta con el Support Set antes de evaluar en el Query Set.    
+        val_loader: es el DataLoader que proporciona las tareas de validación. Cada batch contiene un conjunto de tareas (episodios) formados por Support Set y Query Set.  
+        lossfn: es la función de pérdida utilizada para calcular el error en el Support Set durante la adaptación y en el Query Set durante la evaluación. En este caso, se utiliza MSELoss para regresión. 
+        adapt_steps: es el número de pasos de adaptación (inner loop) que se realizan en cada tarea de validación. Durante estos pasos, el modelo se adapta utilizando el Support Set antes de evaluar en el Query Set.
+        shots: es el número de muestras en el Support Set.
+        device: es el dispositivo en el que se ejecuta el modelo (CPU o CUDA).
+        mode (str, optional): Por defecto 'traditional'. Determina la forma en que se construyen las tareas de validación. En 'traditional', las tareas se forman por ventanas aleatorias de un único paciente. En 'patient_wise', las tareas se forman mezclando datos de diferentes pacientes, tanto en Support Set y como enQuery Set.
 
     Returns:
-        _type_: _description_ La pérdida promedio en el Query Set después de la adaptación en cada tarea de validación. Esta métrica refleja la capacidad del modelo meta-entrenado para generalizar a nuevas tareas (pacientes) después de una rápida adaptación con pocos datos.
+        tipo: La pérdida promedio en el Query Set después de la adaptación en cada tarea de validación. Esta métrica refleja la capacidad del modelo meta-entrenado para generalizar a nuevas tareas (pacientes) después de una rápida adaptación con pocos datos.
     """    
     meta_val_loss = 0.0
     num_batches = 0
@@ -104,26 +104,27 @@ def validate_meta_epoch(maml, val_loader, lossfn, adapt_steps, shots, device, mo
     if num_batches == 0: return 0.0
     return meta_val_loss / num_batches
 
-def save_checkpoint(state, is_best, filename=LATEST_CKPT_PATH):
-    """_summary_ Guarda el estado del entrenamiento en un checkpoint. Si el modelo actual es el mejor hasta ahora, también guarda una copia como el mejor modelo.
+def save_checkpoint(state, is_best, filename=LATEST_CKPT_PATH, best_filename=BEST_CKPT_PATH):
+    """Guarda el estado del entrenamiento en un checkpoint. Si el modelo actual es el mejor hasta ahora, también guarda una copia como el mejor modelo.
 
     Args:
-        state (_type_): _description_ es un diccionario que contiene el estado del entrenamiento, incluyendo la época actual, los pesos del modelo, el estado del optimizador, la mejor pérdida obtenida hasta ahora, el contador de paciencia para early stopping y la configuración de hiperparámetros utilizada.
-        is_best (bool): _description_ indica si el modelo actual es el mejor hasta ahora.
-        filename (_type_, optional): _description_. Por defecto LATEST_CKPT_PATH. Es la ruta donde se guarda el checkpoint más reciente. Si is_best es True, también se guarda una copia en BEST_CKPT_PATH.
+        state: es un diccionario que contiene el estado del entrenamiento, incluyendo la época actual, los pesos del modelo, el estado del optimizador, la mejor pérdida obtenida hasta ahora, el contador de paciencia para early stopping y la configuración de hiperparámetros utilizada.
+        is_best (bool): indica si el modelo actual es el mejor hasta ahora.
+        filename (opcional): Por defecto LATEST_CKPT_PATH. Es la ruta donde se guarda el checkpoint más reciente. Si is_best es True, también se guarda una copia en best_filename.
+        best_filename (opcional): Por defecto BEST_CKPT_PATH. Ruta donde se guarda el mejor checkpoint. Parametrizable para que corridas distintas (p. ej. dentro de una búsqueda de hiperparámetros) no se pisen entre sí.
     """    
     torch.save(state, filename)
     if is_best:
-        torch.save(state, BEST_CKPT_PATH)
+        torch.save(state, best_filename)
 
 def log_to_csv(epoch, train_loss, valid_loss, filepath=CSV_LOG_PATH):
-    """_summary_ Registra las métricas de entrenamiento y validación en un archivo CSV. Si el archivo no existe, se crea y se escribe la cabecera. Luego, se agrega una nueva fila con los datos de la época actual.
+    """Registra las métricas de entrenamiento y validación en un archivo CSV. Si el archivo no existe, se crea y se escribe la cabecera. Luego, se agrega una nueva fila con los datos de la época actual.
 
     Args:
-        epoch (_type_): _description_ es el número de época actual del entrenamiento.
-        train_loss (_type_): _description_ es la pérdida promedio obtenida en el conjunto de entrenamiento durante la época actual.
-        valid_loss (_type_): _description_ es la pérdida promedio obtenida en el conjunto de validación durante la época actual.
-        filepath (_type_, optional): _description_. Por defecto CSV_LOG_PATH. Es la ruta del archivo CSV donde se registran las métricas. Si el archivo no existe, se crea y se escribe la cabecera. Luego, se agrega una nueva fila con los datos de la época actual.
+        epoch: es el número de época actual del entrenamiento.
+        train_loss: es la pérdida promedio obtenida en el conjunto de entrenamiento durante la época actual.
+        valid_loss: es la pérdida promedio obtenida en el conjunto de validación durante la época actual.
+        filepath (opcional): Por defecto CSV_LOG_PATH. Es la ruta del archivo CSV donde se registran las métricas. Si el archivo no existe, se crea y se escribe la cabecera. Luego, se agrega una nueva fila con los datos de la época actual.
     """    
     file_exists = os.path.isfile(filepath)
     with open(filepath, mode='a', newline='') as f:
@@ -133,10 +134,10 @@ def log_to_csv(epoch, train_loss, valid_loss, filepath=CSV_LOG_PATH):
         writer.writerow([epoch, train_loss, valid_loss])
 
 def plot_from_csv(csv_path):
-    """_summary_ Lee las métricas de entrenamiento y validación desde un archivo CSV y genera un gráfico de las curvas de pérdida a lo largo de las épocas. El gráfico se guarda en el directorio de logs con un nombre descriptivo.
+    """Lee las métricas de entrenamiento y validación desde un archivo CSV y genera un gráfico de las curvas de pérdida a lo largo de las épocas. El gráfico se guarda en el directorio de logs con un nombre descriptivo.
 
     Args:
-        csv_path (_type_): _description_ es la ruta del archivo CSV que contiene las métricas de entrenamiento y validación. El archivo debe tener una estructura con columnas 'epoch', 'train_loss' y 'valid_loss'. La función lee estos datos, genera un gráfico de las curvas de pérdida a lo largo de las épocas y guarda el gráfico en el directorio de logs con un nombre descriptivo.
+        csv_path: es la ruta del archivo CSV que contiene las métricas de entrenamiento y validación. El archivo debe tener una estructura con columnas 'epoch', 'train_loss' y 'valid_loss'. La función lee estos datos, genera un gráfico de las curvas de pérdida a lo largo de las épocas y guarda el gráfico en el directorio de logs con un nombre descriptivo.
     """    
     try:
         df = pd.read_csv(csv_path)
@@ -160,27 +161,38 @@ def plot_from_csv(csv_path):
         print(f"No se pudo graficar desde CSV: {e}")
 
 def main(mode='patient_wise', shots=5,tasks_per_batch=4, adapt_lr=0.01, meta_lr=0.001, adapt_steps=5, seed=42, num_epochs=500, patience=20, min_delta=1e-3,
-         N_patient_group=4, p_support=5, q_query=10):
-    """_summary_  Realiza el meta-entrenamiento del modelo utilizando el algoritmo MAML. El proceso incluye la construcción de tareas de entrenamiento y validación según el modo seleccionado, la adaptación rápida del modelo a cada tarea, la evaluación en el Query Set, el registro de métricas y la gestión de checkpoints. Al finalizar el entrenamiento, se generan gráficos de las curvas de aprendizaje. 
+         N_patient_group=4, p_support=5, q_query=10, base_dataset=None, selected_patients=None, experiment_name=None):
+    """Realiza el meta-entrenamiento del modelo utilizando el algoritmo MAML. El proceso incluye la construcción de tareas de entrenamiento y validación según el modo seleccionado, la adaptación rápida del modelo a cada tarea, la evaluación en el Query Set, el registro de métricas y la gestión de checkpoints. Al finalizar el entrenamiento, se generan gráficos de las curvas de aprendizaje. 
 
     Args:
-        mode (str, optional): _description_. Por defecto 'patient_wise'. Determina la forma en que se construyen las tareas de validación. En 'traditional', las tareas se forman por ventanas aleatorias de un único paciente. En 'patient_wise', las tareas se forman mezclando datos de diferentes pacientes, tanto en Support Set y como en Query Set.
-        shots (int, optional): _description_. Por defecto 5. Número de muestras en el Support Set para el modo 'traditional'. En el modo 'patient_wise', se utilizan los parámetros p_support y q_query para definir el número de muestras en Support Set y Query Set respectivamente.
-        tasks_per_batch (int, optional): _description_. Por defecto 4. Número de tareas (episodios) que se procesan en cada batch durante el entrenamiento. Este parámetro afecta la estabilidad del entrenamiento y el uso de memoria.
-        adapt_lr (float, optional): _description_. Por defecto 0.01. Tasa de aprendizaje utilizada durante la fase de adaptación rápida (inner loop) en cada tarea. Este hiperparámetro controla qué tan agresivamente el modelo se adapta a cada tarea específica durante la validación.
-        meta_lr (float, optional): _description_. Por defecto 0.001. Tasa de aprendizaje utilizada para actualizar los pesos del modelo meta-entrenado (outer loop) después de evaluar en el Query Set. Este hiperparámetro controla la velocidad a la que el modelo meta-entrenado aprende a generalizar a nuevas tareas.
-        adapt_steps (int, optional): _description_. Por defecto 5. Número de pasos de adaptación (inner loop) que se realizan en cada tarea de validación. Durante estos pasos, el modelo se adapta utilizando el Support Set antes de evaluar en el Query Set.
-        seed (int, optional): _description_. Por defecto 42. Valor de la semilla para asegurar la reproducibilidad del entrenamiento. Se utiliza para fijar las semillas de random, numpy y torch.
-        num_epochs (int, optional): _description_. Por defecto 500. Número máximo de épocas para el entrenamiento del modelo meta-entrenado. El entrenamiento puede detenerse antes si se activa el early stopping.
-        patience (int, optional): _description_. Por defecto 20. Número de épocas sin mejora significativa en la pérdida de validación antes de activar el early stopping. Si la pérdida de validación no mejora en al menos min_delta durante este número de épocas, el entrenamiento se detiene para evitar sobreajuste.
-        min_delta (_type_, optional): _description_. Por defecto 1e-3. Valor mínimo de mejora en la pérdida de validación para considerar que el modelo ha mejorado. Si la mejora en la pérdida de validación es menor que este valor durante el período de paciencia, se considera que no hubo mejora significativa.
-        N_patient_group (int, optional): _description_. Por defecto 4. Número de pacientes diferentes que se incluyen en cada tarea (episodio) en el modo 'patient_wise'. Este hiperparámetro controla la diversidad de pacientes en cada tarea, lo que puede afectar la capacidad del modelo para generalizar a nuevos pacientes.
-        p_support (int, optional): _description_. Por defecto 5. Número de muestras en el Support Set para cada paciente en el modo 'patient_wise'. Este hiperparámetro controla la cantidad de datos de calibración disponibles para adaptar el modelo a cada paciente durante la validación.
-        q_query (int, optional): _description_. Por defecto 10. Número de muestras en el Query Set para cada paciente en el modo 'patient_wise'. Este hiperparámetro controla la cantidad de datos sobre los cuales se evalúa la capacidad de generalización del modelo después de la adaptación.
+        mode (str, optional): Por defecto 'patient_wise'. Determina la forma en que se construyen las tareas de validación. En 'traditional', las tareas se forman por ventanas aleatorias de un único paciente. En 'patient_wise', las tareas se forman mezclando datos de diferentes pacientes, tanto en Support Set y como en Query Set.
+        shots (int, optional): Por defecto 5. Número de muestras en el Support Set para el modo 'traditional'. En el modo 'patient_wise', se utilizan los parámetros p_support y q_query para definir el número de muestras en Support Set y Query Set respectivamente.
+        tasks_per_batch (int, optional): Por defecto 4. Número de tareas (episodios) que se procesan en cada batch durante el entrenamiento. Este parámetro afecta la estabilidad del entrenamiento y el uso de memoria.
+        adapt_lr (float, optional): Por defecto 0.01. Tasa de aprendizaje utilizada durante la fase de adaptación rápida (inner loop) en cada tarea. Este hiperparámetro controla qué tan agresivamente el modelo se adapta a cada tarea específica durante la validación.
+        meta_lr (float, optional): Por defecto 0.001. Tasa de aprendizaje utilizada para actualizar los pesos del modelo meta-entrenado (outer loop) después de evaluar en el Query Set. Este hiperparámetro controla la velocidad a la que el modelo meta-entrenado aprende a generalizar a nuevas tareas.
+        adapt_steps (int, optional): Por defecto 5. Número de pasos de adaptación (inner loop) que se realizan en cada tarea de validación. Durante estos pasos, el modelo se adapta utilizando el Support Set antes de evaluar en el Query Set.
+        seed (int, optional): Por defecto 42. Valor de la semilla para asegurar la reproducibilidad del entrenamiento. Se utiliza para fijar las semillas de random, numpy y torch.
+        num_epochs (int, optional): Por defecto 500. Número máximo de épocas para el entrenamiento del modelo meta-entrenado. El entrenamiento puede detenerse antes si se activa el early stopping.
+        patience (int, optional): Por defecto 20. Número de épocas sin mejora significativa en la pérdida de validación antes de activar el early stopping. Si la pérdida de validación no mejora en al menos min_delta durante este número de épocas, el entrenamiento se detiene para evitar sobreajuste.
+        min_delta (opcional): Por defecto 1e-3. Valor mínimo de mejora en la pérdida de validación para considerar que el modelo ha mejorado. Si la mejora en la pérdida de validación es menor que este valor durante el período de paciencia, se considera que no hubo mejora significativa.
+        N_patient_group (int, optional): Por defecto 4. Número de pacientes diferentes que se incluyen en cada tarea (episodio) en el modo 'patient_wise'. Este hiperparámetro controla la diversidad de pacientes en cada tarea, lo que puede afectar la capacidad del modelo para generalizar a nuevos pacientes.
+        p_support (int, optional): Por defecto 5. Número de muestras en el Support Set para cada paciente en el modo 'patient_wise'. Este hiperparámetro controla la cantidad de datos de calibración disponibles para adaptar el modelo a cada paciente durante la validación.
+        q_query (int, optional): Por defecto 10. Número de muestras en el Query Set para cada paciente en el modo 'patient_wise'. Este hiperparámetro controla la cantidad de datos sobre los cuales se evalúa la capacidad de generalización del modelo después de la adaptación.
+        base_dataset (UCIDataset, optional): Por defecto None. Si se provee, se usa este dataset ya cargado en memoria en lugar de leerlo desde disco. Pensado para búsquedas de hiperparámetros que llaman a main() repetidas veces y no quieren recargar el dataset completo en cada corrida.
+        selected_patients (list[int], optional): Por defecto None. Si se provee, restringe el universo de pacientes considerados a esta lista fija (en lugar de usar todos los pacientes del dataset), y se usa como base determinística para la partición train/val/test (dado el mismo seed, produce siempre la misma partición). Pensado para que distintas corridas de una búsqueda de hiperparámetros se comparen sobre la misma partición de pacientes.
+        experiment_name (str, optional): Por defecto None. Si se provee, se usa para nombrar de forma única los archivos de checkpoint (latest/best) y el log CSV de esta corrida, evitando que corridas distintas (p. ej. dentro de una búsqueda de hiperparámetros) se sobrescriban entre sí. Si es None, se usan las rutas fijas del módulo (comportamiento original).
 
     Raises:
-        ValueError: _description_ Si el valor de mode no es 'traditional' ni 'patient_wise', se lanza un error indicando que el modo debe ser uno de esos dos valores.
+        ValueError: Si el valor de mode no es 'traditional' ni 'patient_wise', se lanza un error indicando que el modo debe ser uno de esos dos valores.
     """    
+    if experiment_name is not None:
+        latest_ckpt_path = os.path.join(CHECKPOINT_DIR, f'checkpoint_latest_{experiment_name}.pt')
+        best_ckpt_path = os.path.join(CHECKPOINT_DIR, f'best_meta_model_{experiment_name}.pt')
+        csv_log_path = os.path.join(LOG_DIR, f'training_log_{experiment_name}.csv')
+    else:
+        latest_ckpt_path = LATEST_CKPT_PATH
+        best_ckpt_path = BEST_CKPT_PATH
+        csv_log_path = CSV_LOG_PATH
 
     print(f"MODO SELECCIONADO: {mode.upper()}")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -195,19 +207,26 @@ def main(mode='patient_wise', shots=5,tasks_per_batch=4, adapt_lr=0.01, meta_lr=
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
 
-    data_paths = [
-        'data/processed/data_UCI/dataset_parte_1_por_picos.pt',
-        'data/processed/data_UCI/dataset_parte_2_por_picos.pt',
-        'data/processed/data_UCI/dataset_parte_3_por_picos.pt',
-        'data/processed/data_UCI/dataset_parte_4_por_picos.pt',
-    ]
+    if base_dataset is not None:
+        print("Usando dataset ya cargado en memoria (provisto externamente).")
+        dataset_completo = base_dataset
+    else:
+        data_paths = [
+            'data/processed/data_UCI/dataset_parte_1_por_picos.pt',
+            'data/processed/data_UCI/dataset_parte_2_por_picos.pt',
+            'data/processed/data_UCI/dataset_parte_3_por_picos.pt',
+            'data/processed/data_UCI/dataset_parte_4_por_picos.pt',
+        ]
+        print("Cargando datasets...")
+        dataset_completo = UCIDataset(data_paths)
 
-    print("Cargando datasets...")
-    dataset_completo = UCIDataset(data_paths)
+    if selected_patients is not None:
+        unique_patients = list(selected_patients)
+    else:
+        all_pids = torch.tensor([dataset_completo[i][2] for i in range(len(dataset_completo))])
+        unique_patients = all_pids.unique().tolist()
 
-    all_pids = torch.tensor([dataset_completo[i][2] for i in range(len(dataset_completo))])
-    unique_patients = all_pids.unique().tolist()
-
+    random.seed(seed)
     random.shuffle(unique_patients)
 
     if mode == 'traditional':
@@ -263,9 +282,9 @@ def main(mode='patient_wise', shots=5,tasks_per_batch=4, adapt_lr=0.01, meta_lr=
     best_valid_loss = float('inf')
 
     
-    if os.path.exists(LATEST_CKPT_PATH):
-        print(f"Checkpoint encontrado en {LATEST_CKPT_PATH}. Reanudando...")
-        checkpoint = torch.load(LATEST_CKPT_PATH)
+    if os.path.exists(latest_ckpt_path):
+        print(f"Checkpoint encontrado en {latest_ckpt_path}. Reanudando...")
+        checkpoint = torch.load(latest_ckpt_path)
         maml.load_state_dict(checkpoint['model_state_dict']) 
         opt.load_state_dict(checkpoint['optimizer_state_dict']) 
         best_valid_loss = checkpoint['best_loss']
@@ -273,8 +292,8 @@ def main(mode='patient_wise', shots=5,tasks_per_batch=4, adapt_lr=0.01, meta_lr=
         print(f"Reanudando desde época {start_epoch}. Mejor Loss anterior: {best_valid_loss:.4f}")
     else:
         print("Iniciando entrenamiento desde cero.")
-        if os.path.exists(CSV_LOG_PATH):
-            os.remove(CSV_LOG_PATH) 
+        if os.path.exists(csv_log_path):
+            os.remove(csv_log_path) 
 
     for epoch in range(start_epoch, num_epochs):  
         print(f"\n--- Época {epoch+1}/{num_epochs} ---")
@@ -337,7 +356,7 @@ def main(mode='patient_wise', shots=5,tasks_per_batch=4, adapt_lr=0.01, meta_lr=
         valid_loss = validate_meta_epoch(maml, val_loader, lossfn, adapt_steps, shots_arg, device, mode=mode)
         print(f"Valid Loss: {valid_loss:.4f}")
 
-        log_to_csv(epoch+1, epoch_train_loss, valid_loss)
+        log_to_csv(epoch+1, epoch_train_loss, valid_loss, filepath=csv_log_path)
 
         # Chequeo de mejor modelo
         is_best = valid_loss < (best_valid_loss - min_delta)
@@ -356,7 +375,7 @@ def main(mode='patient_wise', shots=5,tasks_per_batch=4, adapt_lr=0.01, meta_lr=
             'best_loss': best_valid_loss,
             'patience_counter': patience_counter,
             'config': {'shots': shots, 'seed': seed}
-        }, is_best)
+        }, is_best, filename=latest_ckpt_path, best_filename=best_ckpt_path)
 
         if patience_counter >= patience:
             print(f"\n[EARLY STOPPING] Se ha detenido el entrenamiento.")
@@ -366,8 +385,10 @@ def main(mode='patient_wise', shots=5,tasks_per_batch=4, adapt_lr=0.01, meta_lr=
 
     print("Entrenamiento completado.")
 
-    plot_from_csv(CSV_LOG_PATH)
-    
+    plot_from_csv(csv_log_path)
+
+    return {'best_loss': best_valid_loss, 'best_checkpoint_path': best_ckpt_path, 'csv_log_path': csv_log_path}
+
 if __name__ == '__main__':
     main(mode='patient_wise', shots=10,tasks_per_batch=4, adapt_lr=0.005, meta_lr=0.001, adapt_steps=5, seed=42, num_epochs=500, patience=20, min_delta=1e-3,
          N_patient_group=2, p_support=10, q_query=20)        

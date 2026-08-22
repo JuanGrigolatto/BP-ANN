@@ -24,14 +24,14 @@ import matplotlib.pyplot as plt
 import os
 
 def calcular_metricas_avanzadas(y_true, y_pred):
-    """_summary_ Calcula métricas avanzadas de error: MAE, RMSE, Bias y Desviación Estándar de los errores.
+    """Calcula métricas avanzadas de error: MAE, RMSE, Bias y Desviación Estándar de los errores.
 
     Args: 
-        y_true (_type_): _description_ Valores reales de presión arterial (mmHg)
-        y_pred (_type_): _description_ Valores predichos por el modelo (mmHg)
+        y_true: Valores reales de presión arterial (mmHg)
+        y_pred: Valores predichos por el modelo (mmHg)
 
     Returns:
-        _type_: _description_ Tupla con las métricas: (MAE, RMSE, Bias, SD)
+        tipo: Tupla con las métricas: (MAE, RMSE, Bias, SD)
     """    
     y_true = np.array(y_true)
     y_pred = np.array(y_pred)
@@ -46,17 +46,17 @@ def calcular_metricas_avanzadas(y_true, y_pred):
     return mae, rmse, bias, sd
 
 def tuning(sample, optimizer, model, criterion, device):
-    """_summary_ Realiza un paso de ajuste (tuning) del modelo sobre un batch de datos, actualizando únicamente los pesos del regresor final, mientras mantiene congeladas las capas convolucionales y estadísticas de normalización.
+    """Realiza un paso de ajuste (tuning) del modelo sobre un batch de datos, actualizando únicamente los pesos del regresor final, mientras mantiene congeladas las capas convolucionales y estadísticas de normalización.
 
     Args:
-        sample (_type_): _description_ Batch de datos que contiene señales y etiquetas (SBP, DBP) normalizadas.
-        optimizer (_type_): _description_ Optimizador utilizado para actualizar los pesos del regresor final.
-        model (_type_): _description_ Modelo de red neuronal previamente entrenado y cargado.
-        criterion (_type_): _description_ Función de pérdida utilizada para calcular el error.
-        device (_type_): _description_ Dispositivo de cómputo (CPU o GPU) donde se realizará el ajuste.
+        sample: Batch de datos que contiene señales y etiquetas (SBP, DBP) normalizadas.
+        optimizer: Optimizador utilizado para actualizar los pesos del regresor final.
+        model: Modelo de red neuronal previamente entrenado y cargado.
+        criterion: Función de pérdida utilizada para calcular el error.
+        device: Dispositivo de cómputo (CPU o GPU) donde se realizará el ajuste.
 
     Returns:
-        _type_: _description_ Pérdida calculada durante el ajuste.
+        tipo: Pérdida calculada durante el ajuste.
     """    
     optimizer.zero_grad() 
     data, labels, *_ = sample 
@@ -77,12 +77,12 @@ def tuning(sample, optimizer, model, criterion, device):
     return loss.item()
 
 def main(n_shots=5, n_epochs=5, lr=5e-3, MIN_SEÑALES_REQUERIDAS=500):
-    """_summary_ Función principal que ejecuta la simulación de respuesta al escalón con ajuste inicial único. Permite configurar el número de shots, épocas de ajuste, tasa de aprendizaje y el mínimo de señales requeridas para evaluar la respuesta.
+    """Función principal que ejecuta la simulación de respuesta al escalón con ajuste inicial único. Permite configurar el número de shots, épocas de ajuste, tasa de aprendizaje y el mínimo de señales requeridas para evaluar la respuesta.
 
     Args:
-        n_shots (int, optional): _description_. Por defecto 5. Número de muestras (shots) utilizadas para la evaluación intrapatient, aunque el modelo no se ajusta con ellas (zero-shot), se muestran en las gráficas para referencia. 
-        n_epochs (int, optional): _description_. Por defecto 5. Número de épocas de ajuste (fine-tuning) realizadas sobre el paciente utilizando solo las primeras N muestras (shots).
-        lr (_type_, optional): _description_. Por defecto 5e-3. Tasa de aprendizaje utilizada para el optimizador durante el ajuste inicial.
+        n_shots (int, optional): Por defecto 5. Número de muestras (shots) utilizadas para la evaluación intrapatient, aunque el modelo no se ajusta con ellas (zero-shot), se muestran en las gráficas para referencia. 
+        n_epochs (int, optional): Por defecto 5. Número de épocas de ajuste (fine-tuning) realizadas sobre el paciente utilizando solo las primeras N muestras (shots).
+        lr (opcional): Por defecto 5e-3. Tasa de aprendizaje utilizada para el optimizador durante el ajuste inicial.
     """    
     
     USE_DELTA_LEARNING = False 
@@ -112,6 +112,10 @@ def main(n_shots=5, n_epochs=5, lr=5e-3, MIN_SEÑALES_REQUERIDAS=500):
 
     test_data = torch.load('data/processed/data_UCI/few_shot_patient_data.pt', weights_only=False)
     test_patient_ids = test_data['test_patient_ids']
+    # Verificación de integridad: PACIENTES_OBJETIVO (más abajo) es una lista fija elegida a mano
+    # para las gráficas de este experimento. Si alguno de esos IDs no pertenece al split de test
+    # held-out del meta-entrenamiento, la evaluación estaría contaminada con datos vistos durante
+    # el entrenamiento. Avisamos en vez de fallar silenciosamente.
     data_paths = [
         'data/processed/data_UCI/dataset_parte_1_por_picos.pt',
         'data/processed/data_UCI/dataset_parte_2_por_picos.pt',
@@ -133,6 +137,15 @@ def main(n_shots=5, n_epochs=5, lr=5e-3, MIN_SEÑALES_REQUERIDAS=500):
     criterion = torch.nn.MSELoss() 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)  
+
+    fuera_de_test = [pid for pid in PACIENTES_OBJETIVO if pid not in test_patient_ids]
+    if fuera_de_test:
+        print(
+            f"[ADVERTENCIA] Los siguientes IDs de PACIENTES_OBJETIVO no están en el split de "
+            f"test held-out (test_patient_ids de few_shot_patient_data.pt) y podrían haber sido "
+            f"vistos durante el (meta-)entrenamiento: {fuera_de_test}. Revisar antes de reportar "
+            f"estos resultados como evaluación clínica sobre pacientes no vistos."
+        )
 
     taskset = TaskDataset(list_IDs=PACIENTES_OBJETIVO, base_dataset=dataset_completo, num_shots=n_shots)
     mapa_indices_pacientes = taskset.patient_to_indices

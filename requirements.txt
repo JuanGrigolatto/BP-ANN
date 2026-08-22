@@ -6,6 +6,10 @@ numpy==1.26.4
 scipy==1.13.1
 scikit-learn==1.6.1
 
+# setuptools<81: heartpy (ver más abajo) todavía importa pkg_resources, que las versiones
+# de setuptools >=81 (mediados de 2025 en adelante) dejaron de incluir.
+setuptools<81
+
 # Data processing & Signal
 h5py==3.14.0
 pandas==2.3.0

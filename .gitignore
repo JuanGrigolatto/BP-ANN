@@ -6,7 +6,7 @@ entorno/
 entorno_py39/
 Graficas/data_temp.dat
 Graficas
-data/
+/data/
 
 # Python cache y compilados
 __pycache__/

@@ -27,23 +27,23 @@ GAP = 50
 MIN_REQUIRED = (2 * SHOTS) + GAP 
 
 def desnormalizar_zscore(norm_tensor, media, std):
-    """_summary_ Desnormaliza un array normalizado utilizando la fórmula de normalización z-score. Esta función toma un array de valores normalizados (con media 0 y desviación estándar 1) y los convierte de nuevo a su escala original utilizando la media y desviación estándar proporcionadas.
+    """Desnormaliza un array normalizado utilizando la fórmula de normalización z-score. Esta función toma un array de valores normalizados (con media 0 y desviación estándar 1) y los convierte de nuevo a su escala original utilizando la media y desviación estándar proporcionadas.
 
     Args:
-        norm_tensor (_type_): _description_ Tensor de valores normalizados, donde cada valor tiene media 0 y desviación estándar 1, resultado de aplicar la normalización z-score a los datos originales.
-        media (_type_): _description_ Media de la escala original.
-        std (_type_): _description_ Desviación estándar de la escala original.
+        norm_tensor: Tensor de valores normalizados, donde cada valor tiene media 0 y desviación estándar 1, resultado de aplicar la normalización z-score a los datos originales.
+        media: Media de la escala original.
+        std: Desviación estándar de la escala original.
 
     Returns:
-        _type_: _description_ Tensor de valores desnormalizados, donde cada valor ha sido transformado de nuevo a su escala original.
+        tipo: Tensor de valores desnormalizados, donde cada valor ha sido transformado de nuevo a su escala original.
     """
     return norm_tensor * std + media
 
 def set_seed(seed=42):
-    """_summary_ Establece la semilla para la reproducibilidad en múltiples librerías (random, numpy, torch). Esto asegura que los resultados sean consistentes entre ejecuciones, lo cual es crucial para experimentos científicos y comparaciones de modelos.
+    """Establece la semilla para la reproducibilidad en múltiples librerías (random, numpy, torch). Esto asegura que los resultados sean consistentes entre ejecuciones, lo cual es crucial para experimentos científicos y comparaciones de modelos.
 
     Args:
-        seed (int, optional): _description_. Por defecto 42. Valor comúnmente utilizado para la semilla, pero puede ser cualquier entero.
+        seed (int, optional): Por defecto 42. Valor comúnmente utilizado para la semilla, pero puede ser cualquier entero.
     """    
     random.seed(seed)
     np.random.seed(seed)
@@ -52,15 +52,15 @@ def set_seed(seed=42):
         torch.cuda.manual_seed_all(seed)
 
 def obtener_datos_por_pids(dataset, pids, mapping):
-    """_summary_ Dado un dataset completo, una lista de IDs de pacientes (pids) y un mapeo de IDs a índices en el dataset, esta función extrae los valores de SBP y DBP correspondientes a las muestras de los pacientes especificados. Los valores extraídos se desnormalizan utilizando las medias y desviaciones estándar predefinidas para SBP y DBP, y se devuelven como arrays de numpy.
+    """Dado un dataset completo, una lista de IDs de pacientes (pids) y un mapeo de IDs a índices en el dataset, esta función extrae los valores de SBP y DBP correspondientes a las muestras de los pacientes especificados. Los valores extraídos se desnormalizan utilizando las medias y desviaciones estándar predefinidas para SBP y DBP, y se devuelven como arrays de numpy.
 
     Args:
-        dataset (_type_): _description_ Instancia del dataset completo que contiene todas las muestras y etiquetas.
-        pids (_type_): _description_ Lista de IDs de pacientes que se desean extraer para un conjunto específico (train, val o test).
-        mapping (_type_): _description_ Mapeo de IDs de pacientes a índices en el dataset.
+        dataset: Instancia del dataset completo que contiene todas las muestras y etiquetas.
+        pids: Lista de IDs de pacientes que se desean extraer para un conjunto específico (train, val o test).
+        mapping: Mapeo de IDs de pacientes a índices en el dataset.
 
     Returns:
-        _type_: _description_ Dos arrays de numpy: el primero contiene los valores de SBP desnormalizados y el segundo contiene los valores de DBP desnormalizados, ambos correspondientes a las muestras de los pacientes especificados en pids.
+        tipo: Dos arrays de numpy: el primero contiene los valores de SBP desnormalizados y el segundo contiene los valores de DBP desnormalizados, ambos correspondientes a las muestras de los pacientes especificados en pids.
     """    
     sbp_list, dbp_list = [], []
     for pid in tqdm(pids, desc="Extrayendo etiquetas"):
@@ -71,7 +71,7 @@ def obtener_datos_por_pids(dataset, pids, mapping):
     return np.array(sbp_list), np.array(dbp_list)
 
 def main():
-    """_summary_ Función principal que ejecuta el proceso completo de carga del dataset, filtrado de pacientes, división en conjuntos de entrenamiento, validación y prueba, extracción de datos de SBP y DBP, y generación de histogramas para caracterizar la distribución de estas variables en cada conjunto. El resultado final es un gráfico guardado en la carpeta "figures/" que muestra la distribución de SBP y DBP para los conjuntos de Meta-Entrenamiento, Meta-Validación y Meta-Prueba.
+    """Función principal que ejecuta el proceso completo de carga del dataset, filtrado de pacientes, división en conjuntos de entrenamiento, validación y prueba, extracción de datos de SBP y DBP, y generación de histogramas para caracterizar la distribución de estas variables en cada conjunto. El resultado final es un gráfico guardado en la carpeta "figures/" que muestra la distribución de SBP y DBP para los conjuntos de Meta-Entrenamiento, Meta-Validación y Meta-Prueba.
     """    
     set_seed(SEED)
     

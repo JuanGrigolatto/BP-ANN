@@ -36,30 +36,30 @@ os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 os.makedirs(LOG_DIR, exist_ok=True)
 
 class HybridLoss(nn.Module):
-    """_summary_ Clase de pérdida híbrida que combina MSE y Pearson para capturar tanto la magnitud del error como la correlación de la tendencia.  
+    """Clase de pérdida híbrida que combina MSE y Pearson para capturar tanto la magnitud del error como la correlación de la tendencia.  
 
     Args:
-        nn (_type_): _description_ Red neuronal de PyTorch
+        nn: Red neuronal de PyTorch
     """    
     def __init__(self, alpha=0.5):
-        """_summary_ Constructor de la clase HybridLoss.
+        """Constructor de la clase HybridLoss.
 
         Args:
-            alpha (float, optional): _description_. Por defecto 0.5. Controla el peso relativo entre MSE y Pearson.
+            alpha (float, optional): Por defecto 0.5. Controla el peso relativo entre MSE y Pearson.
         """        
         super().__init__()
         self.mse = nn.MSELoss()
         self.alpha = alpha 
 
     def forward(self, pred, target):
-        """_summary_ Calcula la pérdida híbrida combinando MSE y Pearson.
+        """Calcula la pérdida híbrida combinando MSE y Pearson.
 
         Args:
-            pred (_type_): _description_ Predicciones del modelo (Deltas predichos).
-            target (_type_): _description_ Valores reales (Deltas reales).
+            pred: Predicciones del modelo (Deltas predichos).
+            target: Valores reales (Deltas reales).
 
         Returns:
-            _type_: _description_ Pérdida combinada que penaliza tanto la magnitud del error como la falta de correlación en la tendencia de las predicciones.
+            tipo: Pérdida combinada que penaliza tanto la magnitud del error como la falta de correlación en la tendencia de las predicciones.
         """        
         mse_loss = self.mse(pred, target)
         vx = pred - torch.mean(pred)
@@ -70,18 +70,18 @@ class HybridLoss(nn.Module):
         return (1 - self.alpha) * mse_loss + self.alpha * pearson_loss
 
 def validate_meta_epoch(maml, val_loader, lossfn, adapt_steps, shots, device):
-    """_summary_ Función de validación para una época completa, aplicando la estrategia de Delta Learning.
+    """Función de validación para una época completa, aplicando la estrategia de Delta Learning.
 
     Args:
-        maml (_type_): _description_ Modelo MAML que se va a validar.
-        val_loader (_type_): _description_ DataLoader de validación que proporciona batches de tareas.
-        lossfn (_type_): _description_ Función de pérdida híbrida (MSE + Pearson) utilizada para evaluar el desempeño del modelo en la fase de validación.
-        adapt_steps (_type_): _description_ Número de pasos de adaptación (inner loop) a aplicar durante la validación, que puede ser dinámico según la estrategia de annealing.
-        shots (_type_): _description_ Número de ejemplos en el Support Set para cada tarea, que determina cuántos datos se utilizan para calcular el bias y adaptar el modelo.
-        device (_type_): _description_ Dispositivo de cómputo (CPU o GPU) donde se ejecutará la validación.
+        maml: Modelo MAML que se va a validar.
+        val_loader: DataLoader de validación que proporciona batches de tareas.
+        lossfn: Función de pérdida híbrida (MSE + Pearson) utilizada para evaluar el desempeño del modelo en la fase de validación.
+        adapt_steps: Número de pasos de adaptación (inner loop) a aplicar durante la validación, que puede ser dinámico según la estrategia de annealing.
+        shots: Número de ejemplos en el Support Set para cada tarea, que determina cuántos datos se utilizan para calcular el bias y adaptar el modelo.
+        device: Dispositivo de cómputo (CPU o GPU) donde se ejecutará la validación.
 
     Returns:
-        _type_: _description_ Pérdida promedio en el conjunto de validación, calculada sobre las tareas evaluadas, que refleja la capacidad del modelo para predecir las variaciones dinámicas (Deltas) respecto al bias base del Support Set.
+        tipo: Pérdida promedio en el conjunto de validación, calculada sobre las tareas evaluadas, que refleja la capacidad del modelo para predecir las variaciones dinámicas (Deltas) respecto al bias base del Support Set.
     """    
     meta_val_loss = 0.0
     num_batches = 0
@@ -123,13 +123,13 @@ def validate_meta_epoch(maml, val_loader, lossfn, adapt_steps, shots, device):
     return meta_val_loss / num_batches
 
 def log_to_csv(epoch, train_loss, valid_loss, filepath=CSV_LOG_PATH):
-    """_summary_ Función para registrar las métricas de entrenamiento y validación en un archivo CSV, permitiendo un seguimiento detallado del desempeño del modelo a lo largo de las épocas.
+    """Función para registrar las métricas de entrenamiento y validación en un archivo CSV, permitiendo un seguimiento detallado del desempeño del modelo a lo largo de las épocas.
 
     Args:
-        epoch (_type_): _description_ Número de época actual, que se registra para correlacionar las métricas con el progreso del entrenamiento.
-        train_loss (_type_): _description_ Pérdida promedio en el conjunto de entrenamiento.
-        valid_loss (_type_): _description_ Pérdida promedio en el conjunto de validación.
-        filepath (_type_, optional): _description_ Ruta del archivo CSV donde se registrarán las métricas. Por defecto CSV_LOG_PATH.
+        epoch: Número de época actual, que se registra para correlacionar las métricas con el progreso del entrenamiento.
+        train_loss: Pérdida promedio en el conjunto de entrenamiento.
+        valid_loss: Pérdida promedio en el conjunto de validación.
+        filepath (opcional): Ruta del archivo CSV donde se registrarán las métricas. Por defecto CSV_LOG_PATH.
     """    
     file_exists = os.path.isfile(filepath)
     with open(filepath, mode='a', newline='') as f:
@@ -156,7 +156,7 @@ def main(shots=5,
          num_epochs=150, 
          patience=20):
 
-    """_summary_ Función principal que ejecuta el proceso de meta-entrenamiento utilizando la estrategia de Delta Learning, donde el modelo aprende a predecir variaciones dinámicas respecto a un valor base (bias) extraído del Support Set. La función incluye la configuración de hiperparámetros, carga de datos, inicialización del modelo y optimizador, así como el bucle de entrenamiento con validación y checkpointing.
+    """Función principal que ejecuta el proceso de meta-entrenamiento utilizando la estrategia de Delta Learning, donde el modelo aprende a predecir variaciones dinámicas respecto a un valor base (bias) extraído del Support Set. La función incluye la configuración de hiperparámetros, carga de datos, inicialización del modelo y optimizador, así como el bucle de entrenamiento con validación y checkpointing.
     """    
     if adapt_steps_start > adapt_steps_end:
         anneal_stride = max(1, anneal_epochs // (adapt_steps_start - adapt_steps_end))

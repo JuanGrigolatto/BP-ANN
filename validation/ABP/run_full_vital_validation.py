@@ -17,6 +17,7 @@ import math
 import statistics
 import csv
 import sys
+import argparse
 from scipy.signal import find_peaks
 import matplotlib.pyplot as plt
 from scipy.stats import pearsonr
@@ -99,11 +100,31 @@ def calcular_labels_promedio_10s(abp_filtrada, fs):
         picos_dbp
     )
 
-DATA_MAT = Path(r'C:\PA-ANN\BP-ANN-clean\data\raw\VitalDB_AAMI_Test_Subset\VitalDB_AAMI_Test_Subset.mat')
+_ROOT = Path(__file__).resolve().parents[2]
+_DEFAULT_DATA_MAT = _ROOT / "data" / "raw" / "VitalDB_AAMI_Test_Subset" / "VitalDB_AAMI_Test_Subset.mat"
+
+_parser = argparse.ArgumentParser(
+    description="Validación completa de picos ABP (SBP/DBP) sobre el subset AAMI de VitalDB."
+)
+_parser.add_argument(
+    "--data_mat",
+    type=str,
+    default=str(_DEFAULT_DATA_MAT),
+    help=f"Ruta al .mat de VitalDB_AAMI_Test_Subset. Por defecto: {_DEFAULT_DATA_MAT}",
+)
+_args, _ = _parser.parse_known_args()
+DATA_MAT = Path(_args.data_mat)
 OUT_DIR = Path('validation') / 'results' / 'VitalDB_AAMI'
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 fs = 125
+
+if not DATA_MAT.exists():
+    raise FileNotFoundError(
+        f"No se encontró el archivo VitalDB en '{DATA_MAT}'.\n"
+        "Pasá la ruta correcta con --data_mat o ubicalo en "
+        "data/raw/VitalDB_AAMI_Test_Subset/VitalDB_AAMI_Test_Subset.mat"
+    )
 
 # Load data
 with h5py.File(str(DATA_MAT), 'r') as f:

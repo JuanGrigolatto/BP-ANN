@@ -1,13 +1,23 @@
 import os
+import sys
 import glob
+import argparse
 import wfdb
 import traceback
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.signal import resample_poly
-import src.utils.Tools.Tools as tools  #[cite: 1]
 from pathlib import Path  # <--- AGREGAR ESTA LÍNEA
+
+# Permite ejecutar tanto "python validation/ECG/Validar_picos_ECG_MITbih2.py" (script directo)
+# como "python -m validation.ECG.Validar_picos_ECG_MITbih2" (módulo), sin depender de que el
+# paquete esté instalado con pip install -e .
+_ROOT = Path(__file__).resolve().parents[2]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+import src.utils.Tools.Tools as tools  #[cite: 1]
 
 # --- CONFIGURACIÓN ACADÉMICA DE MATPLOTLIB ---
 plt.rcParams.update({
@@ -98,8 +108,32 @@ def evaluar_registro(ruta_base, registro_id, ventana_ms=50):
 
 if __name__ == '__main__':
     OUT_DIR = Path(__file__).resolve().parent
-    ruta_datos = r"C:\PA-ANN\BP-ANN-clean\data\raw\mit-bih-arrhythmia-database-1.0.0"
-    
+    ROOT = Path(__file__).resolve().parents[2]
+    DEFAULT_DATA_PATH = ROOT / "data" / "raw" / "mit-bih-arrhythmia-database-1.0.0"
+
+    parser = argparse.ArgumentParser(
+        description="Valida el detector QRS propio contra las anotaciones de MIT-BIH Arrhythmia Database."
+    )
+    parser.add_argument(
+        "--data_path",
+        type=str,
+        default=str(DEFAULT_DATA_PATH),
+        help=(
+            "Carpeta local con los registros de MIT-BIH (.hea/.dat/.atr), descargada desde "
+            "https://physionet.org/content/mitdb/1.0.0/. "
+            f"Por defecto: {DEFAULT_DATA_PATH}"
+        ),
+    )
+    args = parser.parse_args()
+    ruta_datos = args.data_path
+
+    if not os.path.isdir(ruta_datos):
+        raise FileNotFoundError(
+            f"No se encontró la carpeta de MIT-BIH en '{ruta_datos}'.\n"
+            "Descargala desde https://physionet.org/content/mitdb/1.0.0/ y pasá la ruta con "
+            "--data_path, o ubicala en data/raw/mit-bih-arrhythmia-database-1.0.0/"
+        )
+
     archivos_hea = glob.glob(os.path.join(ruta_datos, '*.hea'))
     registros = sorted([os.path.basename(f).replace('.hea', '') for f in archivos_hea])
     
